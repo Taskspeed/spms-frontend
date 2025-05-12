@@ -12,14 +12,13 @@
           <!-- Target Period Details Card -->
           <q-card flat bordered>
             <q-card-section class="q-pa-sm">
-              <div class="text-subtitle">Target Period Details</div>
+              <div class="text-subtitle2">Target Period Details</div>
             </q-card-section>
 
             <q-separator />
 
             <q-card-section class="q-pa-sm">
               <div class="column q-gutter-sm">
-                <!-- Division Selection -->
                 <q-select
                   v-model="form.division"
                   :options="divisionOptions"
@@ -38,7 +37,6 @@
                   </template>
                 </q-select>
 
-                <!-- Section Selection -->
                 <q-select
                   v-model="form.section"
                   :options="filteredSections"
@@ -58,7 +56,6 @@
                   </template>
                 </q-select>
 
-                <!-- Unit Selection -->
                 <q-select
                   v-model="form.unit"
                   :options="filteredUnits"
@@ -79,7 +76,6 @@
 
                 <q-separator />
 
-                <!-- Period selection -->
                 <q-select
                   v-model="form.semester"
                   :options="semesterOptions"
@@ -103,11 +99,11 @@
         </div>
       </div>
 
-      <!-- Right Side Column - Employee Information and MFO/Competencies -->
+      <!-- Right Side Column -->
       <div class="col-12 col-md-9">
         <q-card flat bordered>
           <q-card-section class="q-pa-sm">
-            <div class="text-subtitle">Employee Information</div>
+            <div class="text-subtitle2">Employee Information</div>
           </q-card-section>
 
           <q-separator />
@@ -181,18 +177,17 @@
               </div>
             </div>
 
-            <!-- MFO and Competencies Section - Now inside Employee Information Card -->
+            <!-- Performance Indicators Section -->
             <div v-if="form.employee" class="q-mt-md">
               <q-separator class="q-mb-md" />
 
-              <div class="text-subtitle q-mb-sm">Performance Indicators</div>
-
+              <!-- Horizontal layout for MFO Details and Competencies -->
               <div class="row q-col-gutter-md">
-                <!-- MFO Details Column -->
-                <div class="col-md-4">
-                  <q-card flat bordered>
+                <!-- MFO Details Card -->
+                <div class="col-md-6">
+                  <q-card flat bordered class="full-height">
                     <q-card-section class="q-pa-sm">
-                      <div class="text-subtitle2 text-center">MFO Details</div>
+                      <div class="text-subtitle2">MFO Details</div>
                     </q-card-section>
 
                     <q-separator />
@@ -200,199 +195,309 @@
                     <q-card-section class="q-pa-sm">
                       <div class="column q-gutter-sm">
                         <q-select
-                          filled
+                          outlined
+                          dense
                           v-model="rows[0].category"
                           label="Select Category"
                           :options="categoryOptions"
-                          dense
-                          outlined
                           map-options
                           @update:model-value="clearDependentFields(1)"
-                        />
+                        >
+                          <template v-slot:prepend>
+                            <q-icon name="category" size="xs" />
+                          </template>
+                        </q-select>
 
                         <q-select
                           v-if="!skipMfo"
-                          filled
+                          outlined
+                          dense
                           v-model="rows[1].mfo"
                           label="Select MFO"
                           :options="filteredMfoOptions"
-                          dense
-                          outlined
-                          map-options
                           :disable="!rows[0].category"
                           @update:model-value="clearDependentFields(2)"
-                        />
+                        >
+                          <template v-slot:prepend>
+                            <q-icon name="list_alt" size="xs" />
+                          </template>
+                        </q-select>
 
                         <q-select
-                          filled
+                          outlined
+                          dense
                           v-model="rows[2].output"
                           label="Select Output"
                           :options="filteredOutputOptions"
-                          dense
-                          outlined
-                          map-options
                           :disable="(!rows[1].mfo && !skipMfo) || !rows[0].category"
-                        />
+                        >
+                          <template v-slot:prepend>
+                            <q-icon name="output" size="xs" />
+                          </template>
+                        </q-select>
                       </div>
                     </q-card-section>
                   </q-card>
                 </div>
 
-                <!-- Competencies Column -->
-                <div class="col-md-8">
-                  <div class="row q-col-gutter-sm">
-                    <!-- Core Competencies -->
-                    <div class="col-md-4">
-                      <q-card flat bordered>
-                        <q-card-section class="q-pa-sm">
-                          <div class="text-subtitle2 text-center">Core Competencies</div>
-                        </q-card-section>
-
-                        <q-separator />
-
-                        <q-card-section class="q-pa-sm">
-                          <div class="competency-list">
-                            <template v-if="Object.keys(mergedCoreCompetency).length > 0">
-                              <div
-                                v-for="(comp, name) in mergedCoreCompetency"
-                                :key="'core-' + name"
-                              >
-                                {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                              </div>
-                            </template>
-                            <div v-else class="text-grey-6 text-center">No core competencies</div>
-                          </div>
-                        </q-card-section>
-                      </q-card>
-                    </div>
-
-                    <!-- Technical Competencies -->
-                    <div class="col-md-4">
-                      <q-card flat bordered>
-                        <q-card-section class="q-pa-sm">
-                          <div class="text-subtitle2 text-center">Technical Competencies</div>
-                        </q-card-section>
-
-                        <q-separator />
-
-                        <q-card-section class="q-pa-sm">
-                          <div class="competency-list">
-                            <template v-if="Object.keys(mergedTechnicalCompetency).length > 0">
-                              <div
-                                v-for="(comp, name) in mergedTechnicalCompetency"
-                                :key="'tech-' + name"
-                              >
-                                {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                              </div>
-                            </template>
-                            <div v-else class="text-grey-6 text-center">
-                              No technical competencies
-                            </div>
-                          </div>
-                        </q-card-section>
-                      </q-card>
-                    </div>
-
-                    <!-- Leadership Competencies -->
-                    <div class="col-md-4">
-                      <q-card flat bordered>
-                        <q-card-section class="q-pa-sm">
-                          <div class="text-subtitle2 text-center">Leadership Competencies</div>
-                        </q-card-section>
-
-                        <q-separator />
-
-                        <q-card-section class="q-pa-sm">
-                          <div class="competency-list">
-                            <template v-if="Object.keys(mergedLeadershipCompetency).length > 0">
-                              <div
-                                v-for="(comp, name) in mergedLeadershipCompetency"
-                                :key="'leader-' + name"
-                              >
-                                {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                              </div>
-                            </template>
-                            <div v-else class="text-grey-6 text-center">
-                              No leadership competencies
-                            </div>
-                          </div>
-                        </q-card-section>
-                      </q-card>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Success Indicators Row -->
-              <div class="row q-col-gutter-md q-mt-sm">
-                <div class="col-md-4">
-                  <q-card flat bordered>
+                <!-- Competencies Card -->
+                <div class="col-md-6">
+                  <q-card flat bordered class="full-height">
                     <q-card-section class="q-pa-sm">
-                      <div class="text-subtitle2 text-center">Success Indicator</div>
+                      <div class="text-subtitle2">Competencies</div>
                     </q-card-section>
 
                     <q-separator />
 
                     <q-card-section class="q-pa-sm">
+                      <div class="row q-col-gutter-sm">
+                        <div class="col-md-4">
+                          <q-card flat bordered class="full-height">
+                            <q-card-section class="q-pa-sm">
+                              <div class="text-caption text-weight-medium">Core Competencies</div>
+                            </q-card-section>
+                            <q-separator />
+                            <q-card-section class="q-pa-sm">
+                              <div class="competency-list">
+                                <template v-if="Object.keys(mergedCoreCompetency).length > 0">
+                                  <div
+                                    v-for="(comp, name) in mergedCoreCompetency"
+                                    :key="'core-' + name"
+                                    class="q-pb-xs"
+                                  >
+                                    {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
+                                  </div>
+                                </template>
+                                <div v-else class="text-grey-6 text-center">
+                                  No core competencies
+                                </div>
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </div>
+
+                        <div class="col-md-4">
+                          <q-card flat bordered class="full-height">
+                            <q-card-section class="q-pa-sm">
+                              <div class="text-caption text-weight-medium">
+                                Technical Competencies
+                              </div>
+                            </q-card-section>
+                            <q-separator />
+                            <q-card-section class="q-pa-sm">
+                              <div class="competency-list">
+                                <template v-if="Object.keys(mergedTechnicalCompetency).length > 0">
+                                  <div
+                                    v-for="(comp, name) in mergedTechnicalCompetency"
+                                    :key="'tech-' + name"
+                                    class="q-pb-xs"
+                                  >
+                                    {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
+                                  </div>
+                                </template>
+                                <div v-else class="text-grey-6 text-center">
+                                  No technical competencies
+                                </div>
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </div>
+
+                        <div class="col-md-4">
+                          <q-card flat bordered class="full-height">
+                            <q-card-section class="q-pa-sm">
+                              <div class="text-caption text-weight-medium">
+                                Leadership Competencies
+                              </div>
+                            </q-card-section>
+                            <q-separator />
+                            <q-card-section class="q-pa-sm">
+                              <div class="competency-list">
+                                <template v-if="Object.keys(mergedLeadershipCompetency).length > 0">
+                                  <div
+                                    v-for="(comp, name) in mergedLeadershipCompetency"
+                                    :key="'leader-' + name"
+                                    class="q-pb-xs"
+                                  >
+                                    {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
+                                  </div>
+                                </template>
+                                <div v-else class="text-grey-6 text-center">
+                                  No leadership competencies
+                                </div>
+                              </div>
+                            </q-card-section>
+                          </q-card>
+                        </div>
+                      </div>
+                    </q-card-section>
+                  </q-card>
+                </div>
+              </div>
+
+              <!-- Success Indicators Card -->
+              <q-card flat bordered class="q-mt-md">
+                <q-card-section class="q-pa-sm">
+                  <div class="text-subtitle2">Success Indicators</div>
+                </q-card-section>
+                <q-separator />
+                <q-card-section class="q-pa-sm">
+                  <div class="row q-col-gutter-sm">
+                    <div class="col-md-4">
                       <q-input
+                        outlined
+                        dense
                         v-model="mergedSuccessIndicator"
                         type="textarea"
-                        dense
+                        label="Success Indicator"
                         autogrow
-                        borderless
-                        class="auto-expand-textarea"
                       />
-                    </q-card-section>
-                  </q-card>
-                </div>
-
-                <div class="col-md-4">
-                  <q-card flat bordered>
-                    <q-card-section class="q-pa-sm">
-                      <div class="text-subtitle2 text-center">Required Output</div>
-                    </q-card-section>
-
-                    <q-separator />
-
-                    <q-card-section class="q-pa-sm">
+                    </div>
+                    <div class="col-md-4">
                       <q-input
+                        outlined
+                        dense
                         v-model="mergedRequiredOutput"
                         type="textarea"
-                        dense
+                        label="Required Output"
                         autogrow
-                        borderless
-                        class="auto-expand-textarea"
                       />
-                    </q-card-section>
-                  </q-card>
-                </div>
-
-                <div class="col-md-4">
-                  <q-card flat bordered>
-                    <q-card-section class="q-pa-sm">
-                      <div class="text-subtitle2 text-center">Mode of Verification</div>
-                    </q-card-section>
-
-                    <q-separator />
-
-                    <q-card-section class="q-pa-sm">
+                    </div>
+                    <div class="col-md-4">
                       <q-input
+                        outlined
+                        dense
                         v-model="mergedMVerification"
                         type="textarea"
-                        dense
+                        label="Mode of Verification"
                         autogrow
-                        borderless
-                        class="auto-expand-textarea"
                       />
-                    </q-card-section>
-                  </q-card>
-                </div>
-              </div>
+                    </div>
+                  </div>
+                </q-card-section>
+              </q-card>
+
+              <!-- Standard Outcome Section -->
+              <q-card flat bordered class="q-mt-md">
+                <q-card-section class="q-pa-sm">
+                  <div class="text-subtitle2">Standard Outcome</div>
+                </q-card-section>
+                <q-separator />
+                <q-card-section class="q-pa-sm">
+                  <div class="q-pa-md" style="max-width: 100%">
+                    <q-table
+                      :rows="standardOutcomeRows"
+                      :columns="standardOutcomeColumns"
+                      row-key="rating"
+                      hide-bottom
+                      bordered
+                      flat
+                      dense
+                      class="standard-outcome-table"
+                    >
+                      <!-- Header with dropdown only for quantity -->
+                      <template v-slot:header-cell-quantity="props">
+                        <q-th :props="props" class="header-dropdown-cell">
+                          <q-select
+                            v-model="quantityIndicatorType"
+                            :options="quantityIndicator"
+                            dense
+                            outlined
+                            emit-value
+                            map-options
+                            behavior="menu"
+                            class="header-select"
+                          />
+                        </q-th>
+                      </template>
+
+                      <!-- Simple headers for timeliness and effectiveness -->
+                      <template v-slot:header-cell-timeliness="props">
+                        <q-th :props="props">Timeliness</q-th>
+                      </template>
+                      <template v-slot:header-cell-effectiveness="props">
+                        <q-th :props="props">Effectiveness</q-th>
+                      </template>
+
+                      <!-- Body cells with inputs -->
+                      <template v-slot:body-cell-quantity="props">
+                        <q-td :props="props" class="input-cell">
+                          <q-input
+                            v-if="quantityIndicatorType === 'numeric'"
+                            v-model="props.row.quantity"
+                            dense
+                            outlined
+                            placeholder="Enter custom target"
+                            :rules="[validateStrictNumeric]"
+                            @keydown="blockInvalidChars"
+                            @update:model-value="sanitizeNumericInput(props.row, 'quantity')"
+                          />
+                          <div v-else class="numeric-display">
+                            {{ props.row.quantity || '-' }}
+                          </div>
+                        </q-td>
+                      </template>
+
+                      <template v-slot:body-cell-effectiveness="props">
+                        <q-td :props="props" class="input-cell">
+                          <q-input
+                            v-model="props.row.effectiveness"
+                            type="textarea"
+                            dense
+                            autogrow
+                            outlined
+                            placeholder="Enter effectiveness criteria"
+                          />
+                        </q-td>
+                      </template>
+
+                      <template v-slot:body-cell-timeliness="props">
+                        <q-td :props="props" class="input-cell">
+                          <q-input
+                            v-model="props.row.timeliness"
+                            type="textarea"
+                            dense
+                            autogrow
+                            outlined
+                            placeholder="Enter timeliness criteria"
+                          />
+                        </q-td>
+                      </template>
+                    </q-table>
+                  </div>
+                </q-card-section>
+              </q-card>
             </div>
           </q-card-section>
         </q-card>
       </div>
     </div>
+
+    <!-- Target Input Modal -->
+    <q-dialog v-model="showTargetModal" persistent>
+      <q-card style="min-width: 400px; border-radius: 8px">
+        <q-card-section class="modal-header">
+          <div class="text-h6">Enter Target Output</div>
+        </q-card-section>
+
+        <q-card-section class="modal-body">
+          <q-input
+            v-model.number="targetValue"
+            label="Target Output"
+            type="number"
+            outlined
+            dense
+            :rules="[(val) => val > 0 || 'Must be greater than 0']"
+            @keypress="blockInvalidChars"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="modal-actions">
+          <q-btn flat label="Cancel" color="grey-7" v-close-popup @click="cancelTargetInput" />
+          <q-btn label="Calculate" color="green" unelevated @click="computeQuantities" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <div class="row justify-end q-mt-sm">
       <q-btn label="Cancel" color="grey" flat dense class="q-mr-sm" @click="onCancel" />
@@ -472,6 +577,32 @@ export default {
     )
     const mergedRequiredOutput = ref('5 completed projects with documentation')
     const mergedMVerification = ref('Project reports and client feedback')
+
+    // Standard Outcome related data
+    const standardOutcomeColumns = [
+      { name: 'rating', label: 'Rating', field: 'rating', align: 'center' },
+      { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'center' },
+      { name: 'effectiveness', label: 'Effectiveness', field: 'effectiveness', align: 'center' },
+      { name: 'timeliness', label: 'Timeliness', field: 'timeliness', align: 'center' },
+    ]
+
+    const standardOutcomeRows = ref([
+      { rating: '5', quantity: '', effectiveness: '', timeliness: '' },
+      { rating: '4', quantity: '', effectiveness: '', timeliness: '' },
+      { rating: '3', quantity: '', effectiveness: '', timeliness: '' },
+      { rating: '2', quantity: '', effectiveness: '', timeliness: '' },
+      { rating: '1', quantity: '', effectiveness: '', timeliness: '' },
+    ])
+
+    const quantityIndicator = [
+      { label: 'Quantity (A. Custom Target)', value: 'numeric' },
+      { label: 'Quantity (B. Can exceed 100%)', value: 'B' },
+      { label: 'Quantity (C. Cannot exceed 100%)', value: 'C' },
+    ]
+
+    const quantityIndicatorType = ref('numeric')
+    const showTargetModal = ref(false)
+    const targetValue = ref(null)
 
     const units = ref([
       { id: 1, name: 'Finance Department' },
@@ -557,7 +688,7 @@ export default {
 
     const employeesFilter = ref('')
     const filteredEmployees = ref([])
-    const semesterOptions = ['First', 'Second']
+    const semesterOptions = ['January-June', 'July-December']
     const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i)
     const divisionOptions = divisions.value
 
@@ -637,6 +768,121 @@ export default {
       }
     }
 
+    // Standard Outcome methods
+    const blockInvalidChars = (e) => {
+      const allowedKeys = [
+        '0',
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+        '-',
+        'Backspace',
+        'Delete',
+        'Tab',
+        'ArrowLeft',
+        'ArrowRight',
+      ]
+
+      if (!allowedKeys.includes(e.key) && !e.ctrlKey) {
+        e.preventDefault()
+      }
+    }
+
+    const sanitizeNumericInput = (row, field) => {
+      if (!row[field]) return
+      // Remove all non-numeric chars except hyphen
+      row[field] = row[field].replace(/[^0-9-]/g, '')
+
+      // Allow only one hyphen
+      const hyphens = row[field].split('-').length - 1
+      if (hyphens > 1) {
+        row[field] = row[field].substring(0, row[field].lastIndexOf('-'))
+      }
+    }
+
+    const validateStrictNumeric = (val) => {
+      if (!val) return 'Value required'
+
+      // Case 1: Single number
+      if (!val.includes('-')) {
+        return !isNaN(val) || 'Must be a number'
+      }
+
+      // Case 2: Range
+      const parts = val.split('-')
+      if (parts.length !== 2 || parts.some((p) => !p)) return 'Use format: min-max'
+
+      const min = Number(parts[0])
+      const max = Number(parts[1])
+
+      if (isNaN(min) || isNaN(max)) return 'Both must be numbers'
+      if (min >= max) return 'Min must be less than max'
+
+      return true
+    }
+
+    const computeQuantities = () => {
+      if (quantityIndicatorType.value === 'B' && (!targetValue.value || isNaN(targetValue.value))) {
+        $q.notify({
+          message: 'Please enter a valid number',
+          color: 'negative',
+          position: 'top',
+        })
+        return
+      }
+
+      // Reset rows
+      standardOutcomeRows.value.forEach((row) => {
+        row.quantity = ''
+      })
+
+      if (quantityIndicatorType.value === 'B') {
+        const base = Number(targetValue.value)
+        standardOutcomeRows.value[0].quantity = `${Math.ceil(base * 1.3)} and above`
+        standardOutcomeRows.value[1].quantity = `${Math.ceil(base * 1.15)}-${Math.floor(base * 1.3) - 1}`
+        standardOutcomeRows.value[2].quantity = `${base}-${Math.floor(base * 1.15) - 1}`
+        standardOutcomeRows.value[3].quantity = `${Math.ceil(base * 0.51)}-${Math.floor(base * 0.99)}`
+        standardOutcomeRows.value[4].quantity = `${Math.floor(base * 0.5)} and below`
+
+        $q.notify({
+          message: 'Quantities calculated successfully',
+          color: 'positive',
+          position: 'top',
+        })
+      } else if (quantityIndicatorType.value === 'C') {
+        standardOutcomeRows.value[0].quantity = '100% and above'
+        standardOutcomeRows.value[1].quantity = '88%-99%'
+        standardOutcomeRows.value[2].quantity = '77%-87%'
+        standardOutcomeRows.value[3].quantity = '38%-76%'
+        standardOutcomeRows.value[4].quantity = '37% and below'
+      }
+      showTargetModal.value = false
+    }
+
+    const cancelTargetInput = () => {
+      quantityIndicatorType.value = 'numeric'
+      showTargetModal.value = false
+    }
+
+    watch(quantityIndicatorType, (val) => {
+      if (val === 'B') {
+        targetValue.value = null
+        showTargetModal.value = true
+      } else if (val === 'C') {
+        computeQuantities()
+      } else if (val === 'numeric') {
+        standardOutcomeRows.value.forEach((row) => {
+          row.quantity = ''
+        })
+      }
+    })
+
     const onSubmit = () => {
       $q.notify({
         message: 'Form submitted successfully',
@@ -699,6 +945,18 @@ export default {
       mergedRequiredOutput,
       mergedMVerification,
       clearDependentFields,
+      // Standard Outcome related
+      standardOutcomeColumns,
+      standardOutcomeRows,
+      quantityIndicator,
+      quantityIndicatorType,
+      showTargetModal,
+      targetValue,
+      blockInvalidChars,
+      sanitizeNumericInput,
+      validateStrictNumeric,
+      computeQuantities,
+      cancelTargetInput,
     }
   },
 }
@@ -745,5 +1003,59 @@ export default {
 .text-subtitle2 {
   font-weight: 500;
   font-size: 0.875rem;
+}
+
+.full-height {
+  height: 100%;
+}
+
+/* Standard Outcome table styles */
+.standard-outcome-table {
+  width: 100%;
+}
+
+.header-dropdown-cell {
+  padding: 0;
+}
+
+.header-select {
+  width: 100%;
+}
+
+.input-cell {
+  padding: 8px;
+}
+
+.numeric-display {
+  padding: 8px;
+  text-align: center;
+}
+
+/* Modal styles */
+.modal-header {
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-actions {
+  padding: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+@media (max-width: 768px) {
+  .col-md-2,
+  .col-md-3,
+  .col-md-4 {
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .competency-list > div {
+    white-space: normal;
+  }
 }
 </style>
