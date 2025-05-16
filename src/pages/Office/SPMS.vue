@@ -29,30 +29,34 @@
                   default-expand-all
                   @update:selected="onNodeSelect"
                   :loading="orgStore.loading"
+                  class="org-tree"
                 >
                   <template v-slot:default-header="scope">
-                    <div class="row items-center">
+                    <div class="row items-center no-wrap full-width">
                       <q-icon
-  :name="getNodeIcon(scope.node)"
-  :color="getNodeColor(scope.node)"
-  size="md"
-  class="q-mr-sm"
-/>
-                      <div class="column">
-                        <div :class="{ 'text-weight-bold': scope.node.isHead }">
-                          {{ scope.node.label }}
-                          <span
-                            v-if="scope.node.headName"
-                            class="text-caption text-primary q-ml-sm"
+                        :name="getNodeIcon(scope.node)"
+                        :color="getNodeColor(scope.node)"
+                        size="sm"
+                        class="q-mr-sm tree-icon"
+                      />
+                      <div class="column tree-label full-width">
+                        <div class="row items-center">
+                          <div
+                            :class="{ 'text-weight-bold': scope.node.isHead }"
+                            class="node-label"
                           >
-                            ({{ scope.node.headName }})
-                          </span>
+                            {{ scope.node.label }}
+                          </div>
+                          <q-badge
+                            v-if="scope.node.type === 'employee' && isHeadRank(scope.node.rank)"
+                            color="green"
+                            class="q-ml-sm"
+                          >
+                            {{ scope.node.rank }}
+                          </q-badge>
                         </div>
-                        <div class="text-caption text-grey-7" v-if="scope.node.isHead">
+                        <div class="text-caption text-grey-7" v-if="scope.node.position">
                           {{ scope.node.position }}
-                          <span v-if="scope.node.headRank" class="q-ml-sm"
-                            >({{ scope.node.headRank }})</span
-                          >
                         </div>
                       </div>
                     </div>
@@ -65,18 +69,21 @@
             <q-card flat bordered>
               <q-card-section>
                 <div class="row items-center justify-between q-mb-md" v-if="selectedNode">
-                  <div class="text-h6">{{ selectedNode.label }}</div>
-                  <div class="row q-gutter-sm justify-between">
+                  <div class="text-h6 office-title">{{ selectedNode.label }}</div>
+                  <div class="row q-gutter-sm button-container">
                     <q-btn
+                      class="neu-button-rect"
+                      flat
                       color="green"
                       icon="person_add"
-                      label="Create Unit Work Plan"
-                      dense
+                      label="Create UWP"
                       @click="createUnitWorkPlan"
                     />
                     <q-btn
+                      class="neu-button-rect"
+                      flat
                       color="primary"
-                      label="Preview Unit Work Plan"
+                      label="Preview UWP"
                       icon="print"
                       @click="showUnitWorkPlanModal"
                     />
@@ -107,14 +114,14 @@
                   <template v-slot:body="props">
                     <q-tr :props="props">
                       <q-td key="name" :props="props">
-                        <div class="row items-center">
+                        <div class="row items-center no-wrap full-width">
                           <q-icon
                             :name="props.row.isHead ? 'supervisor_account' : 'person'"
                             :color="props.row.isHead ? 'blue' : 'grey'"
-                            size="md"
-                            class="q-mr-sm"
+                            size="sm"
+                            class="q-mr-sm flex-shrink-0"
                           />
-                          <div>
+                          <div class="employee-info full-width">
                             <div :class="{ 'text-weight-bold': props.row.isHead }">
                               {{ props.row.label }}
                             </div>
@@ -124,11 +131,7 @@
                       </q-td>
                       <q-td key="rank" :props="props">
                         <div class="text-body2">
-                          <q-badge
-                            v-if="isHeadRank(props.row.rank)"
-                            :color="getRankColor(props.row.rank)"
-                            class="q-mr-xs"
-                          >
+                          <q-badge v-if="isHeadRank(props.row.rank)" color="green" class="q-mr-xs">
                             {{ props.row.rank || '-' }}
                           </q-badge>
                           <span v-else>{{ props.row.rank || '-' }}</span>
@@ -144,6 +147,7 @@
                       <q-td key="actions" :props="props" class="text-center">
                         <div class="row justify-center q-gutter-xs">
                           <q-btn
+                            class="neu-button"
                             flat
                             round
                             color="blue"
@@ -154,6 +158,7 @@
                             <q-tooltip>IPCR</q-tooltip>
                           </q-btn>
                           <q-btn
+                            class="neu-button"
                             flat
                             round
                             color="green"
@@ -164,6 +169,7 @@
                             <q-tooltip>Unit Work Plan</q-tooltip>
                           </q-btn>
                           <q-btn
+                            class="neu-button"
                             flat
                             round
                             color="amber"
@@ -174,6 +180,7 @@
                             <q-tooltip>Edit</q-tooltip>
                           </q-btn>
                           <q-btn
+                            class="neu-button"
                             flat
                             round
                             color="negative"
@@ -291,26 +298,17 @@ const filteredEmployees = computed(() => {
 const headRanks = ['office-head', 'division-head', 'section-head', 'unit-head']
 
 const isHeadRank = (rank) => !!rank && headRanks.some((h) => rank.toLowerCase().includes(h))
-
-const getRankColor = (rank) => {
-  if (!rank) return 'grey'
-  const map = {
-    'office-head': 'purple',
-    'division-head': 'deep-purple',
-    'section-head': 'teal',
-    'unit-head': 'indigo',
-  }
-  return Object.entries(map).find(([k]) => rank.toLowerCase().includes(k))?.[1] || 'blue'
-}
 const getNodeColor = (node) => {
   // Always return the color based on node type, ignoring head status
-  return {
-    office: 'green',
-    division: 'red',
-    section: 'blue',
-    unit: 'indigo',
-    employee: node.isHead || isHeadRank(node.rank) ? 'blue' : 'grey'
-  }[node.type] || 'grey'
+  return (
+    {
+      office: 'green',
+      division: 'red',
+      section: 'blue',
+      unit: 'indigo',
+      employee: node.isHead || isHeadRank(node.rank) ? 'blue' : 'grey',
+    }[node.type] || 'grey'
+  )
 }
 
 // 2. Make sure getNodeIcon is consistent with our color scheme
@@ -319,16 +317,17 @@ const getNodeIcon = (node) => {
     return isHeadRank(node.rank) ? 'supervisor_account' : 'person'
   }
 
-  return {
-    office: 'account_balance',
-    division: 'corporate_fare',
-    section: 'view_quilt',
-    unit: 'widgets'
-  }[node.type] || 'help_outline'
+  return (
+    {
+      office: 'account_balance',
+      division: 'corporate_fare',
+      section: 'view_quilt',
+      unit: 'widgets',
+    }[node.type] || 'help_outline'
+  )
 }
 
 // 3. Keep the other color helper functions the same
-
 
 // 4. Keep the status color logic the same
 const getStatusColor = (row) => {
@@ -339,7 +338,6 @@ const getStatusColor = (row) => {
   if (s.includes('rejected')) return 'negative'
   return 'grey'
 }
-
 
 const filterMethod = (node, filter) => {
   if (!filter) return true
@@ -476,8 +474,99 @@ onMounted(async () => {
   border-radius: 4px;
   padding: 4px 8px;
 }
-.period-select .q-field__native {
-  padding-top: 0;
-  padding-bottom: 0;
+.neu-button {
+  border-radius: 50%;
+  box-shadow:
+    3px 3px 6px rgba(0, 0, 0, 0.15),
+    -3px -3px 6px rgba(255, 255, 255, 0.8);
+  transition: all 0.2s ease;
+  background: #f7fafc;
+}
+
+.neu-button:hover {
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.2),
+    -2px -2px 4px rgba(255, 255, 255, 0.9);
+  transform: translateY(1px);
+}
+
+.neu-button:active {
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.2),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.9);
+  transform: translateY(2px);
+}
+
+/* New rectangular neumorphic button style */
+.neu-button-rect {
+  border-radius: 8px;
+  box-shadow:
+    3px 3px 6px rgba(0, 0, 0, 0.15),
+    -3px -3px 6px rgba(255, 255, 255, 0.8);
+  transition: all 0.2s ease;
+  background: #f7fafc;
+  padding: 8px 16px;
+}
+
+.neu-button-rect:hover {
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.2),
+    -2px -2px 4px rgba(255, 255, 255, 0.9);
+  transform: translateY(1px);
+}
+
+.neu-button-rect:active {
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.2),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.9);
+  transform: translateY(2px);
+}
+
+/* New styles for the office title and button container */
+.office-title {
+  font-size: 1.1rem; /* Reduced from text-h6 default size */
+  max-width: 50%; /* Limit width of the title */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.button-container {
+  flex-wrap: nowrap; /* Prevent buttons from wrapping */
+  flex: 0 0 auto; /* Don't allow shrinking */
+  justify-content: flex-end; /* Keep buttons aligned to the right */
+  min-width: fit-content; /* Ensure buttons get enough space */
+}
+
+/* Organization tree specific styles */
+.org-tree .q-tree__node-header {
+  padding: 4px 8px;
+}
+
+.tree-icon {
+  flex-shrink: 0; /* Prevent icon from shrinking */
+}
+
+.tree-label {
+  min-width: 0; /* Allow text to shrink */
+}
+
+.node-label {
+  /* Remove truncation styles so full name is shown */
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+  max-width: none;
+}
+
+.employee-info {
+  min-width: 0; /* Allow content to shrink */
+  overflow: hidden;
+}
+
+.employee-info > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
