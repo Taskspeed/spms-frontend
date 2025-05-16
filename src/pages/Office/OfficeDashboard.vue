@@ -1,11 +1,31 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="q-mb-sm">
-      <h1 class="text-h6 q-mb-none">Unit Work Plan</h1>
-      <p class="text-grey-7">Add targets for employee indicator</p>
-    </div>
 
-    <div class="row q-col-gutter-sm">
+  <q-page class="q-pa-md">
+
+   <!-- Top Header Row -->
+   <div class="row items-center justify-between q-mb-md">
+    <!-- Back Button -->
+    <q-btn
+      flat
+      dense
+      icon="arrow_back"
+      label="Back"
+      color="grey-8"
+      @click="$emit('back')"
+    />
+
+    <!-- Title and Subtitle -->
+    <div class="column items-end">
+      <h1 class="text-h6 q-mb-none">Unit Work Plan</h1>
+      <p class="text-grey-7 q-mt-xs">Add targets for employee indicator</p>
+    </div>
+  </div>
+
+  <!-- Second Row with Target Period Info -->
+  <div class="row items-center justify-between q-mb-sm">
+    <div class="text-h7">{{ division }}</div>
+  </div>
+
       <!-- Target Period Details Card -->
       <div class="col-12">
         <q-card flat bordered>
@@ -877,7 +897,8 @@
           </q-card-section>
         </q-card>
       </div>
-    </div>
+
+
 
     <!-- Quantity Input Modal -->
     <q-dialog v-model="showQuantityModal" persistent>
@@ -930,6 +951,9 @@ export default {
     // Form state tracking
     const formInteracted = ref(false)
     const shouldValidate = ref(false)
+
+
+
 
     // Base form data
     const form = ref({

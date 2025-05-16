@@ -16,6 +16,7 @@ import OfficeDashboard from 'src/pages/Office/OfficeDashboard.vue'
 import OfficeEmployee from 'src/pages/Office/EmployeePage.vue'
 import OfficeSPMS from 'src/pages/Office/SPMS.vue'
 import OfficeAccount from 'src/pages/Office/AccountPage.vue'
+import UnitWorkPlan from 'src/pages/Office/UnitWorkPlan.vue'
 import MFO from 'src/pages/Office/MFOPage.vue'
 
 // Planning Admin Pages
@@ -105,6 +106,13 @@ export const routes = [
         path: 'office/employee',
         component: OfficeEmployee,
         meta: { role: 'office-admin' },
+      },
+
+      {
+        path: '/unitworkplan',
+        name: 'unitworkplan',
+        component:UnitWorkPlan
+
       },
       {
         path: 'office/library',
