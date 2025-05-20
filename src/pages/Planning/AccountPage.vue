@@ -1,8 +1,8 @@
-<template>
-  <q-page padding>
-    <h2>Dashboard</h2>
-    <p>Dashboard content goes here</p>
-  </q-page>
-</template>
+<!-- eslint-disable vue/multi-word-component-names -->
+<script setup>
+import AccPageComponent from 'src/components/AccPageComponent.vue'
+</script>
 
-<script></script>
+<template>
+  <AccPageComponent />
+</template>

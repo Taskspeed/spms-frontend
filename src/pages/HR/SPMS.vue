@@ -1,7 +1,7 @@
 <template>
   <q-page padding>
-    <h2>Dashboard</h2>
-    <p>Dashboard content goes here</p>
+    <h2>spms</h2>
+    <p>spms</p>
   </q-page>
 </template>
 
