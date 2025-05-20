@@ -1,89 +1,99 @@
 <template>
-  <q-drawer
-    v-model="leftDrawerOpen"
-    side="left"
-    bordered
-    :width="230"
-    :class="['sidebar', roleColorClass]"
-    :breakpoint="600"
-    :overlay="$q.screen.lt.md"
-  >
-    <!-- Header -->
-    <div class="sidebar-header">
-      <img
-        class="logo"
-        alt="City of Tagum Logo"
-        src="https://phshirt.com/wp-content/uploads/2021/11/City-of-Tagum-Logo.png"
-      />
-      <div class="Title">
-        <!-- <h5 class="main-title">Performance Management System</h5> -->
-        <h3 class="main-title">{{ userStore.officeName }}</h3>
-        <!-- <p>Your Office ID: {{ userStore.user?.office_id }}</p> -->
+  <div>
+    <!-- Main Drawer -->
+    <q-drawer
+      v-model="leftDrawerOpen"
+      side="left"
+      bordered
+      :width="230"
+      :class="['sidebar', roleColorClass]"
+      :breakpoint="600"
+      :overlay="$q.screen.lt.md"
+    >
+      <!-- Logo and Office Name -->
+      <div class="sidebar__header">
+        <img
+          class="sidebar__logo"
+          alt="City of Tagum Logo"
+          src="https://phshirt.com/wp-content/uploads/2021/11/City-of-Tagum-Logo.png"
+        />
+        <div class="sidebar__title-container">
+          <h3 class="sidebar__title">{{ userStore.officeName }}</h3>
+        </div>
       </div>
-    </div>
 
-    <!-- Navigation Menu -->
-    <q-list>
-      <template v-for="(item, index) in menuItems" :key="index">
-        <q-expansion-item v-if="item.children" expand-separator>
-          <template v-slot:header>
-            <q-item-section avatar style="padding-left: 20px">
-              <q-icon :name="item.icon" class="menu-icon" />
-            </q-item-section>
-            <q-item-section class="menu-text" style="color: white">{{ item.label }}</q-item-section>
-          </template>
-          <q-list style="overflow: hidden">
-            <q-item
-              v-for="(subItem, subIndex) in item.children"
-              :key="subIndex"
-              clickable
-              v-ripple
-              :to="subItem.route"
-              class="menu-item"
-              active-class="active-menu"
-              exact-active-class="active-menu"
-            >
-              <q-item-section avatar style="padding-left: 20px">
-                <q-icon :name="subItem.icon" class="menu-icon" />
+      <!-- Navigation Menu -->
+      <q-list class="sidebar__menu">
+        <template v-for="(item, index) in menuItems" :key="index">
+          <!-- Menu with Submenu - Fixed alignment -->
+          <q-expansion-item
+            v-if="item.children"
+            expand-separator
+            class="sidebar__expansion-item"
+            header-class="sidebar__expansion-header"
+          >
+            <template v-slot:header>
+              <q-item-section avatar class="sidebar__avatar-section">
+                <q-icon :name="item.icon" class="sidebar__icon" />
               </q-item-section>
-              <q-item-section>{{ subItem.label }}</q-item-section>
-            </q-item>
-          </q-list>
-        </q-expansion-item>
-        <q-item
-          v-else
-          clickable
-          v-ripple
-          :to="item.route"
-          class="menu-item"
-          active-class="active-menu"
-          exact-active-class="active-menu"
-        >
-          <q-item-section avatar>
-            <q-icon :name="item.icon" class="menu-icon" />
-          </q-item-section>
-          <q-item-section class="menu-text">{{ item.label }}</q-item-section>
-        </q-item>
-      </template>
-    </q-list>
+              <q-item-section class="sidebar__menu-text">{{ item.label }}</q-item-section>
+            </template>
+            <q-list class="sidebar__submenu">
+              <q-item
+                v-for="(subItem, subIndex) in item.children"
+                :key="subIndex"
+                clickable
+                v-ripple
+                :to="subItem.route"
+                class="sidebar__menu-item"
+                active-class="sidebar__menu-item--active"
+                exact-active-class="sidebar__menu-item--active"
+              >
+                <q-item-section avatar>
+                  <q-icon :name="subItem.icon" class="sidebar__icon" />
+                </q-item-section>
+                <q-item-section>{{ subItem.label }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-expansion-item>
 
-    <!-- Logout Button -->
-    <div class="logout-section">
-      <q-btn flat class="logout-btn" @click="logout" v-ripple>
-        <q-icon name="logout" class="logout-icon" />
-        <span>Logout</span>
-      </q-btn>
-    </div>
-  </q-drawer>
+          <!-- Simple Menu Item -->
+          <q-item
+            v-else
+            clickable
+            v-ripple
+            :to="item.route"
+            class="sidebar__menu-item"
+            active-class="sidebar__menu-item--active"
+            exact-active-class="sidebar__menu-item--active"
+          >
+            <q-item-section avatar class="sidebar__avatar-section">
+              <q-icon :name="item.icon" class="sidebar__icon" />
+            </q-item-section>
+            <q-item-section class="sidebar__menu-text">{{ item.label }}</q-item-section>
+          </q-item>
+        </template>
+      </q-list>
 
-  <q-btn
-    dense
-    round
-    icon="menu"
-    class="floating-menu-btn"
-    @click="leftDrawerOpen = !leftDrawerOpen"
-    v-if="$q.screen.lt.md"
-  />
+      <!-- Logout Button -->
+      <div class="sidebar__logout-container">
+        <q-btn flat class="sidebar__logout-btn" @click="logout" v-ripple>
+          <q-icon name="logout" class="sidebar__logout-icon" />
+          <span>Logout</span>
+        </q-btn>
+      </div>
+    </q-drawer>
+
+    <!-- Mobile Menu Toggle Button -->
+    <q-btn
+      v-if="$q.screen.lt.md"
+      dense
+      round
+      icon="menu"
+      class="sidebar__mobile-toggle"
+      @click="leftDrawerOpen = !leftDrawerOpen"
+    />
+  </div>
 </template>
 
 <script>
@@ -94,30 +104,34 @@ import { useUserStore } from 'src/stores/userStore'
 export default {
   name: 'AppSidebar',
   setup() {
+    // Composition API setup
     const router = useRouter()
     const userStore = useUserStore()
     const leftDrawerOpen = ref(true)
+
+    // Load user data on component mount
     onMounted(() => {
       userStore.loadUserData()
     })
-    // Class management for role-based styling
+
+    // Role-based styling
     const roleColorClass = computed(() => {
       const role = userStore.user?.role_id
       const classes = {
-        1: 'bg-office-admin', // Office Admin
-        2: 'bg-planning-admin', // Planning Admin
-        3: 'bg-hr-admin', // HR Admin
+        1: 'bg-office-admin',
+        2: 'bg-planning-admin',
+        3: 'bg-hr-admin',
       }
       return classes[role] || 'bg-primary'
     })
 
-    // Sidebar items filtered based on role_id
+    // Dynamic menu items based on user role
     const menuItems = computed(() => {
       const role = userStore.user?.role_id
 
       const items = {
+        // Office Admin
         1: [
-          // Office Admin
           { label: 'Dashboard', icon: 'dashboard', route: '/office/dashboard' },
           { label: 'SPMS', icon: 'fact_check', route: '/office/spms' },
           {
@@ -130,14 +144,14 @@ export default {
           },
           { label: 'Account', icon: 'person', route: '/office/account' },
         ],
+        // Planning Admin
         2: [
-          // Planning Admin
           { label: 'Dashboard', icon: 'dashboard', route: '/planning/dashboard' },
           { label: 'SPMS', icon: 'event_note', route: '/planning/spms' },
           { label: 'Account', icon: 'person', route: '/planning/account' },
         ],
+        // HR Admin
         3: [
-          // HR Admin
           { label: 'Dashboard', icon: 'dashboard', route: '/hr/dashboard' },
           { label: 'SPMS', icon: 'event_note', route: '/hr/spms' },
           {
@@ -154,16 +168,16 @@ export default {
       return items[role] || []
     })
 
-    // Logout function
+    // Logout handler
     const logout = async () => {
       try {
         await userStore.logout(router)
       } catch (error) {
         console.error('Logout failed:', error)
-        // Fallback navigation in case the store method fails
         router.push('/login')
       }
     }
+
     return {
       leftDrawerOpen,
       menuItems,
@@ -176,6 +190,7 @@ export default {
 </script>
 
 <style>
+/* Base sidebar styles */
 .sidebar {
   color: white;
   display: flex;
@@ -191,31 +206,23 @@ export default {
   top: 0;
 }
 
-.sidebar-header {
+/* Header section */
+.sidebar__header {
   text-align: center;
-  padding: 0.5rem 1.5rem 0.5rem;
+  padding: 0.5rem 1.5rem;
 }
 
-.q-list {
-  flex: 1;
-  overflow-y: hidden;
-  padding: 0.5rem 0;
-  padding-bottom: calc(1rem + 64px);
-}
-
-.logo {
+.sidebar__logo {
   width: 70px;
   height: auto;
-  margin-top: 1.25rem;
-  margin-bottom: 1.25rem;
+  margin: 1.25rem 0;
 }
 
-.Title {
+.sidebar__title-container {
   text-align: center;
-  color: white;
 }
 
-.main-title {
+.sidebar__title {
   font-size: 14px;
   font-weight: 600;
   font-family: 'Poppins', sans-serif;
@@ -226,9 +233,38 @@ export default {
   color: white;
 }
 
-.menu-item {
+/* Menu styles */
+.sidebar__menu {
+  flex: 1;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+  padding-bottom: calc(1rem + 64px);
+}
+
+/* Fixed expansion item styling for vertical alignment */
+.sidebar__expansion-item {
+  margin: 0.25rem 1rem;
+  border-radius: 0.5rem;
+  opacity: 0.85;
+  transition: all 0.2s ease-in-out;
+}
+
+.sidebar__expansion-header {
+  min-height: 40px; /* Match the height of regular menu items */
   padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
+  border-radius: 0.5rem;
+  color: white !important;
+}
+
+.sidebar__expansion-header:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+.sidebar__menu-item {
+  padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   color: white !important;
   transition: all 0.2s ease-in-out;
@@ -240,46 +276,50 @@ export default {
   width: calc(100% - 2rem);
   display: flex;
   align-items: center;
+  min-height: 40px; /* Ensure consistent height */
 }
 
-.menu-item:hover {
+.sidebar__menu-item:hover {
   background: rgba(255, 255, 255, 0.15) !important;
   opacity: 1;
   transform: translateX(4px);
 }
 
-.active-menu {
+.sidebar__menu-item--active {
   background: rgba(255, 255, 255, 0.2) !important;
   opacity: 1;
   font-weight: 600;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.menu-icon {
+.sidebar__icon {
   color: white;
   font-size: 1.25rem;
   opacity: 0.9;
   min-width: 24px;
-  margin-right: 0.75rem;
 }
 
-.q-item__section--avatar {
-  min-width: 24px !important;
-  padding-right: 0.75rem;
+.sidebar__avatar-section {
+  min-width: 40px !important;
+  padding-right: 0 !important;
 }
 
-.q-item__label {
-  white-space: nowrap;
+.sidebar__menu-text {
+  color: white;
+}
+
+.sidebar__submenu {
   overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 0;
 }
 
-.logout-section {
+/* Logout section */
+.sidebar__logout-container {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.25rem;
   background: inherit;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(8px);
@@ -287,7 +327,7 @@ export default {
   z-index: 10;
 }
 
-.logout-btn {
+.sidebar__logout-btn {
   color: white !important;
   width: 100%;
   text-transform: none;
@@ -304,18 +344,19 @@ export default {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.logout-btn:hover {
+.sidebar__logout-btn:hover {
   opacity: 1;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background-color: rgba(255, 255, 255, 0.15);
 }
 
-.logout-icon {
+.sidebar__logout-icon {
   font-size: 1.25rem;
 }
 
-.floating-menu-btn {
+/* Mobile menu button */
+.sidebar__mobile-toggle {
   position: fixed;
   bottom: 1.5rem;
   left: 1.5rem;
@@ -327,30 +368,12 @@ export default {
   transition: all 0.2s ease;
 }
 
-.floating-menu-btn:hover {
+.sidebar__mobile-toggle:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
-@media (max-width: 600px) {
-  .sidebar {
-    padding-top: 2rem;
-  }
-
-  .menu-item {
-    margin: 0.25rem 0.75rem;
-  }
-
-  .logout-section {
-    padding: 0.75rem;
-    border-top-width: 2px;
-  }
-
-  .q-list {
-    padding-bottom: calc(1rem + 56px);
-  }
-}
-
+/* Role-based background colors */
 .bg-office-admin {
   background-color: #205540;
 }
@@ -361,5 +384,29 @@ export default {
 
 .bg-hr-admin {
   background-color: #722b2b;
+}
+
+/* Responsive styles */
+@media (max-width: 600px) {
+  .sidebar {
+    padding-top: 2rem;
+  }
+
+  .sidebar__menu-item {
+    margin: 0.25rem 0.75rem;
+  }
+
+  .sidebar__expansion-item {
+    margin: 0.25rem 0.75rem;
+  }
+
+  .sidebar__logout-container {
+    padding: 0.75rem;
+    border-top-width: 2px;
+  }
+
+  .sidebar__menu {
+    padding-bottom: calc(1rem + 56px);
+  }
 }
 </style>

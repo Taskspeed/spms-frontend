@@ -1,904 +1,963 @@
 <template>
-
   <q-page class="q-pa-md">
+    <!-- Top Header Row -->
+    <div class="row items-center justify-between q-mb-md">
+      <!-- Back Button -->
+      <q-btn flat dense icon="arrow_back" label="Back" color="grey-8" @click="$emit('back')" />
 
-   <!-- Top Header Row -->
-   <div class="row items-center justify-between q-mb-md">
-    <!-- Back Button -->
-    <q-btn
-      flat
-      dense
-      icon="arrow_back"
-      label="Back"
-      color="grey-8"
-      @click="$emit('back')"
-    />
-
-    <!-- Title and Subtitle -->
-    <div class="column items-end">
-      <h1 class="text-h6 q-mb-none">Unit Work Plan</h1>
-      <p class="text-grey-7 q-mt-xs">Add targets for employee indicator</p>
-    </div>
-  </div>
-
-  <!-- Second Row with Target Period Info -->
-  <div class="row items-center justify-between q-mb-sm">
-    <div class="text-h7">{{ division }}</div>
-  </div>
-
-      <!-- Target Period Details Card -->
-      <div class="col-12">
-        <q-card flat bordered>
-          <q-card-section class="q-pa-sm">
-            <div class="text-subtitle2">Target Period Details</div>
-          </q-card-section>
-
-          <q-separator />
-
-          <q-card-section class="q-pa-sm">
-            <div class="row q-col-gutter-md">
-              <!-- Left Side: Division, Section, Unit -->
-              <div class="col-12 col-md-6">
-                <div class="column q-gutter-sm">
-                  <q-select
-                    v-model="form.division"
-                    :options="divisionOptions"
-                    label="Division"
-                    outlined
-                    dense
-                    emit-value
-                    map-options
-                    option-value="id"
-                    option-label="name"
-                    clearable
-                    @update:model-value="onDivisionChange"
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="business" size="xs" />
-                    </template>
-                  </q-select>
-
-                  <q-select
-                    v-model="form.section"
-                    :options="filteredSections"
-                    label="Section"
-                    outlined
-                    dense
-                    emit-value
-                    map-options
-                    option-value="id"
-                    option-label="name"
-                    :disable="!form.division"
-                    clearable
-                    @update:model-value="onSectionChange"
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="account_tree" size="xs" />
-                    </template>
-                  </q-select>
-
-                  <q-select
-                    v-model="form.unit"
-                    :options="filteredUnits"
-                    label="Unit"
-                    outlined
-                    dense
-                    emit-value
-                    map-options
-                    option-value="id"
-                    option-label="name"
-                    :disable="!form.section"
-                    clearable
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="layers" size="xs" />
-                    </template>
-                  </q-select>
-                </div>
-              </div>
-
-              <!-- Right Side: Semester, Year -->
-              <div class="col-12 col-md-6">
-                <div class="column q-gutter-sm">
-                  <q-select
-                    v-model="form.semester"
-                    :options="semesterOptions"
-                    label="Semester"
-                    outlined
-                    dense
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="calendar_view_month" size="xs" />
-                    </template>
-                  </q-select>
-
-                  <q-select v-model="form.year" :options="yearOptions" label="Year" outlined dense>
-                    <template v-slot:prepend>
-                      <q-icon name="event" size="xs" />
-                    </template>
-                  </q-select>
-                </div>
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+      <!-- Title and Subtitle -->
+      <div class="column items-end">
+        <h1 class="text-h6 q-mb-none">Unit Work Plan</h1>
+        <p class="text-grey-7 q-mt-xs">Add targets for employee indicator</p>
       </div>
+    </div>
 
-      <!-- Employee Information -->
-      <div class="col-12">
-        <q-card flat bordered>
-          <q-card-section class="q-pa-sm">
-            <div class="text-subtitle2">Employee Information</div>
-          </q-card-section>
+    <!-- Second Row with Target Period Info -->
+    <div class="row items-center justify-between q-mb-sm">
+      <div class="text-h7">{{ division }}</div>
+    </div>
 
-          <q-separator />
+    <!-- Target Period Details Card -->
+    <div class="col-12">
+      <q-card flat bordered>
+        <q-card-section class="q-pa-sm">
+          <div class="text-subtitle2">Target Period Details</div>
+        </q-card-section>
 
-          <q-card-section class="q-pa-sm">
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-6">
+        <q-separator />
+
+        <q-card-section class="q-pa-sm">
+          <div class="row q-col-gutter-md">
+            <!-- Left Side: Division, Section, Unit -->
+            <div class="col-12 col-md-8">
+              <div class="column q-gutter-sm">
                 <q-select
-                  v-model="form.employee"
-                  :options="filteredEmployees"
-                  label="Employee"
+                  v-model="form.division"
+                  :options="divisionOptions"
+                  label="Division"
                   outlined
                   dense
-                  use-input
-                  input-debounce="300"
-                  @filter="filterEmployees"
-                  option-value="id"
-                  option-label="name"
                   emit-value
                   map-options
+                  option-value="id"
+                  option-label="name"
                   clearable
-                  :disable="!hasOrganizationalSelection"
-                  :hint="
-                    !hasOrganizationalSelection
-                      ? 'Please select Division, Section, or Unit first'
-                      : ''
-                  "
+                  @update:model-value="onDivisionChange"
                 >
                   <template v-slot:prepend>
-                    <q-icon name="person" size="xs" />
+                    <q-icon name="business" size="xs" />
                   </template>
-                  <template v-slot:option="scope">
-                    <q-item v-bind="scope.itemProps" dense>
-                      <q-item-section avatar>
-                        <q-avatar color="primary" text-color="white" size="sm">
-                          {{ scope.opt.name.charAt(0) }}
-                        </q-avatar>
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label>{{ scope.opt.name }}</q-item-label>
-                        <q-item-label caption lines="1">{{ scope.opt.position }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
+                </q-select>
+
+                <q-select
+                  v-model="form.section"
+                  :options="filteredSections"
+                  label="Section"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  option-value="id"
+                  option-label="name"
+                  :disable="!form.division"
+                  clearable
+                  @update:model-value="onSectionChange"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="account_tree" size="xs" />
+                  </template>
+                </q-select>
+
+                <q-select
+                  v-model="form.unit"
+                  :options="filteredUnits"
+                  label="Unit"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  option-value="id"
+                  option-label="name"
+                  :disable="!form.section"
+                  clearable
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="layers" size="xs" />
                   </template>
                 </q-select>
               </div>
-
-              <div class="col-12 col-md-6" v-if="form.employee">
-                <div class="row q-col-gutter-sm">
-                  <div class="col-12 col-md-6">
-                    <q-input v-model="selectedEmployee.rank" label="Rank" outlined dense readonly>
-                      <template v-slot:prepend>
-                        <q-icon name="military_tech" size="xs" />
-                      </template>
-                    </q-input>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <q-input
-                      v-model="selectedEmployee.position"
-                      label="Position"
-                      outlined
-                      dense
-                      readonly
-                    >
-                      <template v-slot:prepend>
-                        <q-icon name="work" size="xs" />
-                      </template>
-                    </q-input>
-                  </div>
-                </div>
-              </div>
             </div>
 
-            <!-- Performance Standards Section (Modified to contain MFO details) -->
-            <div v-if="form.employee" class="q-mt-md">
-              <q-separator class="q-mb-md" />
-
-              <!-- Performance Standards Collection -->
-              <div class="q-mt-md">
-                <div
-                  v-for="(standard, index) in performanceStandards"
-                  :key="'perf-std-' + index"
-                  class="q-mb-md"
+            <!-- Right Side: Semester, Year -->
+            <div class="col-12 col-md-4">
+              <div class="column q-gutter-sm">
+                <q-select
+                  v-model="form.semester"
+                  :options="semesterOptions"
+                  label="Semester"
+                  outlined
+                  dense
                 >
-                  <q-card flat bordered>
-                    <q-card-section class="q-pa-sm bg-grey-2">
-                      <div class="row items-center justify-between">
-                        <div class="text-subtitle2">Performance Standard {{ index + 1 }}</div>
-                        <div>
-                          <q-btn
-                            flat
-                            round
-                            dense
-                            :icon="standard.expanded ? 'expand_less' : 'expand_more'"
-                            @click="standard.expanded = !standard.expanded"
-                            :aria-label="standard.expanded ? 'Collapse' : 'Expand'"
-                          />
-                          <q-btn
-                            flat
-                            round
-                            dense
-                            icon="delete"
-                            color="negative"
-                            @click="removePerformanceStandard(index)"
-                            aria-label="Remove"
-                          />
-                        </div>
-                      </div>
-                    </q-card-section>
+                  <template v-slot:prepend>
+                    <q-icon name="calendar_view_month" size="xs" />
+                  </template>
+                </q-select>
 
-                    <q-slide-transition>
-                      <div v-show="standard.expanded">
-                        <q-separator />
-                        <q-card-section class="q-pa-sm">
-                          <!-- Horizontal layout for MFO Details and Competencies -->
-                          <div class="row q-col-gutter-md">
-                            <!-- MFO Details Card -->
-                            <div class="col-md-6">
-                              <q-card flat bordered class="full-height">
-                                <q-card-section class="q-pa-sm">
-                                  <div class="text-subtitle2">MFO Details</div>
-                                </q-card-section>
+                <q-select v-model="form.year" :options="yearOptions" label="Year" outlined dense>
+                  <template v-slot:prepend>
+                    <q-icon name="event" size="xs" />
+                  </template>
+                </q-select>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </div>
 
-                                <q-separator />
+    <!-- Employee Information -->
+    <div class="col-12">
+      <q-card flat bordered>
+        <!-- Employee Tabs -->
+        <div class="employee-tabs-container">
+          <q-tabs
+            v-model="activeEmployeeTab"
+            dense
+            class="text-grey"
+            active-color="green-9"
+            indicator-color="green-9"
+            align="left"
+            narrow-indicator
+          >
+            <!-- Show only the first maxVisibleTabs -->
+            <q-tab
+              v-for="(employee, index) in visibleEmployeeTabs"
+              :key="employee.id"
+              :name="employee.id"
+              :label="`Employee ${index + 1}${employee.name ? ': ' + employee.name : ''}`"
+              @click="switchToEmployee(employee.id)"
+            />
 
-                                <q-card-section class="q-pa-sm">
-                                  <div class="column q-gutter-sm">
-                                    <q-select
-                                      outlined
-                                      dense
-                                      v-model="standard.rows.category"
-                                      label="Select Category"
-                                      :options="categoryOptions"
-                                      map-options
-                                      @update:model-value="clearDependentFields(index, 1)"
-                                    >
-                                      <template v-slot:prepend>
-                                        <q-icon name="category" size="xs" />
-                                      </template>
-                                    </q-select>
+            <!-- More menu for overflow tabs -->
+            <q-btn
+              v-if="hasOverflowTabs"
+              flat
+              round
+              dense
+              color="grey-7"
+              icon="more_horiz"
+              class="q-ml-sm"
+            >
+              <q-menu>
+                <q-list style="min-width: 150px">
+                  <q-item-label header>More Employees</q-item-label>
+                  <q-item
+                    v-for="emp in overflowEmployeeTabs"
+                    :key="`overflow-${emp.id}`"
+                    clickable
+                    v-close-popup
+                    @click="switchToEmployee(emp.id)"
+                    :active="activeEmployeeTab === emp.id"
+                  >
+                    <q-item-section>
+                      <q-item-label>{{
+                        emp.name || `Employee ${getEmployeeIndex(emp.id) + 1}`
+                      }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side v-if="activeEmployeeTab === emp.id">
+                      <q-icon name="check" color="green-7" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
+          </q-tabs>
 
-                                    <q-select
-                                      v-if="!skipMfo"
-                                      outlined
-                                      dense
-                                      v-model="standard.rows.mfo"
-                                      label="Select MFO"
-                                      :options="getFilteredMfoOptions(index)"
-                                      :disable="!standard.rows.category"
-                                      @update:model-value="clearDependentFields(index, 2)"
-                                    >
-                                      <template v-slot:prepend>
-                                        <q-icon name="list_alt" size="xs" />
-                                      </template>
-                                    </q-select>
+          <!-- Add Employee button -->
+          <q-btn
+            flat
+            round
+            dense
+            icon="add"
+            color="green-7"
+            class="q-ml-auto"
+            @click="addEmployeeTab"
+            :disable="allEmployeesSelected"
+            aria-label="Add Employee"
+          >
+            <q-tooltip v-if="allEmployeesSelected">All employees already selected</q-tooltip>
+          </q-btn>
+        </div>
 
-                                    <q-select
-                                      outlined
-                                      dense
-                                      v-model="standard.rows.output"
-                                      label="Select Output"
-                                      :options="getFilteredOutputOptions(index)"
-                                      :disable="
-                                        (!standard.rows.mfo && !skipMfo) || !standard.rows.category
-                                      "
-                                    >
-                                      <template v-slot:prepend>
-                                        <q-icon name="output" size="xs" />
-                                      </template>
-                                    </q-select>
-                                  </div>
-                                </q-card-section>
-                              </q-card>
-                            </div>
+        <q-card-section class="q-pa-sm">
+          <div class="row items-center justify-between q-mb-md">
+            <div class="text-subtitle2">Employee Information</div>
 
-                            <!-- Competencies Card -->
-                            <div class="col-md-6">
-                              <q-card flat bordered class="full-height">
-                                <q-card-section class="q-pa-sm">
-                                  <div class="text-subtitle2">Competencies</div>
-                                </q-card-section>
+            <!-- Remove Employee Button -->
+            <q-btn
+              flat
+              round
+              dense
+              icon="delete"
+              color="negative"
+              @click="removeEmployeeTab(activeEmployeeTab)"
+              :disable="employeeTabs.length <= 1"
+              aria-label="Remove Employee"
+            >
+              <q-tooltip>Remove this employee</q-tooltip>
+            </q-btn>
+          </div>
 
-                                <q-separator />
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-select
+                v-model="currentEmployee.employeeId"
+                :options="availableEmployeesForTab"
+                label="Employee"
+                outlined
+                dense
+                use-input
+                input-debounce="300"
+                @filter="filterEmployees"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                clearable
+                :disable="!hasOrganizationalSelection"
+                :hint="
+                  !hasOrganizationalSelection
+                    ? 'Please select Division, Section, or Unit first'
+                    : ''
+                "
+                @update:model-value="onEmployeeSelected"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="person" size="xs" />
+                </template>
+                <template v-slot:option="scope">
+                  <q-item v-bind="scope.itemProps" dense>
+                    <q-item-section avatar>
+                      <q-avatar color="primary" text-color="white" size="sm">
+                        {{ scope.opt.name.charAt(0) }}
+                      </q-avatar>
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ scope.opt.name }}</q-item-label>
+                      <q-item-label caption lines="1">{{ scope.opt.position }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section class="text-grey"> No available employees </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+            </div>
 
-                                <q-card-section class="q-pa-sm">
-                                  <div class="row q-col-gutter-sm">
-                                    <div class="col-md-4">
-                                      <q-card flat bordered class="full-height">
-                                        <q-card-section class="q-pa-sm">
-                                          <div class="text-caption text-weight-medium">Core</div>
-                                        </q-card-section>
-                                        <q-separator />
-                                        <q-card-section class="q-pa-sm">
-                                          <div class="competency-list">
-                                            <template
-                                              v-if="Object.keys(mergedCoreCompetency).length > 0"
-                                            >
-                                              <div
-                                                v-for="(comp, name) in mergedCoreCompetency"
-                                                :key="'core-' + name"
-                                                class="q-pb-xs"
-                                              >
-                                                {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                                              </div>
-                                            </template>
-                                            <div v-else class="text-grey-6 text-center">
-                                              No core competencies
-                                            </div>
-                                          </div>
-                                        </q-card-section>
-                                      </q-card>
-                                    </div>
-
-                                    <div class="col-md-4">
-                                      <q-card flat bordered class="full-height">
-                                        <q-card-section class="q-pa-sm">
-                                          <div class="text-caption text-weight-medium">
-                                            Technical
-                                          </div>
-                                        </q-card-section>
-                                        <q-separator />
-                                        <q-card-section class="q-pa-sm">
-                                          <div class="competency-list">
-                                            <template
-                                              v-if="
-                                                Object.keys(mergedTechnicalCompetency).length > 0
-                                              "
-                                            >
-                                              <div
-                                                v-for="(comp, name) in mergedTechnicalCompetency"
-                                                :key="'tech-' + name"
-                                                class="q-pb-xs"
-                                              >
-                                                {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                                              </div>
-                                            </template>
-                                            <div v-else class="text-grey-6 text-center">
-                                              No technical competencies
-                                            </div>
-                                          </div>
-                                        </q-card-section>
-                                      </q-card>
-                                    </div>
-
-                                    <div class="col-md-4">
-                                      <q-card flat bordered class="full-height">
-                                        <q-card-section class="q-pa-sm">
-                                          <div class="text-caption text-weight-medium">
-                                            Leadership
-                                          </div>
-                                        </q-card-section>
-                                        <q-separator />
-                                        <q-card-section class="q-pa-sm">
-                                          <div class="competency-list">
-                                            <template
-                                              v-if="
-                                                Object.keys(mergedLeadershipCompetency).length > 0
-                                              "
-                                            >
-                                              <div
-                                                v-for="(comp, name) in mergedLeadershipCompetency"
-                                                :key="'leader-' + name"
-                                                class="q-pb-xs"
-                                              >
-                                                {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                                              </div>
-                                            </template>
-                                            <div v-else class="text-grey-6 text-center">
-                                              No leadership competencies
-                                            </div>
-                                          </div>
-                                        </q-card-section>
-                                      </q-card>
-                                    </div>
-                                  </div>
-                                </q-card-section>
-                              </q-card>
-                            </div>
-                          </div>
-
-                          <!-- Success Indicators Card -->
-                          <q-card flat bordered class="q-mt-md">
-                            <q-card-section class="q-pa-sm">
-                              <div class="text-subtitle2">Success Indicators</div>
-                            </q-card-section>
-                            <q-separator />
-                            <q-card-section class="q-pa-sm">
-                              <div class="row q-col-gutter-sm">
-                                <!-- Output & Indicator Names (vertically stacked) -->
-                                <div class="col-md-3">
-                                  <div class="column q-gutter-sm">
-                                    <q-input
-                                      outlined
-                                      v-model="standard.outputName"
-                                      label="Output Name"
-                                      dense
-                                      class="full-width"
-                                      @update:model-value="generateSuccessIndicator(index)"
-                                    >
-                                      <template v-slot:prepend>
-                                        <q-icon name="label" size="xs" />
-                                      </template>
-                                    </q-input>
-
-                                    <q-input
-                                      outlined
-                                      v-model="standard.indicatorName"
-                                      label="Indicator Name"
-                                      dense
-                                      class="full-width"
-                                      @update:model-value="generateSuccessIndicator(index)"
-                                    >
-                                      <template v-slot:prepend>
-                                        <q-icon name="flag" size="xs" />
-                                      </template>
-                                    </q-input>
-                                  </div>
-                                </div>
-
-                                <!-- The three original inputs, now with adjusted width -->
-                                <div class="col-md-3">
-                                  <q-input
-                                    outlined
-                                    v-model="standard.successIndicator"
-                                    type="textarea"
-                                    label="Success Indicator"
-                                    class="autogrow-textarea"
-                                    autogrow
-                                    readonly
-                                    hint="Auto-generated based on inputs"
-                                    :input-style="{ minHeight: '80px' }"
-                                    :min-rows="2"
-                                  />
-                                </div>
-                                <div class="col-md-3">
-                                  <q-input
-                                    outlined
-                                    v-model="standard.requiredOutput"
-                                    type="textarea"
-                                    label="Required Output"
-                                    class="autogrow-textarea"
-                                    autogrow
-                                    :input-style="{ minHeight: '80px' }"
-                                    :min-rows="2"
-                                  />
-                                </div>
-                                <div class="col-md-3">
-                                  <q-input
-                                    outlined
-                                    v-model="standard.modeOfVerification"
-                                    type="textarea"
-                                    label="Mode of Verification"
-                                    class="autogrow-textarea"
-                                    autogrow
-                                    :input-style="{ minHeight: '80px' }"
-                                    :min-rows="2"
-                                  />
-                                </div>
-                              </div>
-                            </q-card-section>
-                          </q-card>
-
-                          <!-- Standard Outcome Section -->
-                          <div class="q-mt-md">
-                            <div class="row items-center justify-between q-mb-sm">
-                              <div class="text-subtitle2">Standard Outcome</div>
-                              <div>
-                                <q-btn flat round dense icon="more_vert">
-                                  <q-menu>
-                                    <q-list style="min-width: 250px">
-                                      <!-- Quantity Options Section -->
-                                      <q-item-label header>Quantity Options</q-item-label>
-                                      <q-separator />
-                                      <q-item
-                                        v-for="option in quantityIndicator"
-                                        :key="'qty-' + option.value"
-                                      >
-                                        <q-item-section>
-                                          <div class="row items-center">
-                                            <q-radio
-                                              v-model="standard.quantityIndicatorType"
-                                              :val="option.value"
-                                              @update:model-value="
-                                                onQuantityOptionSelect(option.value, index)
-                                              "
-                                            />
-                                            <div class="q-ml-sm">{{ option.label }}</div>
-                                          </div>
-                                        </q-item-section>
-                                      </q-item>
-
-                                      <!-- Timeliness Options -->
-                                      <q-separator spaced />
-                                      <q-item-label header>Timeliness Options</q-item-label>
-                                      <q-separator />
-
-                                      <!-- Before Deadline Option -->
-                                      <q-item>
-                                        <q-item-section>
-                                          <div class="row items-center">
-                                            <q-radio
-                                              v-model="standard.timelinessIndicatorType"
-                                              val="beforeDeadline"
-                                              @update:model-value="
-                                                onTimelinessTypeSelect('beforeDeadline', index)
-                                              "
-                                            />
-                                            <div class="q-ml-sm">Before Deadline</div>
-                                          </div>
-                                        </q-item-section>
-                                      </q-item>
-
-                                      <!-- Before Deadline Sub-options -->
-                                      <q-item
-                                        v-if="standard.timelinessIndicatorType === 'beforeDeadline'"
-                                        dense
-                                        class="q-pl-lg"
-                                      >
-                                        <q-item-section>
-                                          <div class="column">
-                                            <div class="text-subtitle2 q-pb-xs">Input Types:</div>
-                                            <div class="row items-center q-gutter-md">
-                                              <q-checkbox
-                                                v-model="standard.timelinessInputs.range"
-                                                label="Range"
-                                              />
-                                              <q-checkbox
-                                                v-model="standard.timelinessInputs.date"
-                                                label="Date"
-                                              />
-                                              <q-checkbox
-                                                v-model="standard.timelinessInputs.description"
-                                                label="Description"
-                                              />
-                                            </div>
-                                            <q-btn
-                                              color="primary"
-                                              label="Apply"
-                                              size="sm"
-                                              class="q-mt-sm"
-                                              @click="
-                                                applyTimelinessInputs('beforeDeadline', index)
-                                              "
-                                            />
-                                          </div>
-                                        </q-item-section>
-                                      </q-item>
-
-                                      <!-- On Deadline Option -->
-                                      <q-item>
-                                        <q-item-section>
-                                          <div class="row items-center">
-                                            <q-radio
-                                              v-model="standard.timelinessIndicatorType"
-                                              val="onDeadline"
-                                              @update:model-value="
-                                                onTimelinessTypeSelect('onDeadline', index)
-                                              "
-                                            />
-                                            <div class="q-ml-sm">On Deadline</div>
-                                          </div>
-                                        </q-item-section>
-                                      </q-item>
-
-                                      <!-- On Deadline Sub-options -->
-                                      <q-item
-                                        v-if="standard.timelinessIndicatorType === 'onDeadline'"
-                                        dense
-                                        class="q-pl-lg"
-                                      >
-                                        <q-item-section>
-                                          <div class="column">
-                                            <div class="text-subtitle2 q-pb-xs">Input Types:</div>
-                                            <div class="row items-center q-gutter-md">
-                                              <q-checkbox
-                                                v-model="standard.timelinessInputs.range"
-                                                label="Range"
-                                              />
-                                              <q-checkbox
-                                                v-model="standard.timelinessInputs.date"
-                                                label="Date"
-                                              />
-                                              <q-checkbox
-                                                v-model="standard.timelinessInputs.description"
-                                                label="Description"
-                                              />
-                                            </div>
-                                            <q-btn
-                                              color="primary"
-                                              label="Apply"
-                                              size="sm"
-                                              class="q-mt-sm"
-                                              @click="applyTimelinessInputs('onDeadline', index)"
-                                            />
-                                          </div>
-                                        </q-item-section>
-                                      </q-item>
-                                    </q-list>
-                                  </q-menu>
-                                </q-btn>
-                              </div>
-                            </div>
-
-                            <div class="q-pa-md" style="max-width: 100%">
-                              <q-table
-                                :rows="standard.standardOutcomeRows"
-                                :columns="standardOutcomeColumns"
-                                row-key="rating"
-                                hide-bottom
-                                bordered
-                                flat
-                                dense
-                                table-header-class="fixed-header"
-                                class="standard-outcome-table"
-                              >
-                                <!-- Header cells -->
-                                <template v-slot:header-cell="props">
-                                  <q-th :props="props" :style="`width: ${props.col.width}`">
-                                    {{ props.col.label }}
-                                    <q-icon
-                                      v-if="props.col.name === 'effectiveness'"
-                                      name="error_outline"
-                                      color="negative"
-                                      size="xs"
-                                      class="q-ml-xs"
-                                      v-show="
-                                        !hasMinimumEffectivenessValues(index) &&
-                                        formInteracted &&
-                                        shouldValidate
-                                      "
-                                    >
-                                      <q-tooltip
-                                        >At least 2 effectiveness values are required</q-tooltip
-                                      >
-                                    </q-icon>
-                                  </q-th>
-                                </template>
-
-                                <!-- Body cells with inputs -->
-                                <template v-slot:body-cell-quantity="props">
-                                  <q-td
-                                    :props="props"
-                                    class="input-cell"
-                                    :style="`width: ${props.col.width}`"
-                                  >
-                                    <q-input
-                                      v-if="standard.quantityIndicatorType === 'numeric'"
-                                      v-model="props.row.quantity"
-                                      dense
-                                      outlined
-                                      placeholder="Enter custom target"
-                                      :rules="[validateStrictNumeric]"
-                                      @keydown="blockInvalidChars"
-                                      @update:model-value="
-                                        onQuantityUpdate(props.row, 'quantity', index)
-                                      "
-                                    />
-                                    <div v-else class="numeric-display">
-                                      {{ props.row.quantity || '-' }}
-                                    </div>
-                                  </q-td>
-                                </template>
-
-                                <template v-slot:body-cell-timeliness="props">
-                                  <q-td
-                                    :props="props"
-                                    class="input-cell"
-                                    :style="`width: ${props.col.width}`"
-                                  >
-                                    <!-- Horizontal layout for timeliness inputs -->
-                                    <div class="row q-col-gutter-sm">
-                                      <!-- Range Input Type -->
-                                      <div
-                                        v-if="standard.activeTimelinessInputs.range"
-                                        :class="{
-                                          col:
-                                            !standard.activeTimelinessInputs.date &&
-                                            !standard.activeTimelinessInputs.description,
-                                          'col-4':
-                                            standard.activeTimelinessInputs.date &&
-                                            standard.activeTimelinessInputs.description,
-                                          'col-6':
-                                            (standard.activeTimelinessInputs.date &&
-                                              !standard.activeTimelinessInputs.description) ||
-                                            (!standard.activeTimelinessInputs.date &&
-                                              standard.activeTimelinessInputs.description),
-                                        }"
-                                      >
-                                        <q-input
-                                          v-model="props.row.timelinessRange"
-                                          dense
-                                          outlined
-                                          placeholder="Range"
-                                          :rules="[validateStrictNumeric]"
-                                          @keydown="blockInvalidChars"
-                                          @update:model-value="
-                                            onTimelinessUpdate(props.row, 'timelinessRange', index)
-                                          "
-                                        />
-                                      </div>
-
-                                      <!-- Date Input Type -->
-                                      <div
-                                        v-if="standard.activeTimelinessInputs.date"
-                                        :class="{
-                                          col:
-                                            !standard.activeTimelinessInputs.range &&
-                                            !standard.activeTimelinessInputs.description,
-                                          'col-4':
-                                            standard.activeTimelinessInputs.range &&
-                                            standard.activeTimelinessInputs.description,
-                                          'col-6':
-                                            (standard.activeTimelinessInputs.range &&
-                                              !standard.activeTimelinessInputs.description) ||
-                                            (!standard.activeTimelinessInputs.range &&
-                                              standard.activeTimelinessInputs.description),
-                                        }"
-                                      >
-                                        <q-input
-                                          v-model="props.row.timelinessDate"
-                                          dense
-                                          outlined
-                                          placeholder="Date"
-                                          mask="date"
-                                          :rules="['date']"
-                                          @update:model-value="generateSuccessIndicator(index)"
-                                        >
-                                          <template v-slot:append>
-                                            <q-icon name="event" class="cursor-pointer">
-                                              <q-popup-proxy
-                                                cover
-                                                transition-show="scale"
-                                                transition-hide="scale"
-                                              >
-                                                <q-date v-model="props.row.timelinessDate">
-                                                  <div class="row items-center justify-end">
-                                                    <q-btn
-                                                      v-close-popup
-                                                      label="Close"
-                                                      color="primary"
-                                                      flat
-                                                    />
-                                                  </div>
-                                                </q-date>
-                                              </q-popup-proxy>
-                                            </q-icon>
-                                          </template>
-                                        </q-input>
-                                      </div>
-
-                                      <!-- Description Input Type -->
-                                      <div
-                                        v-if="standard.activeTimelinessInputs.description"
-                                        :class="{
-                                          col:
-                                            !standard.activeTimelinessInputs.range &&
-                                            !standard.activeTimelinessInputs.date,
-                                          'col-4':
-                                            standard.activeTimelinessInputs.range &&
-                                            standard.activeTimelinessInputs.date,
-                                          'col-6':
-                                            (standard.activeTimelinessInputs.range &&
-                                              !standard.activeTimelinessInputs.date) ||
-                                            (!standard.activeTimelinessInputs.range &&
-                                              standard.activeTimelinessInputs.date),
-                                        }"
-                                      >
-                                        <q-input
-                                          v-model="props.row.timelinessText"
-                                          dense
-                                          outlined
-                                          placeholder="Description"
-                                          @update:model-value="generateSuccessIndicator(index)"
-                                        />
-                                      </div>
-
-                                      <!-- No inputs selected -->
-                                      <div
-                                        v-if="
-                                          !standard.activeTimelinessInputs.range &&
-                                          !standard.activeTimelinessInputs.date &&
-                                          !standard.activeTimelinessInputs.description
-                                        "
-                                        class="col numeric-display"
-                                      >
-                                        {{ props.row.timeliness || 'Select input types from menu' }}
-                                      </div>
-                                    </div>
-                                  </q-td>
-                                </template>
-
-                                <template v-slot:body-cell-effectiveness="props">
-                                  <q-td
-                                    :props="props"
-                                    class="input-cell"
-                                    :style="`width: ${props.col.width}`"
-                                    :class="{
-                                      'effectiveness-error':
-                                        !hasMinimumEffectivenessValues(index) &&
-                                        formInteracted &&
-                                        shouldValidate &&
-                                        !props.row.effectiveness,
-                                    }"
-                                  >
-                                    <q-input
-                                      v-model="props.row.effectiveness"
-                                      type="textarea"
-                                      dense
-                                      autogrow
-                                      outlined
-                                      placeholder="Enter criteria"
-                                      class="effectiveness-textarea"
-                                      :input-style="{ minHeight: '40px' }"
-                                      :min-rows="1"
-                                      @focus="onEffectivenessFieldFocus"
-                                      @update:model-value="onEffectivenessUpdate(props.row, index)"
-                                      :error="
-                                        !hasMinimumEffectivenessValues(index) &&
-                                        formInteracted &&
-                                        shouldValidate &&
-                                        !props.row.effectiveness
-                                      "
-                                      :error-message="
-                                        !props.row.effectiveness &&
-                                        getEffectivenessErrorCount(index) < 4 &&
-                                        formInteracted &&
-                                        shouldValidate
-                                          ? 'At least 2 values required'
-                                          : ''
-                                      "
-                                    />
-                                  </q-td>
-                                </template>
-                              </q-table>
-
-                              <!-- Error message for effectiveness validation -->
-                              <div
-                                v-if="
-                                  !hasMinimumEffectivenessValues(index) &&
-                                  formInteracted &&
-                                  shouldValidate
-                                "
-                                class="text-negative q-mt-sm"
-                              >
-                                At least 2 effectiveness values must be filled out.
-                              </div>
-                            </div>
-                          </div>
-                        </q-card-section>
-                      </div>
-                    </q-slide-transition>
-                  </q-card>
+            <div class="col-12 col-md-6" v-if="currentEmployee.employeeId">
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-md-6">
+                  <q-input v-model="selectedEmployee.rank" label="Function" outlined dense readonly>
+                    <template v-slot:prepend>
+                      <q-icon name="military_tech" size="xs" />
+                    </template>
+                  </q-input>
                 </div>
-
-                <!-- Add Performance Standard Button -->
-                <div class="row justify-center q-mt-md">
-                  <q-btn
-                    color="green-7"
-                    icon="add"
-                    label="Add Performance Standard"
-                    @click="addPerformanceStandard"
-                  />
+                <div class="col-12 col-md-6">
+                  <q-input
+                    v-model="selectedEmployee.position"
+                    label="Position"
+                    outlined
+                    dense
+                    readonly
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="work" size="xs" />
+                    </template>
+                  </q-input>
                 </div>
               </div>
             </div>
-          </q-card-section>
-        </q-card>
-      </div>
+          </div>
 
+          <!-- Performance Standards Section -->
+          <div v-if="currentEmployee.employeeId" class="q-mt-md">
+            <q-separator class="q-mb-md" />
 
+            <!-- Performance Standards Collection -->
+            <div class="q-mt-md">
+              <div
+                v-for="(standard, index) in currentEmployee.performanceStandards"
+                :key="'perf-std-' + index"
+                class="q-mb-md"
+              >
+                <q-card flat bordered>
+                  <q-card-section class="q-pa-sm bg-grey-2">
+                    <div class="row items-center justify-between">
+                      <div class="text-subtitle2">Performance Standard {{ index + 1 }}</div>
+                      <div>
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          :icon="standard.expanded ? 'expand_less' : 'expand_more'"
+                          @click="standard.expanded = !standard.expanded"
+                          :aria-label="standard.expanded ? 'Collapse' : 'Expand'"
+                        />
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          icon="delete"
+                          color="negative"
+                          @click="removePerformanceStandard(index)"
+                          aria-label="Remove"
+                        />
+                      </div>
+                    </div>
+                  </q-card-section>
+
+                  <q-slide-transition>
+                    <div v-show="standard.expanded">
+                      <q-separator />
+                      <q-card-section class="q-pa-sm">
+                        <!-- Horizontal layout for MFO Details and Competencies -->
+                        <div class="row q-col-gutter-md">
+                          <!-- MFO Details Card -->
+                          <div class="col-md-6">
+                            <q-card flat bordered class="full-height">
+                              <q-card-section class="q-pa-sm">
+                                <div class="text-subtitle2">MFO Details</div>
+                              </q-card-section>
+
+                              <q-separator />
+
+                              <q-card-section class="q-pa-sm">
+                                <div class="column q-gutter-sm">
+                                  <q-select
+                                    outlined
+                                    dense
+                                    v-model="standard.rows.category"
+                                    label="Select Category"
+                                    :options="categoryOptions"
+                                    map-options
+                                    @update:model-value="clearDependentFields(index, 1)"
+                                  >
+                                    <template v-slot:prepend>
+                                      <q-icon name="category" size="xs" />
+                                    </template>
+                                  </q-select>
+
+                                  <q-select
+                                    v-if="!skipMfo"
+                                    outlined
+                                    dense
+                                    v-model="standard.rows.mfo"
+                                    label="Select MFO"
+                                    :options="getFilteredMfoOptions(index)"
+                                    :disable="!standard.rows.category"
+                                    @update:model-value="clearDependentFields(index, 2)"
+                                  >
+                                    <template v-slot:prepend>
+                                      <q-icon name="list_alt" size="xs" />
+                                    </template>
+                                  </q-select>
+
+                                  <q-select
+                                    outlined
+                                    dense
+                                    v-model="standard.rows.output"
+                                    label="Select Output"
+                                    :options="getFilteredOutputOptions(index)"
+                                    :disable="
+                                      (!standard.rows.mfo && !skipMfo) || !standard.rows.category
+                                    "
+                                  >
+                                    <template v-slot:prepend>
+                                      <q-icon name="output" size="xs" />
+                                    </template>
+                                  </q-select>
+                                </div>
+                              </q-card-section>
+                            </q-card>
+                          </div>
+
+                          <!-- Competencies Card -->
+                          <div class="col-md-6">
+                            <q-card flat bordered class="full-height">
+                              <q-card-section class="q-pa-sm">
+                                <div class="text-subtitle2">Competencies</div>
+                              </q-card-section>
+
+                              <q-separator />
+
+                              <q-card-section class="q-pa-sm">
+                                <div class="row q-col-gutter-sm">
+                                  <div class="col-md-4">
+                                    <q-card flat bordered class="full-height">
+                                      <q-card-section class="q-pa-sm">
+                                        <div class="text-caption text-weight-medium">Core</div>
+                                      </q-card-section>
+                                      <q-separator />
+                                      <q-card-section class="q-pa-sm">
+                                        <div class="competency-list">
+                                          <template
+                                            v-if="Object.keys(mergedCoreCompetency).length > 0"
+                                          >
+                                            <div
+                                              v-for="(comp, name) in mergedCoreCompetency"
+                                              :key="'core-' + name"
+                                              class="q-pb-xs"
+                                            >
+                                              {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
+                                            </div>
+                                          </template>
+                                          <div v-else class="text-grey-6 text-center">
+                                            No core competencies
+                                          </div>
+                                        </div>
+                                      </q-card-section>
+                                    </q-card>
+                                  </div>
+
+                                  <div class="col-md-4">
+                                    <q-card flat bordered class="full-height">
+                                      <q-card-section class="q-pa-sm">
+                                        <div class="text-caption text-weight-medium">Technical</div>
+                                      </q-card-section>
+                                      <q-separator />
+                                      <q-card-section class="q-pa-sm">
+                                        <div class="competency-list">
+                                          <template
+                                            v-if="Object.keys(mergedTechnicalCompetency).length > 0"
+                                          >
+                                            <div
+                                              v-for="(comp, name) in mergedTechnicalCompetency"
+                                              :key="'tech-' + name"
+                                              class="q-pb-xs"
+                                            >
+                                              {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
+                                            </div>
+                                          </template>
+                                          <div v-else class="text-grey-6 text-center">
+                                            No technical competencies
+                                          </div>
+                                        </div>
+                                      </q-card-section>
+                                    </q-card>
+                                  </div>
+
+                                  <div class="col-md-4">
+                                    <q-card flat bordered class="full-height">
+                                      <q-card-section class="q-pa-sm">
+                                        <div class="text-caption text-weight-medium">
+                                          Leadership
+                                        </div>
+                                      </q-card-section>
+                                      <q-separator />
+                                      <q-card-section class="q-pa-sm">
+                                        <div class="competency-list">
+                                          <template
+                                            v-if="
+                                              Object.keys(mergedLeadershipCompetency).length > 0
+                                            "
+                                          >
+                                            <div
+                                              v-for="(comp, name) in mergedLeadershipCompetency"
+                                              :key="'leader-' + name"
+                                              class="q-pb-xs"
+                                            >
+                                              {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
+                                            </div>
+                                          </template>
+                                          <div v-else class="text-grey-6 text-center">
+                                            No leadership competencies
+                                          </div>
+                                        </div>
+                                      </q-card-section>
+                                    </q-card>
+                                  </div>
+                                </div>
+                              </q-card-section>
+                            </q-card>
+                          </div>
+                        </div>
+
+                        <!-- Success Indicators Card -->
+                        <q-card flat bordered class="q-mt-md">
+                          <q-card-section class="q-pa-sm">
+                            <div class="text-subtitle2">Success Indicators</div>
+                          </q-card-section>
+                          <q-separator />
+                          <q-card-section class="q-pa-sm">
+                            <div class="row q-col-gutter-sm">
+                              <!-- Output & Indicator Names -->
+                              <div class="col-md-5">
+                                <div class="column q-gutter-mt-sm">
+                                  <q-input
+                                    outlined
+                                    v-model="standard.outputName"
+                                    label="Output Name"
+                                    dense
+                                    class="full-width"
+                                    @update:model-value="generateSuccessIndicator(index)"
+                                  >
+                                    <template v-slot:prepend>
+                                      <q-icon name="label" size="xs" />
+                                    </template>
+                                  </q-input>
+
+                                  <q-input
+                                    outlined
+                                    v-model="standard.indicatorName"
+                                    label="Performance Indicator"
+                                    dense
+                                    class="full-width"
+                                    @update:model-value="generateSuccessIndicator(index)"
+                                  >
+                                    <template v-slot:prepend>
+                                      <q-icon name="flag" size="xs" />
+                                    </template>
+                                  </q-input>
+                                </div>
+                              </div>
+
+                              <div class="col-md-3">
+                                <q-input
+                                  outlined
+                                  v-model="standard.successIndicator"
+                                  type="textarea"
+                                  label="Success Indicator"
+                                  class="autogrow-textarea"
+                                  autogrow
+                                  readonly
+                                  hint="Auto-generated based on inputs"
+                                  :input-style="{ minHeight: '80px' }"
+                                  :min-rows="2"
+                                />
+                              </div>
+                              <div class="col-md-4">
+                                <q-input
+                                  outlined
+                                  v-model="standard.requiredOutput"
+                                  type="textarea"
+                                  label="Required Output"
+                                  class="autogrow-textarea"
+                                  autogrow
+                                  :input-style="{ minHeight: '80px' }"
+                                  :min-rows="2"
+                                />
+                              </div>
+                            </div>
+                          </q-card-section>
+                        </q-card>
+
+                        <!-- Standard Outcome Section -->
+                        <div class="q-mt-sm">
+                          <div class="row items-center justify-between q-mt-sm">
+                            <div class="text-subtitle2">Standard Outcome</div>
+                            <div>
+                              <q-btn flat round dense icon="more_vert">
+                                <q-menu>
+                                  <q-list style="min-width: 250px">
+                                    <!-- Quantity Options Section -->
+                                    <q-item-label header>Quantity Options</q-item-label>
+                                    <q-separator />
+                                    <q-item
+                                      v-for="option in quantityIndicator"
+                                      :key="'qty-' + option.value"
+                                    >
+                                      <q-item-section>
+                                        <div class="row items-center">
+                                          <q-radio
+                                            v-model="standard.quantityIndicatorType"
+                                            :val="option.value"
+                                            @update:model-value="
+                                              onQuantityOptionSelect(option.value, index)
+                                            "
+                                          />
+                                          <div class="q-ml-sm">{{ option.label }}</div>
+                                        </div>
+                                      </q-item-section>
+                                    </q-item>
+
+                                    <!-- Timeliness Options -->
+                                    <q-separator spaced />
+                                    <q-item-label header>Timeliness Options</q-item-label>
+                                    <q-separator />
+
+                                    <!-- Before Deadline Option -->
+                                    <q-item>
+                                      <q-item-section>
+                                        <div class="row items-center">
+                                          <q-radio
+                                            v-model="standard.timelinessIndicatorType"
+                                            val="beforeDeadline"
+                                            @update:model-value="
+                                              onTimelinessTypeSelect('beforeDeadline', index)
+                                            "
+                                          />
+                                          <div class="q-ml-sm">Before Deadline</div>
+                                        </div>
+                                      </q-item-section>
+                                    </q-item>
+
+                                    <!-- Before Deadline Sub-options -->
+                                    <q-item
+                                      v-if="standard.timelinessIndicatorType === 'beforeDeadline'"
+                                      dense
+                                      class="q-pl-lg"
+                                    >
+                                      <q-item-section>
+                                        <div class="column">
+                                          <div class="text-subtitle2 q-pb-xs">Input Types:</div>
+                                          <div class="row items-center q-gutter-md">
+                                            <q-checkbox
+                                              v-model="standard.timelinessInputs.range"
+                                              label="Range"
+                                            />
+                                            <q-checkbox
+                                              v-model="standard.timelinessInputs.date"
+                                              label="Date"
+                                            />
+                                            <q-checkbox
+                                              v-model="standard.timelinessInputs.description"
+                                              label="Description"
+                                            />
+                                          </div>
+                                          <q-btn
+                                            color="primary"
+                                            label="Apply"
+                                            size="sm"
+                                            class="q-mt-sm"
+                                            @click="applyTimelinessInputs('beforeDeadline', index)"
+                                          />
+                                        </div>
+                                      </q-item-section>
+                                    </q-item>
+
+                                    <!-- On Deadline Option -->
+                                    <q-item>
+                                      <q-item-section>
+                                        <div class="row items-center">
+                                          <q-radio
+                                            v-model="standard.timelinessIndicatorType"
+                                            val="onDeadline"
+                                            @update:model-value="
+                                              onTimelinessTypeSelect('onDeadline', index)
+                                            "
+                                          />
+                                          <div class="q-ml-sm">On Deadline</div>
+                                        </div>
+                                      </q-item-section>
+                                    </q-item>
+
+                                    <!-- On Deadline Sub-options -->
+                                    <q-item
+                                      v-if="standard.timelinessIndicatorType === 'onDeadline'"
+                                      dense
+                                      class="q-pl-lg"
+                                    >
+                                      <q-item-section>
+                                        <div class="column">
+                                          <div class="text-subtitle2 q-pb-xs">Input Types:</div>
+                                          <div class="row items-center q-gutter-md">
+                                            <q-checkbox
+                                              v-model="standard.timelinessInputs.range"
+                                              label="Range"
+                                            />
+                                            <q-checkbox
+                                              v-model="standard.timelinessInputs.date"
+                                              label="Date"
+                                            />
+                                            <q-checkbox
+                                              v-model="standard.timelinessInputs.description"
+                                              label="Description"
+                                            />
+                                          </div>
+                                          <q-btn
+                                            color="primary"
+                                            label="Apply"
+                                            size="sm"
+                                            class="q-mt-sm"
+                                            @click="applyTimelinessInputs('onDeadline', index)"
+                                          />
+                                        </div>
+                                      </q-item-section>
+                                    </q-item>
+                                  </q-list>
+                                </q-menu>
+                              </q-btn>
+                            </div>
+                          </div>
+
+                          <div class="q-pa-md" style="max-width: 100%">
+                            <q-table
+                              :rows="standard.standardOutcomeRows"
+                              :columns="standardOutcomeColumns"
+                              row-key="rating"
+                              hide-bottom
+                              bordered
+                              flat
+                              dense
+                              table-header-class="fixed-header"
+                              class="standard-outcome-table"
+                            >
+                              <!-- Header cells -->
+                              <template v-slot:header-cell="props">
+                                <q-th :props="props" :style="`width: ${props.col.width}`">
+                                  {{ props.col.label }}
+                                  <q-icon
+                                    v-if="props.col.name === 'effectiveness'"
+                                    name="error_outline"
+                                    color="negative"
+                                    size="xs"
+                                    class="q-ml-xs"
+                                    v-show="
+                                      !hasMinimumEffectivenessValues(index) &&
+                                      formInteracted &&
+                                      shouldValidate
+                                    "
+                                  >
+                                    <q-tooltip
+                                      >At least 2 effectiveness values are required</q-tooltip
+                                    >
+                                  </q-icon>
+                                </q-th>
+                              </template>
+
+                              <!-- Body cells with inputs -->
+                              <template v-slot:body-cell-quantity="props">
+                                <q-td
+                                  :props="props"
+                                  class="input-cell"
+                                  :style="`width: ${props.col.width}`"
+                                >
+                                  <q-input
+                                    v-if="standard.quantityIndicatorType === 'numeric'"
+                                    v-model="props.row.quantity"
+                                    dense
+                                    outlined
+                                    placeholder="Enter custom target"
+                                    :rules="[validateStrictNumeric]"
+                                    @keydown="blockInvalidChars"
+                                    @update:model-value="
+                                      onQuantityUpdate(props.row, 'quantity', index)
+                                    "
+                                  />
+                                  <div v-else class="numeric-display">
+                                    {{ props.row.quantity || '-' }}
+                                  </div>
+                                </q-td>
+                              </template>
+
+                              <template v-slot:body-cell-timeliness="props">
+                                <q-td
+                                  :props="props"
+                                  class="input-cell"
+                                  :style="`width: ${props.col.width}`"
+                                >
+                                  <!-- Horizontal layout for timeliness inputs -->
+                                  <div class="row q-col-gutter-sm">
+                                    <!-- Range Input Type -->
+                                    <div
+                                      v-if="standard.activeTimelinessInputs.range"
+                                      :class="{
+                                        col:
+                                          !standard.activeTimelinessInputs.date &&
+                                          !standard.activeTimelinessInputs.description,
+                                        'col-4':
+                                          standard.activeTimelinessInputs.date &&
+                                          standard.activeTimelinessInputs.description,
+                                        'col-6':
+                                          (standard.activeTimelinessInputs.date &&
+                                            !standard.activeTimelinessInputs.description) ||
+                                          (!standard.activeTimelinessInputs.date &&
+                                            standard.activeTimelinessInputs.description),
+                                      }"
+                                    >
+                                      <q-input
+                                        v-model="props.row.timelinessRange"
+                                        dense
+                                        outlined
+                                        placeholder="Range"
+                                        :rules="[validateStrictNumeric]"
+                                        @keydown="blockInvalidChars"
+                                        @update:model-value="
+                                          onTimelinessUpdate(props.row, 'timelinessRange', index)
+                                        "
+                                      />
+                                    </div>
+
+                                    <!-- Date Input Type -->
+                                    <div
+                                      v-if="standard.activeTimelinessInputs.date"
+                                      :class="{
+                                        col:
+                                          !standard.activeTimelinessInputs.range &&
+                                          !standard.activeTimelinessInputs.description,
+                                        'col-4':
+                                          standard.activeTimelinessInputs.range &&
+                                          standard.activeTimelinessInputs.description,
+                                        'col-6':
+                                          (standard.activeTimelinessInputs.range &&
+                                            !standard.activeTimelinessInputs.description) ||
+                                          (!standard.activeTimelinessInputs.range &&
+                                            standard.activeTimelinessInputs.description),
+                                      }"
+                                    >
+                                      <q-input
+                                        v-model="props.row.timelinessDate"
+                                        dense
+                                        outlined
+                                        placeholder="Date"
+                                        mask="date"
+                                        :rules="['date']"
+                                        @update:model-value="generateSuccessIndicator(index)"
+                                      >
+                                        <template v-slot:append>
+                                          <q-icon name="event" class="cursor-pointer">
+                                            <q-popup-proxy
+                                              cover
+                                              transition-show="scale"
+                                              transition-hide="scale"
+                                            >
+                                              <q-date v-model="props.row.timelinessDate">
+                                                <div class="row items-center justify-end">
+                                                  <q-btn
+                                                    v-close-popup
+                                                    label="Close"
+                                                    color="primary"
+                                                    flat
+                                                  />
+                                                </div>
+                                              </q-date>
+                                            </q-popup-proxy>
+                                          </q-icon>
+                                        </template>
+                                      </q-input>
+                                    </div>
+
+                                    <!-- Description Input Type -->
+                                    <div
+                                      v-if="standard.activeTimelinessInputs.description"
+                                      :class="{
+                                        col:
+                                          !standard.activeTimelinessInputs.range &&
+                                          !standard.activeTimelinessInputs.date,
+                                        'col-4':
+                                          standard.activeTimelinessInputs.range &&
+                                          standard.activeTimelinessInputs.date,
+                                        'col-6':
+                                          (standard.activeTimelinessInputs.range &&
+                                            !standard.activeTimelinessInputs.date) ||
+                                          (!standard.activeTimelinessInputs.range &&
+                                            standard.activeTimelinessInputs.date),
+                                      }"
+                                    >
+                                      <q-input
+                                        v-model="props.row.timelinessText"
+                                        dense
+                                        outlined
+                                        placeholder="Description"
+                                        @update:model-value="generateSuccessIndicator(index)"
+                                      />
+                                    </div>
+
+                                    <!-- No inputs selected -->
+                                    <div
+                                      v-if="
+                                        !standard.activeTimelinessInputs.range &&
+                                        !standard.activeTimelinessInputs.date &&
+                                        !standard.activeTimelinessInputs.description
+                                      "
+                                      class="col numeric-display"
+                                    >
+                                      {{ props.row.timeliness || 'Select input types from menu' }}
+                                    </div>
+                                  </div>
+                                </q-td>
+                              </template>
+
+                              <template v-slot:body-cell-effectiveness="props">
+                                <q-td
+                                  :props="props"
+                                  class="input-cell"
+                                  :style="`width: ${props.col.width}`"
+                                  :class="{
+                                    'effectiveness-error':
+                                      !hasMinimumEffectivenessValues(index) &&
+                                      formInteracted &&
+                                      shouldValidate &&
+                                      !props.row.effectiveness,
+                                  }"
+                                >
+                                  <q-input
+                                    v-model="props.row.effectiveness"
+                                    type="textarea"
+                                    dense
+                                    autogrow
+                                    outlined
+                                    placeholder="Enter criteria"
+                                    class="effectiveness-textarea"
+                                    :input-style="{ minHeight: '40px' }"
+                                    :min-rows="1"
+                                    @focus="onEffectivenessFieldFocus"
+                                    @update:model-value="onEffectivenessUpdate(props.row, index)"
+                                    :error="
+                                      !hasMinimumEffectivenessValues(index) &&
+                                      formInteracted &&
+                                      shouldValidate &&
+                                      !props.row.effectiveness
+                                    "
+                                    :error-message="
+                                      !props.row.effectiveness &&
+                                      getEffectivenessErrorCount(index) < 4 &&
+                                      formInteracted &&
+                                      shouldValidate
+                                        ? 'At least 2 values required'
+                                        : ''
+                                    "
+                                  />
+                                </q-td>
+                              </template>
+                            </q-table>
+
+                            <!-- Error message for effectiveness validation -->
+                            <div
+                              v-if="
+                                !hasMinimumEffectivenessValues(index) &&
+                                formInteracted &&
+                                shouldValidate
+                              "
+                              class="text-negative q-mt-sm"
+                            >
+                              At least 2 effectiveness values must be filled out.
+                            </div>
+                          </div>
+                        </div>
+                      </q-card-section>
+                    </div>
+                  </q-slide-transition>
+                </q-card>
+              </div>
+
+              <!-- Add Performance Standard Button -->
+              <div class="row justify-center q-mt-md">
+                <q-btn
+                  color="green-7"
+                  icon="add"
+                  label="Add Performance Standard"
+                  @click="addPerformanceStandard"
+                />
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </div>
 
     <!-- Quantity Input Modal -->
     <q-dialog v-model="showQuantityModal" persistent>
@@ -928,14 +987,7 @@
 
     <div class="row justify-end q-mt-sm">
       <q-btn label="Cancel" color="grey" flat dense class="q-mr-sm" @click="onCancel" />
-      <q-btn
-        label="Submit"
-        color="green-7"
-        icon="save"
-        dense
-        @click="onSubmit"
-        :disable="!isFormValid"
-      />
+      <q-btn label="Submit" color="green-7" icon="save" @click="onSubmit" :disable="!isFormValid" />
     </div>
   </q-page>
 </template>
@@ -943,17 +995,106 @@
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { v4 as uuidv4 } from 'uuid' // You might need to install this dependency
 
 export default {
   setup() {
     const $q = useQuasar()
 
+    // Configuration for visible tabs
+    const maxVisibleTabs = ref(3) // Number of tabs to show before using the overflow menu
+
     // Form state tracking
     const formInteracted = ref(false)
     const shouldValidate = ref(false)
 
+    // Employee tabs management
+    const activeEmployeeTab = ref(null)
+    const employeeTabs = ref([])
 
+    // Computed properties for tab management
+    const visibleEmployeeTabs = computed(() => {
+      return employeeTabs.value.slice(0, maxVisibleTabs.value)
+    })
 
+    const overflowEmployeeTabs = computed(() => {
+      return employeeTabs.value.slice(maxVisibleTabs.value)
+    })
+
+    const hasOverflowTabs = computed(() => {
+      return employeeTabs.value.length > maxVisibleTabs.value
+    })
+
+    // Helper method to get the index of an employee by ID
+    const getEmployeeIndex = (id) => {
+      return employeeTabs.value.findIndex((emp) => emp.id === id)
+    }
+
+    // Create default empty row structure
+    const createEmptyStandardRow = () => {
+      return {
+        rating: '',
+        quantity: '',
+        effectiveness: '',
+        timeliness: '',
+        timelinessRange: '',
+        timelinessText: '',
+        timelinessDeadline: '',
+        timelinessDate: '',
+      }
+    }
+
+    // Create default rows for a standard outcome table
+    const createDefaultStandardRows = () => {
+      return [
+        { ...createEmptyStandardRow(), rating: '5' },
+        { ...createEmptyStandardRow(), rating: '4' },
+        { ...createEmptyStandardRow(), rating: '3' },
+        { ...createEmptyStandardRow(), rating: '2' },
+        { ...createEmptyStandardRow(), rating: '1' },
+      ]
+    }
+
+    // Create default Performance Standard object
+    const createDefaultPerformanceStandard = () => {
+      return {
+        expanded: true,
+        outputName: '',
+        indicatorName: '',
+        successIndicator: '',
+        requiredOutput: '',
+        modeOfVerification: '',
+        rows: {
+          category: null,
+          mfo: null,
+          output: null,
+        },
+        quantityIndicatorType: 'numeric',
+        timelinessIndicatorType: 'beforeDeadline',
+        timelinessInputs: {
+          range: true,
+          date: false,
+          description: false,
+        },
+        activeTimelinessInputs: {
+          range: true,
+          date: false,
+          description: false,
+        },
+        standardOutcomeRows: createDefaultStandardRows(),
+      }
+    }
+
+    // Create default employee data
+    const createDefaultEmployeeData = () => {
+      const id = uuidv4()
+      return {
+        id,
+        name: '',
+        employeeId: null,
+        performanceStandards: [createDefaultPerformanceStandard()],
+      }
+    }
 
     // Base form data
     const form = ref({
@@ -962,7 +1103,12 @@ export default {
       division: null,
       semester: null,
       year: new Date().getFullYear(),
-      employee: null,
+    })
+
+    // Current active employee data
+    const currentEmployee = computed(() => {
+      const activeEmployee = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
+      return activeEmployee || employeeTabs.value[0] || createDefaultEmployeeData()
     })
 
     // MFO and Competencies related data
@@ -1022,64 +1168,6 @@ export default {
         width: '300px',
       },
     ]
-
-    // Create default empty row structure
-    const createEmptyStandardRow = () => {
-      return {
-        rating: '',
-        quantity: '',
-        effectiveness: '',
-        timeliness: '',
-        timelinessRange: '',
-        timelinessText: '',
-        timelinessDeadline: '',
-        timelinessDate: '',
-      }
-    }
-
-    // Create default rows for a standard outcome table
-    const createDefaultStandardRows = () => {
-      return [
-        { ...createEmptyStandardRow(), rating: '5' },
-        { ...createEmptyStandardRow(), rating: '4' },
-        { ...createEmptyStandardRow(), rating: '3' },
-        { ...createEmptyStandardRow(), rating: '2' },
-        { ...createEmptyStandardRow(), rating: '1' },
-      ]
-    }
-
-    // Create default Performance Standard object
-    const createDefaultPerformanceStandard = () => {
-      return {
-        expanded: true,
-        outputName: '',
-        indicatorName: '',
-        successIndicator: '',
-        requiredOutput: '',
-        modeOfVerification: '',
-        rows: {
-          category: null,
-          mfo: null,
-          output: null,
-        },
-        quantityIndicatorType: 'numeric',
-        timelinessIndicatorType: 'beforeDeadline',
-        timelinessInputs: {
-          range: true,
-          date: false,
-          description: false,
-        },
-        activeTimelinessInputs: {
-          range: true,
-          date: false,
-          description: false,
-        },
-        standardOutcomeRows: createDefaultStandardRows(),
-      }
-    }
-
-    // Performance Standards Collection
-    const performanceStandards = ref([createDefaultPerformanceStandard()])
 
     // Variables for the current standard in modal dialogs
     const currentStandardIndex = ref(0)
@@ -1201,30 +1289,68 @@ export default {
 
     const selectedEmployee = computed(() => {
       return (
-        allEmployees.value.find((emp) => emp.id === form.value.employee) || {
+        allEmployees.value.find((emp) => emp.id === currentEmployee.value.employeeId) || {
           rank: '',
           position: '',
         }
       )
     })
 
+    // NEW: Track selected employee IDs across all tabs
+    const getSelectedEmployeeIds = () => {
+      return employeeTabs.value
+        .filter((emp) => emp.employeeId !== null)
+        .map((emp) => emp.employeeId)
+    }
+
+    // NEW: Check if all available employees are selected
+    const allEmployeesSelected = computed(() => {
+      if (!hasOrganizationalSelection.value) return false
+
+      const availableEmployees = getFilteredEmployees()
+      const selectedIds = getSelectedEmployeeIds()
+
+      return (
+        availableEmployees.length > 0 &&
+        availableEmployees.length <= selectedIds.length &&
+        availableEmployees.every((emp) => selectedIds.includes(emp.id))
+      )
+    })
+
+    // NEW: Filter employees for current tab
+    const availableEmployeesForTab = computed(() => {
+      if (!hasOrganizationalSelection.value) return []
+
+      const allAvailable = getFilteredEmployees()
+      const selectedIds = getSelectedEmployeeIds()
+      const currentTabId = activeEmployeeTab.value
+      const currentTabEmployeeId = employeeTabs.value.find(
+        (emp) => emp.id === currentTabId,
+      )?.employeeId
+
+      // Return employees that are either not selected or are selected in the current tab
+      return allAvailable.filter(
+        (emp) => !selectedIds.includes(emp.id) || emp.id === currentTabEmployeeId,
+      )
+    })
+
     // Updated for each standard
     const getFilteredMfoOptions = (index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard || !standard.rows.category) return []
       return mfoOptions.value.filter((mfo) => mfo.category === standard.rows.category.value)
     }
 
     // Updated for each standard
     const getFilteredOutputOptions = (index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard || !standard.rows.mfo) return []
       return outputOptions.value.filter((out) => out.mfo === standard.rows.mfo.value)
     }
 
     // Updated to check each standard individually
     const hasMinimumEffectivenessValues = (index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return false
 
       const filledValues = standard.standardOutcomeRows.filter(
@@ -1235,7 +1361,7 @@ export default {
 
     // Get effectiveness error count for a specific standard
     const getEffectivenessErrorCount = (index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return 5
 
       return standard.standardOutcomeRows.filter(
@@ -1244,19 +1370,111 @@ export default {
     }
 
     const isFormValid = computed(() => {
-      const basicRequirements = form.value.employee && form.value.year && form.value.semester
+      // Must have at least one employee with proper data
+      if (employeeTabs.value.length === 0) return false
 
-      // Check if all performance standards have minimum effectiveness values
-      const allStandardsValid = performanceStandards.value.every((_, index) =>
-        hasMinimumEffectivenessValues(index),
-      )
+      // Check if basic form requirements are met
+      const basicRequirements = form.value.year && form.value.semester
 
-      return basicRequirements && allStandardsValid
+      // Check if all employees have valid data
+      const allEmployeesValid = employeeTabs.value.every((emp) => {
+        // Must have an employee selected
+        if (!emp.employeeId) return false
+
+        // All performance standards must have minimum effectiveness values
+        return emp.performanceStandards.every((_, index) => {
+          if (emp.id === activeEmployeeTab.value) {
+            return hasMinimumEffectivenessValues(index)
+          } else {
+            // For non-active tabs, we consider them valid (can't validate what's not visible)
+            return true
+          }
+        })
+      })
+
+      return basicRequirements && allEmployeesValid
     })
+
+    // Modified: Add employee tab
+    const addEmployeeTab = () => {
+      // Check if all employees are already selected
+      if (allEmployeesSelected.value) {
+        $q.notify({
+          message: `All available employees have been added`,
+          color: 'warning',
+          position: 'top',
+        })
+        return
+      }
+
+      const newEmployee = createDefaultEmployeeData()
+      employeeTabs.value.push(newEmployee)
+      activeEmployeeTab.value = newEmployee.id
+
+      $q.notify({
+        message: `Added new employee tab`,
+        color: 'positive',
+        position: 'top',
+      })
+    }
+
+    const removeEmployeeTab = (tabId) => {
+      if (employeeTabs.value.length <= 1) {
+        $q.notify({
+          message: 'Cannot remove the only employee tab',
+          color: 'negative',
+          position: 'top',
+        })
+        return
+      }
+
+      $q.dialog({
+        title: 'Confirm Removal',
+        message: `Remove this employee from the plan?`,
+        cancel: true,
+        persistent: true,
+      }).onOk(() => {
+        const index = employeeTabs.value.findIndex((emp) => emp.id === tabId)
+        if (index !== -1) {
+          employeeTabs.value.splice(index, 1)
+
+          // If we removed the active tab, switch to another one
+          if (tabId === activeEmployeeTab.value) {
+            activeEmployeeTab.value = employeeTabs.value[0]?.id
+          }
+
+          $q.notify({
+            message: 'Employee removed',
+            color: 'positive',
+            position: 'top',
+          })
+        }
+      })
+    }
+
+    const switchToEmployee = (tabId) => {
+      activeEmployeeTab.value = tabId
+    }
+
+    // Modified: Employee selection handler
+    const onEmployeeSelected = (employeeId) => {
+      if (employeeId === null) return
+
+      // Update the employee tab name with the selected employee
+      const selectedEmp = allEmployees.value.find((emp) => emp.id === employeeId)
+
+      if (selectedEmp && activeEmployeeTab.value) {
+        const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
+        if (tabIndex !== -1) {
+          employeeTabs.value[tabIndex].name = selectedEmp.name
+          employeeTabs.value[tabIndex].employeeId = employeeId
+        }
+      }
+    }
 
     // Helper function to get quantity component for success indicator
     const getQuantityComponent = (index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return ''
 
       if (standard.quantityIndicatorType === 'numeric') {
@@ -1275,7 +1493,7 @@ export default {
 
     // Helper function to get timeliness component for success indicator
     const getTimelinessComponent = (index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return ''
 
       const highestRating = standard.standardOutcomeRows[0] // Rating 5 row
@@ -1311,7 +1529,7 @@ export default {
 
     // Helper function to get effectiveness component for success indicator
     const getEffectivenessComponent = (index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return ''
 
       // Always use the highest rating (5) effectiveness
@@ -1321,19 +1539,23 @@ export default {
 
     // Auto-generate success indicator based on the formula
     const generateSuccessIndicator = (index) => {
-      if (index === undefined && performanceStandards.value.length > 0) {
+      if (index === undefined && currentEmployee.value.performanceStandards.length > 0) {
         // If no specific index is provided, update all standards
-        performanceStandards.value.forEach((_, i) => {
+        currentEmployee.value.performanceStandards.forEach((_, i) => {
           generateSuccessIndicator(i)
         })
         return
       }
 
-      if (index === undefined || index < 0 || index >= performanceStandards.value.length) {
+      if (
+        index === undefined ||
+        index < 0 ||
+        index >= currentEmployee.value.performanceStandards.length
+      ) {
         return
       }
 
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
 
       const quantityPart = getQuantityComponent(index)
       const outputNamePart = standard.outputName ? standard.outputName.trim() : ''
@@ -1356,7 +1578,7 @@ export default {
 
     // Watch for important changes that should trigger success indicator regeneration
     watch(
-      () => performanceStandards.value,
+      () => currentEmployee.value.performanceStandards,
       () => generateSuccessIndicator(),
       { deep: true },
     )
@@ -1382,7 +1604,7 @@ export default {
     // Watch for changes
     watch([() => form.value.division, () => form.value.section, () => form.value.unit], () => {
       filterEmployees()
-      form.value.employee = null // Reset employee selection when org structure changes
+      // Don't reset employee selection automatically - let the user choose when to change employees
     })
 
     // Methods
@@ -1422,7 +1644,7 @@ export default {
     }
 
     const clearDependentFields = (standardIndex, fieldIndex) => {
-      const standard = performanceStandards.value[standardIndex]
+      const standard = currentEmployee.value.performanceStandards[standardIndex]
       if (!standard) return
 
       if (fieldIndex === 1) {
@@ -1503,7 +1725,7 @@ export default {
 
     // Timeliness and Quantity option handling
     const onTimelinessTypeSelect = (value, index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
 
       standard.timelinessIndicatorType = value
@@ -1520,7 +1742,7 @@ export default {
     }
 
     const applyTimelinessInputs = (type, index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
 
       // Update the active inputs based on the checkbox selections
@@ -1554,7 +1776,7 @@ export default {
     }
 
     const onQuantityOptionSelect = (value, index) => {
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
 
       standard.quantityIndicatorType = value
@@ -1575,7 +1797,7 @@ export default {
 
     const computeQuantities = () => {
       const index = currentStandardIndex.value
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
 
       if (
@@ -1623,7 +1845,7 @@ export default {
 
     const cancelQuantityInput = () => {
       const index = currentStandardIndex.value
-      const standard = performanceStandards.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
       if (standard) {
         standard.quantityIndicatorType = 'numeric'
       }
@@ -1632,18 +1854,18 @@ export default {
 
     // Performance standards management
     const addPerformanceStandard = () => {
-      performanceStandards.value.push(createDefaultPerformanceStandard())
+      currentEmployee.value.performanceStandards.push(createDefaultPerformanceStandard())
 
       // Notify user
       $q.notify({
-        message: `Added new performance standard ${performanceStandards.value.length}`,
+        message: `Added new performance standard ${currentEmployee.value.performanceStandards.length}`,
         color: 'positive',
         position: 'top',
       })
     }
 
     const removePerformanceStandard = (index) => {
-      if (performanceStandards.value.length <= 1) {
+      if (currentEmployee.value.performanceStandards.length <= 1) {
         $q.notify({
           message: 'Cannot remove the only performance standard',
           color: 'negative',
@@ -1658,7 +1880,7 @@ export default {
         cancel: true,
         persistent: true,
       }).onOk(() => {
-        performanceStandards.value.splice(index, 1)
+        currentEmployee.value.performanceStandards.splice(index, 1)
 
         // Notify user
         $q.notify({
@@ -1673,16 +1895,35 @@ export default {
       shouldValidate.value = true
       formInteracted.value = true
 
-      // Check if all performance standards have minimum effectiveness values
-      const invalidStandards = performanceStandards.value
-        .map((_, i) => i)
-        .filter((index) => !hasMinimumEffectivenessValues(index))
+      // Check if all employees are valid
+      const invalidEmployees = []
 
-      if (invalidStandards.length > 0) {
+      employeeTabs.value.forEach((emp, empIndex) => {
+        if (!emp.employeeId) {
+          invalidEmployees.push(`Employee ${empIndex + 1}`)
+          return
+        }
+
+        // Check performance standards for the active employee tab
+        if (emp.id === activeEmployeeTab.value) {
+          const invalidStandards = emp.performanceStandards
+            .map((_, i) => i)
+            .filter((index) => !hasMinimumEffectivenessValues(index))
+
+          if (invalidStandards.length > 0) {
+            invalidEmployees.push(
+              `${emp.name || 'Employee ' + (empIndex + 1)} (Standards ${invalidStandards.map((i) => i + 1).join(', ')})`,
+            )
+          }
+        }
+      })
+
+      if (invalidEmployees.length > 0) {
         $q.notify({
-          message: `Please complete effectiveness criteria for Performance Standard ${invalidStandards.map((i) => i + 1).join(', ')}`,
+          message: `Please complete required fields for: ${invalidEmployees.join(', ')}`,
           color: 'negative',
           position: 'top',
+          timeout: 3000,
         })
         return
       }
@@ -1694,7 +1935,7 @@ export default {
         icon: 'check_circle',
       })
       console.log('Form submitted:', form.value)
-      console.log('Performance Standards:', performanceStandards.value)
+      console.log('Employees:', employeeTabs.value)
     }
 
     const onCancel = () => {
@@ -1710,14 +1951,14 @@ export default {
         division: null,
         semester: semesterOptions[0],
         year: new Date().getFullYear(),
-        employee: null,
       }
       filteredEmployees.value = []
       formInteracted.value = false
       shouldValidate.value = false
 
-      // Reset all performance standards to default
-      performanceStandards.value = [createDefaultPerformanceStandard()]
+      // Reset all employee tabs
+      employeeTabs.value = [createDefaultEmployeeData()]
+      activeEmployeeTab.value = employeeTabs.value[0].id
     }
 
     onMounted(() => {
@@ -1726,10 +1967,13 @@ export default {
       formInteracted.value = false
       shouldValidate.value = false
 
+      // Initialize first employee tab
+      const firstEmployee = createDefaultEmployeeData()
+      employeeTabs.value = [firstEmployee]
+      activeEmployeeTab.value = firstEmployee.id
+
       // Initialize all performance standards
-      performanceStandards.value.forEach((_, index) => {
-        generateSuccessIndicator(index)
-      })
+      generateSuccessIndicator()
     })
 
     return {
@@ -1743,6 +1987,20 @@ export default {
       filteredEmployees,
       selectedEmployee,
 
+      // Employee tabs
+      employeeTabs,
+      activeEmployeeTab,
+      currentEmployee,
+      addEmployeeTab,
+      removeEmployeeTab,
+      switchToEmployee,
+      onEmployeeSelected,
+      maxVisibleTabs,
+      visibleEmployeeTabs,
+      overflowEmployeeTabs,
+      hasOverflowTabs,
+      getEmployeeIndex,
+
       // Validation states
       formInteracted,
       shouldValidate,
@@ -1752,6 +2010,9 @@ export default {
 
       // Computed helpers
       hasOrganizationalSelection,
+      allEmployeesSelected,
+      availableEmployeesForTab,
+      getSelectedEmployeeIds,
 
       // MFO and Competencies data
       skipMfo,
@@ -1770,7 +2031,6 @@ export default {
       quantityIndicator,
 
       // Performance Standards
-      performanceStandards,
       addPerformanceStandard,
       removePerformanceStandard,
 
@@ -1874,7 +2134,7 @@ export default {
 /* Table styles */
 .standard-outcome-table {
   width: 100%;
-  table-layout: fixed !important; /* Force fixed table layout */
+  table-layout: fixed !important;
 }
 
 .standard-outcome-table th,
@@ -1915,17 +2175,14 @@ export default {
   border-top: 1px solid #e0e0e0;
 }
 
-@media (max-width: 768px) {
-  .col-md-2,
-  .col-md-3,
-  .col-md-4 {
-    width: 100%;
-    margin-bottom: 16px;
-  }
-
-  .competency-list > div {
-    white-space: normal;
-  }
+/* Updated employee tabs styling */
+.employee-tabs-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  background-color: #f8f8f8;
+  overflow-x: hidden;
 }
 
 /* Animation styles for expand/collapse */
@@ -1954,5 +2211,28 @@ export default {
 
 .q-card:hover {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+  .col-md-2,
+  .col-md-3,
+  .col-md-4 {
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .competency-list > div {
+    white-space: normal;
+  }
+
+  .employee-tabs-container {
+    flex-direction: column;
+  }
+
+  /* Adjust tab overflow for mobile */
+  .q-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
 }
 </style>
