@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-page-container>
@@ -242,7 +243,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useOrganizationStore } from 'src/stores/office/spmsStore'
 import { useUserStore } from 'src/stores/userStore'
-import unitWorkplan_report from 'src/components/unitWorkplan_report.vue'
+import unitWorkplan_report from 'src/components/unitworkplant_Report.vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import ipcr_Report from 'src/components/ipcr_Report.vue'

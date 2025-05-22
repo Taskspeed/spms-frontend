@@ -104,7 +104,7 @@
 </template>
 
 <script>
-import AddEmployeeModal from '../../components/AddEmployeeModal.vue'
+import AddEmployeeModal from '../../components/add_employee_Modal.vue'
 import { api } from 'src/boot/axios'
 import { useUserStore } from 'src/stores/userStore'
 import { useEmployeeStore } from 'stores/office/employeeStore'

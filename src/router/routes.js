@@ -4,20 +4,21 @@ import AdminLayout from 'src/layouts/MainLayout.vue'
 import Login from 'src/pages/Auth/LoginPage.vue'
 
 // HR Admin Pages
-import HRDashboard from 'src/pages/HR/HRDashboard.vue'
-import HRSPMS from 'src/pages/HR/SPMS.vue'
-import HROPCR from 'src/pages/HR/OPCR.vue'
-import HRIPCR from 'src/pages/HR/IPCR.vue'
-import UserPage from 'src/pages/HR/UserPage.vue'
-import ProfilePage from 'src/pages/HR/ProfilePage.vue'
+import hrDashboard from 'src/pages/hr_Screen/dashboard.vue'
+import hrSpms from 'src/pages/hr_Screen/spms.vue'
+import opcr from 'src/pages/hr_Screen/opcr.vue'
+import ipcr from 'src/pages/hr_Screen/ipcr.vue'
+import user from 'src/pages/hr_Screen/user.vue'
+import hrProfile from 'src/pages/hr_Screen/profile.vue'
 
 // Office Admin Pages
-import OfficeDashboard from 'src/pages/Office/OfficeDashboard.vue'
-import OfficeEmployee from 'src/pages/Office/EmployeePage.vue'
-import OfficeSPMS from 'src/pages/Office/SPMS.vue'
-import OfficeAccount from 'src/pages/Office/AccountPage.vue'
-import UnitWorkPlan from 'src/pages/Office/UnitWorkPlan.vue'
-import MFO from 'src/pages/Office/MFOPage.vue'
+
+import officeDashboard from 'src/pages/office_Screen/dashboard.vue'
+import employee from 'src/pages/office_Screen/employee.vue'
+import officeSpms from 'src/pages/office_Screen/spms.vue'
+import officeProfile from 'src/pages/office_Screen/profile.vue'
+import unitworkplan from 'src/pages/office_Screen/unit_work_plan.vue'
+import library from 'src/pages/office_Screen/library.vue'
 
 // Planning Admin Pages
 import PlanningDashboard from 'src/pages/Planning/PlanningDashboard.vue'
@@ -60,76 +61,76 @@ export const routes = [
       },
 
       // HR Admin Routes
+      // HR Admin Routes
       {
         path: 'hr/dashboard',
-        component: HRDashboard,
+        component: hrDashboard,
         meta: { role: 'hr-admin' },
       },
       {
         path: 'hr/spms',
-        component: HRSPMS,
+        component: hrSpms,
         meta: { role: 'hr-admin' },
       },
       {
         path: 'hr/opcr',
-        component: HROPCR,
+        component: opcr,
         meta: { role: 'hr-admin' },
       },
       {
         path: 'hr/ipcr',
-        component: HRIPCR,
+        component: ipcr,
         meta: { role: 'hr-admin' },
       },
       {
         path: 'hr/account/user',
-        component: UserPage,
+        component: user,
         meta: { role: 'hr-admin' },
       },
       {
         path: 'hr/account/profile',
-        component: ProfilePage,
+        component: hrProfile,
         meta: { role: 'hr-admin' },
       },
-      //  {
       //   path: 'hr/library',
       //   component:Library,
       //   meta: { role: 'hr-admin' },
       // },
 
       // Office Admin Routes
+      // Office Admin Routes
       {
         path: 'office/dashboard',
-        component: OfficeDashboard,
+        component: officeDashboard,
         meta: { role: 'office-admin' },
       },
       {
         path: 'office/employee',
-        component: OfficeEmployee,
+        component: employee,
         meta: { role: 'office-admin' },
       },
 
       {
         path: '/unitworkplan',
         name: 'unitworkplan',
-        component:UnitWorkPlan
+        component: unitworkplan
 
       },
       {
         path: 'office/library',
-        component: MFO,
+        component: library,
         meta: { role: 'office-admin' },
       },
       {
         path: 'office/spms',
-        component: OfficeSPMS,
+        component: officeSpms,
         meta: { role: 'office-admin' },
       },
       {
-        path: 'office/account',
-        component: OfficeAccount,
+        path: 'office/profile',
+        component: officeProfile,
         meta: { role: 'office-admin' },
       },
-
       // Planning Admin Routes
       {
         path: 'planning/dashboard',
