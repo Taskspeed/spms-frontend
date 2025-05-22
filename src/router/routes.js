@@ -19,6 +19,7 @@ import officeSpms from 'src/pages/office_Screen/spms.vue'
 import officeProfile from 'src/pages/office_Screen/profile.vue'
 import unitworkplan from 'src/pages/office_Screen/unit_work_plan.vue'
 import library from 'src/pages/office_Screen/library.vue'
+import rating from 'src/pages/office_Screen/ratingModule.vue'
 
 // Planning Admin Pages
 import PlanningDashboard from 'src/pages/Planning/PlanningDashboard.vue'
@@ -113,8 +114,7 @@ export const routes = [
       {
         path: '/unitworkplan',
         name: 'unitworkplan',
-        component: unitworkplan
-
+        component: unitworkplan,
       },
       {
         path: 'office/library',
@@ -129,6 +129,11 @@ export const routes = [
       {
         path: 'office/profile',
         component: officeProfile,
+        meta: { role: 'office-admin' },
+      },
+      {
+        path: 'office/rating',
+        component: rating,
         meta: { role: 'office-admin' },
       },
       // Planning Admin Routes
