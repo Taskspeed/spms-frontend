@@ -1,5 +1,5 @@
 <template>
-  <q-page padding>
+  <q-page class="q-px-md q-pb-md">
     <!-- Main table view -->
     <div v-if="!showDetails">
       <h6 class="text-h6 q-mb-md">Ratings</h6>
@@ -80,6 +80,7 @@
 
     <!-- Details view -->
     <div v-else>
+      <!-- The details view code remains the same -->
       <div class="row items-center justify-between q-mb-md">
         <div class="row items-center">
           <h6 class="text-h6 q-mb-md">{{ selectedPeriod.targetPeriod }}</h6>
@@ -99,7 +100,9 @@
       </div>
 
       <!-- Enhanced Date Filter Implementation -->
+      <!-- Date filter code remains the same -->
       <div class="row justify-between items-center q-mb-md">
+        <!-- Date filter content -->
         <div class="row q-col-gutter-md items-center">
           <!-- Date filter type selector -->
           <div class="col-auto">
@@ -118,105 +121,113 @@
 
           <!-- Single date picker -->
           <div v-if="dateFilterType === 'single'" class="col-auto">
+            <!-- Single date picker code -->
             <q-input
               outlined
               dense
               readonly
               v-model="specificDateText"
               placeholder="Select Specific Date"
-              class="col-auto"
+              class="col-auto cursor-pointer"
               style="min-width: 200px"
+              @click="() => $refs.specificDateProxy.show()"
             >
               <template v-slot:prepend>
                 <q-icon name="event" color="primary" class="cursor-pointer" />
               </template>
               <template v-slot:append>
-                <q-icon name="arrow_drop_down" color="primary" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date
-                      v-model="specificDate"
-                      landscape
-                      today-btn
-                      mask="YYYY-MM-DD"
-                      color="primary"
-                      @update:model-value="onSpecificDateChange"
-                    >
-                      <div class="row items-center justify-end q-gutter-x-sm">
-                        <q-btn
-                          label="Clear"
-                          class="bg-negative text-white"
-                          rounded
-                          flat
-                          size="sm"
-                          @click="clearSpecificDate"
-                          v-if="specificDate"
-                        />
-                        <q-btn
-                          label="Apply"
-                          class="bg-primary text-white"
-                          rounded
-                          flat
-                          size="sm"
-                          v-close-popup
-                        />
-                      </div>
-                    </q-date>
-                  </q-popup-proxy>
-                </q-icon>
+                <q-icon name="arrow_drop_down" color="primary" class="cursor-pointer" />
               </template>
             </q-input>
+            <!-- Detached popup proxy with no transition -->
+            <q-popup-proxy ref="specificDateProxy" anchor="bottom left" self="top left">
+              <q-date
+                v-model="specificDate"
+                landscape
+                today-btn
+                mask="YYYY-MM-DD"
+                color="primary"
+                :default-year-month="defaultYearMonth"
+                :default-date="currentDate"
+                @update:model-value="onSpecificDateChange"
+              >
+                <div class="row items-center justify-end q-gutter-x-sm">
+                  <q-btn
+                    label="Clear"
+                    class="bg-negative text-white"
+                    rounded
+                    flat
+                    size="sm"
+                    @click="clearSpecificDate"
+                    v-if="specificDate"
+                  />
+                  <q-btn
+                    label="Apply"
+                    class="bg-primary text-white"
+                    rounded
+                    flat
+                    size="sm"
+                    v-close-popup
+                  />
+                </div>
+              </q-date>
+            </q-popup-proxy>
           </div>
 
           <!-- Date range picker -->
           <div v-if="dateFilterType === 'range'" class="col-auto">
+            <!-- Date range picker code -->
             <q-input
               outlined
               dense
               readonly
               v-model="dateRangeText"
               placeholder="Select Date Range"
-              class="col-auto"
+              class="col-auto cursor-pointer"
               style="min-width: 200px"
+              @click="() => $refs.dateRangeProxy.show()"
             >
               <template v-slot:prepend>
                 <q-icon name="event" color="primary" class="cursor-pointer" />
               </template>
               <template v-slot:append>
-                <q-icon name="arrow_drop_down" color="primary" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date
-                      v-model="dateRange"
-                      range
-                      landscape
-                      today-btn
-                      mask="YYYY-MM-DD"
-                      color="primary"
-                      @update:model-value="onDateRangeChange"
-                    >
-                      <div class="row items-center justify-end q-gutter-x-sm">
-                        <q-btn
-                          label="Clear"
-                          class="bg-negative text-white"
-                          rounded
-                          flat
-                          size="sm"
-                          @click="clearDateRange"
-                          v-if="dateRange.from || dateRange.to"
-                        />
-                        <q-btn
-                          label="Apply"
-                          class="bg-primary text-white"
-                          rounded
-                          flat
-                          size="sm"
-                          v-close-popup
-                        />
-                      </div>
-                    </q-date>
-                  </q-popup-proxy>
-                </q-icon>
+                <q-icon name="arrow_drop_down" color="primary" class="cursor-pointer" />
               </template>
             </q-input>
+            <!-- Detached popup proxy with no transition -->
+            <q-popup-proxy ref="dateRangeProxy" anchor="bottom left" self="top left">
+              <q-date
+                v-model="dateRange"
+                range
+                landscape
+                today-btn
+                mask="YYYY-MM-DD"
+                color="primary"
+                :default-year-month="defaultYearMonth"
+                :default-date="currentDate"
+                @update:model-value="onDateRangeChange"
+              >
+                <div class="row items-center justify-end q-gutter-x-sm">
+                  <q-btn
+                    label="Clear"
+                    class="bg-negative text-white"
+                    rounded
+                    flat
+                    size="sm"
+                    @click="clearDateRange"
+                    v-if="dateRange.from || dateRange.to"
+                  />
+                  <q-btn
+                    label="Apply"
+                    class="bg-primary text-white"
+                    rounded
+                    flat
+                    size="sm"
+                    v-close-popup
+                  />
+                </div>
+              </q-date>
+            </q-popup-proxy>
           </div>
         </div>
       </div>
@@ -240,19 +251,27 @@
     <q-dialog v-model="show_ipcr_ModalOpen" full-width>
       <ipcr-report @close="close_ipcr_Modal" />
     </q-dialog>
+
+    <!-- Date Wizard Modal Dialog -->
+    <date-wizard-modal v-model="showDateWizard" @submit="handleDateWizardSubmit" />
   </q-page>
 </template>
 
 <script>
 import { date } from 'quasar'
 import IpcrReport from 'src/components/ipcr_Report.vue'
+import DateWizardModal from 'src/components/office/DateWizardModal.vue'
 
 export default {
   name: 'IPCRTable',
   components: {
     'ipcr-report': IpcrReport,
+    'date-wizard-modal': DateWizardModal,
   },
   data() {
+    // Current date based on the provided timestamp
+    const currentDate = '2025-06-18'
+
     return {
       // Main table data
       loading: false,
@@ -320,9 +339,14 @@ export default {
 
       // View state flags
       showDetails: false,
-      show_ipcr_ModalOpen: false, // Added this property to match the v-model
+      show_ipcr_ModalOpen: false,
+      showDateWizard: false, // New flag for date wizard modal
       selectedPeriod: null,
       detailsLoading: false,
+
+      // Current date for defaults
+      currentDate: currentDate,
+      defaultYearMonth: '2025/06', // Format YYYY/MM for default calendar view
 
       // Date filter options
       dateFilterType: 'single', // 'single' or 'range'
@@ -492,18 +516,25 @@ export default {
       if (action === 'Reports') {
         // Open the report modal
         this.selectedPeriod = row
-        this.show_ipcr_ModalOpen = true // Changed from showReportModal to show_ipcr_ModalOpen
-      } else {
-        // Handle other actions (Rate)
-        this.$q.notify({
-          color: 'primary',
-          textColor: 'white',
-          icon: 'info',
-          message: `${action} for ${row.targetPeriod}`,
-          position: 'bottom-right',
-          timeout: 2000,
-        })
+        this.show_ipcr_ModalOpen = true
+      } else if (action === 'Rate') {
+        // Open the date wizard modal
+        this.selectedPeriod = row
+        this.showDateWizard = true
       }
+    },
+    handleDateWizardSubmit(formData) {
+      console.log('Date wizard submitted:', formData)
+
+      // Display success notification
+      this.$q.notify({
+        color: 'positive',
+        textColor: 'white',
+        icon: 'check_circle',
+        message: `Rating for ${this.selectedPeriod.targetPeriod} on ${date.formatDate(formData.date, 'MMM D, YYYY')} submitted successfully.`,
+        position: 'bottom-right',
+        timeout: 3000,
+      })
     },
     showPeriodDetails(row) {
       this.selectedPeriod = row
@@ -517,26 +548,6 @@ export default {
     },
     loadPeriodFunctionData() {
       this.detailsLoading = true
-
-      // In a real application, you would fetch data from an API here
-      // For example:
-      /*
-      api.getPeriodFunctionData(this.selectedPeriod.id)
-        .then(response => {
-          this.functionData = response.data;
-          this.originalFunctionData = [...response.data]; // Keep a copy for filtering
-        })
-        .catch(error => {
-          this.$q.notify({
-            color: 'negative',
-            message: 'Failed to load function data',
-            icon: 'error'
-          });
-        })
-        .finally(() => {
-          this.detailsLoading = false;
-        });
-      */
 
       // For demo purposes, we're just using mock data with a timeout
       setTimeout(() => {
