@@ -23,7 +23,7 @@
     <!-- Cards Row -->
     <div class="row q-col-gutter-md q-mb-lg">
       <!-- Elected Card -->
-      <div class="col-xs-12 col-sm-3">
+      <div class="col-xs-12 col-sm-6 col-md-3">
         <q-card class="bg-white shadow-3 full-height clickable-card">
           <q-card-section class="q-pa-md">
             <div class="row items-center">
@@ -142,11 +142,152 @@
         </q-card>
       </div>
     </div>
+
+    <!-- Comparative Line Chart -->
+    <div class="row q-col-gutter-md q-mb-lg">
+      <div class="col-xs-12">
+        <q-card class="bg-white shadow-3">
+          <q-card-section class="q-pa-md">
+            <div class="text-h6 text-center q-mb-md">Employee Status Comparison Across Periods</div>
+            <canvas id="lineChart" height="400"></canvas>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
+
+    <!-- Percentage Changes Section -->
+    <div class="row q-col-gutter-md">
+      <div class="col-xs-12">
+        <q-card class="bg-white shadow-3">
+          <q-card-section class="q-pa-md">
+            <div class="text-h6 text-center q-mb-md">Percentage Changes From Previous Period</div>
+            <div class="row q-col-gutter-md">
+              <!-- Elected Percentage -->
+              <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="percentage-change text-center">
+                  <div
+                    class="text-h5"
+                    :class="percentageChange.elected >= 0 ? 'text-positive' : 'text-negative'"
+                  >
+                    {{ percentageChange.elected >= 0 ? '+' : '' }}{{ percentageChange.elected }}%
+                  </div>
+                  <div class="text-h6">{{ currentData.elected }}</div>
+                  <div class="text-subtitle2 text-grey-7">Elected</div>
+                </div>
+              </div>
+
+              <!-- Appointed Percentage -->
+              <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="percentage-change text-center">
+                  <div
+                    class="text-h5"
+                    :class="percentageChange.appointed >= 0 ? 'text-positive' : 'text-negative'"
+                  >
+                    {{ percentageChange.appointed >= 0 ? '+' : ''
+                    }}{{ percentageChange.appointed }}%
+                  </div>
+                  <div class="text-h6">{{ currentData.appointed }}</div>
+                  <div class="text-subtitle2 text-grey-7">Appointed</div>
+                </div>
+              </div>
+
+              <!-- Coterminus Percentage -->
+              <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="percentage-change text-center">
+                  <div
+                    class="text-h5"
+                    :class="percentageChange.coterminus >= 0 ? 'text-positive' : 'text-negative'"
+                  >
+                    {{ percentageChange.coterminus >= 0 ? '+' : ''
+                    }}{{ percentageChange.coterminus }}%
+                  </div>
+                  <div class="text-h6">{{ currentData.coterminus }}</div>
+                  <div class="text-subtitle2 text-grey-7">Coterminus</div>
+                </div>
+              </div>
+
+              <!-- Temporary Percentage -->
+              <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="percentage-change text-center">
+                  <div
+                    class="text-h5"
+                    :class="percentageChange.temporary >= 0 ? 'text-positive' : 'text-negative'"
+                  >
+                    {{ percentageChange.temporary >= 0 ? '+' : ''
+                    }}{{ percentageChange.temporary }}%
+                  </div>
+                  <div class="text-h6">{{ currentData.temporary }}</div>
+                  <div class="text-subtitle2 text-grey-7">Temporary</div>
+                </div>
+              </div>
+
+              <!-- Permanent Percentage -->
+              <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="percentage-change text-center">
+                  <div
+                    class="text-h5"
+                    :class="percentageChange.permanent >= 0 ? 'text-positive' : 'text-negative'"
+                  >
+                    {{ percentageChange.permanent >= 0 ? '+' : ''
+                    }}{{ percentageChange.permanent }}%
+                  </div>
+                  <div class="text-h6">{{ currentData.permanent }}</div>
+                  <div class="text-subtitle2 text-grey-7">Permanent</div>
+                </div>
+              </div>
+
+              <!-- Casual Percentage -->
+              <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="percentage-change text-center">
+                  <div
+                    class="text-h5"
+                    :class="percentageChange.casual >= 0 ? 'text-positive' : 'text-negative'"
+                  >
+                    {{ percentageChange.casual >= 0 ? '+' : '' }}{{ percentageChange.casual }}%
+                  </div>
+                  <div class="text-h6">{{ currentData.casual }}</div>
+                  <div class="text-subtitle2 text-grey-7">Casual</div>
+                </div>
+              </div>
+
+              <!-- Contract of Service Percentage -->
+              <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="percentage-change text-center">
+                  <div
+                    class="text-h5"
+                    :class="percentageChange.contract >= 0 ? 'text-positive' : 'text-negative'"
+                  >
+                    {{ percentageChange.contract >= 0 ? '+' : '' }}{{ percentageChange.contract }}%
+                  </div>
+                  <div class="text-h6">{{ currentData.contract }}</div>
+                  <div class="text-subtitle2 text-grey-7">Contract of Service</div>
+                </div>
+              </div>
+
+              <!-- Honorarium Percentage -->
+              <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="percentage-change text-center">
+                  <div
+                    class="text-h5"
+                    :class="percentageChange.honorarium >= 0 ? 'text-positive' : 'text-negative'"
+                  >
+                    {{ percentageChange.honorarium >= 0 ? '+' : ''
+                    }}{{ percentageChange.honorarium }}%
+                  </div>
+                  <div class="text-h6">{{ currentData.honorarium }}</div>
+                  <div class="text-subtitle2 text-grey-7">Honorarium</div>
+                </div>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import Chart from 'chart.js/auto'
 
 // Target period dropdown options
@@ -213,6 +354,43 @@ const employmentStatusData = {
 
 // Current data based on selected period
 const currentData = ref({ ...employmentStatusData[selectedPeriod.value] })
+const previousData = computed(() => {
+  const currentIndex = periodOptions.indexOf(selectedPeriod.value)
+  return currentIndex > 0 ? employmentStatusData[periodOptions[currentIndex - 1]] : null
+})
+
+// Calculate percentage changes
+const percentageChange = computed(() => {
+  if (!previousData.value) {
+    return {
+      elected: 0,
+      appointed: 0,
+      coterminus: 0,
+      temporary: 0,
+      permanent: 0,
+      casual: 0,
+      contract: 0,
+      honorarium: 0,
+    }
+  }
+
+  return {
+    elected: calculatePercentageChange('elected'),
+    appointed: calculatePercentageChange('appointed'),
+    coterminus: calculatePercentageChange('coterminus'),
+    temporary: calculatePercentageChange('temporary'),
+    permanent: calculatePercentageChange('permanent'),
+    casual: calculatePercentageChange('casual'),
+    contract: calculatePercentageChange('contract'),
+    honorarium: calculatePercentageChange('honorarium'),
+  }
+})
+
+function calculatePercentageChange(status) {
+  const prev = previousData.value[status]
+  const curr = currentData.value[status]
+  return Math.round(((curr - prev) / prev) * 100)
+}
 
 // Update data when period changes
 function updateData() {
