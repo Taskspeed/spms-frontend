@@ -241,7 +241,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useOrganizationStore } from 'src/stores/office/spmsStore'
+import { useOrganizationStore } from 'src/stores/office/spms_Store'
 import { useUserStore } from 'src/stores/userStore'
 import unitWorkplan_report from 'src/components/unitworkplant_Report.vue'
 import { useRouter } from 'vue-router'

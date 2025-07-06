@@ -59,7 +59,7 @@
 
 <script setup>
 import { ref, computed, watch,} from 'vue'
-import { useEmployeeStore } from 'src/stores/office/employeeStore'
+import { useEmployeeStore } from 'src/stores/office/employee_Store'
 import { debounce } from 'quasar'
 
 const props = defineProps({

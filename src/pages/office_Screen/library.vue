@@ -464,12 +464,25 @@
 </template>
 
 <script>
+<<<<<<< Updated upstream
 import { api } from 'src/boot/axios'
 import { useUserStore } from 'src/stores/userStore'
 import { mapState } from 'pinia'
 import Swal from 'sweetalert2'
+=======
+import { useUserStore } from '/src/stores/userStore';
+import { useMfoStore } from 'src/stores/office/mfo_Store';
+
+
+import { computed, ref, reactive, nextTick, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+import Swal from 'sweetalert2';
+>>>>>>> Stashed changes
+
+
 
 export default {
+<<<<<<< Updated upstream
   name: 'MFOComponent',
   data() {
     return {
@@ -502,12 +515,53 @@ export default {
   computed: {
     ...mapState(useUserStore, ['user']),
     categoryOptions() {
+=======
+  name: "MFOComponent",
+  setup() {
+    // Stores
+    const userStore = useUserStore();
+    const mfoStore = useMfoStore();
+    const { user } = storeToRefs(userStore);
+    const { mfos, outputs, categories, loading } = storeToRefs(mfoStore);
+
+    // Local state
+    const expandedMfos = ref([]);
+    const errors = ref({});
+    const touchedFields = ref({});
+    const firstInvalidFieldFocused = ref(false);
+    const modalContent = ref(null);
+
+    // Modal state
+    const modal = reactive({
+      show: false,
+      title: "Add MFO / Output",
+      mode: "add",
+      loading: false,
+      context: null
+    });
+
+    const confirmDialog = reactive({
+      show: false
+    });
+
+    // Form state
+    const form = reactive({
+      category: null,
+      items: [{ name: "" }],
+      isOutput: false,
+      parentMfo: null
+    });
+
+    // Computed properties
+    const categoryOptions = computed(() => {
+>>>>>>> Stashed changes
       const standardCategories = [
         { id: 1, name: 'A. STRATEGIC FUNCTION', type: 'strategic' },
         { id: 2, name: 'B. CORE FUNCTION', type: 'core' },
         { id: 3, name: 'C. SUPPORT FUNCTION', type: 'support' },
       ]
 
+<<<<<<< Updated upstream
       if (this.categories && this.categories.length > 0) {
         const existingCategoryNames = this.categories.map((c) => c.name)
         const missingCategories = standardCategories.filter(
@@ -566,10 +620,99 @@ export default {
     validateField(fieldName, force = false) {
       if (!force && !this.touchedFields[fieldName]) {
         return true
+=======
+      if (categories.value && categories.value.length > 0) {
+        const existingCategoryNames = categories.value.map(c => c.name);
+        const missingCategories = standardCategories.filter(
+          sc => !existingCategoryNames.some(name => name.includes(sc.name.split(' ')[0]))
+        );
+        return [...categories.value, ...missingCategories];
+      }
+      return standardCategories;
+    });
+
+    const isSupportCategory = computed(() => {
+      return form.category &&
+        (form.category.name.includes("SUPPORT") ||
+          form.category.name.includes("C."));
+    });
+
+    const supportCategory = computed(() => {
+      return categoryOptions.value.find(cat =>
+        cat.name.includes("SUPPORT") ||
+        cat.name.includes("C.")
+      );
+    });
+
+    const strategicMfos = computed(() => {
+      return mfos.value.filter(mfo =>
+        mfo.category && (
+          mfo.category.name?.includes("STRATEGIC") ||
+          mfo.category.name?.includes("A.")
+        )
+      );
+    });
+
+    const coreMfos = computed(() => {
+      return mfos.value.filter(mfo =>
+        mfo.category && (
+          mfo.category.name?.includes("CORE") ||
+          mfo.category.name?.includes("B.")
+        )
+      );
+    });
+
+    const supportOutputs = computed(() => {
+      if (!supportCategory.value) return [];
+      return outputs.value.filter(output =>
+        output.f_category_id === supportCategory.value.id &&
+        (!output.mfo_id || output.mfo_id === null)
+      );
+    });
+
+    // Initialize data
+    onMounted(() => {
+      fetchData();
+    });
+
+    // Methods
+    const fetchData = async () => {
+      try {
+        await userStore.loadUserData();
+        await mfoStore.fetchData(user.value.office_id);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to load data. Please try again.',
+          confirmButtonColor: '#00703C'
+        });
+      }
+    };
+
+    const toggleMfoExpansion = (mfoId) => {
+      const index = expandedMfos.value.indexOf(mfoId);
+      if (index === -1) {
+        expandedMfos.value.push(mfoId);
+      } else {
+        expandedMfos.value.splice(index, 1);
+      }
+    };
+
+    const getOutputsForMfo = (mfoId) => {
+      return outputs.value.filter(output => output.mfo_id === mfoId);
+    };
+
+    const validateField = (fieldName, force = false) => {
+      if (!force && !touchedFields.value[fieldName]) {
+        return true;
+>>>>>>> Stashed changes
       }
 
       let isValid = false
       if (fieldName === 'name') {
+<<<<<<< Updated upstream
         isValid = !!this.form.items[0]?.name?.trim()
       } else if (fieldName.startsWith('item_')) {
         const index = parseInt(fieldName.split('_')[1])
@@ -587,6 +730,26 @@ export default {
         const fieldName = this.modal.mode === 'edit' && index === 0 ? 'name' : `item_${index}`
         if (!this.validateField(fieldName, true)) {
           isValid = false
+=======
+        isValid = !!form.items[0]?.name?.trim();
+      } else if (fieldName.startsWith('item_')) {
+        const index = parseInt(fieldName.split('_')[1]);
+        isValid = !!form.items[index]?.name?.trim();
+      }
+      errors.value[fieldName] = !isValid;
+      return isValid;
+    };
+
+    const validateForm = () => {
+      errors.value = {};
+      let isValid = true;
+      let firstInvalidIndex = -1;
+
+      form.items.forEach((item, index) => {
+        const fieldName = modal.mode === 'edit' && index === 0 ? 'name' : `item_${index}`;
+        if (!validateField(fieldName, true)) {
+          isValid = false;
+>>>>>>> Stashed changes
           if (firstInvalidIndex === -1) {
             firstInvalidIndex = index
           }
@@ -594,6 +757,7 @@ export default {
       })
 
       if (!isValid) {
+<<<<<<< Updated upstream
         this.$nextTick(() => {
           this.shakeInvalidFields()
           this.scrollToInvalidField(firstInvalidIndex)
@@ -610,6 +774,253 @@ export default {
       // Temporarily close the modal while showing SweetAlert
       const modalWasOpen = this.modal.show
       this.modal.show = false
+=======
+        nextTick(() => {
+          shakeInvalidFields();
+          scrollToInvalidField(firstInvalidIndex);
+        });
+      }
+
+      return isValid;
+    };
+
+    const shakeInvalidFields = () => {
+      nextTick(() => {
+        Object.keys(errors.value).forEach(fieldName => {
+          if (errors.value[fieldName]) {
+            const index = fieldName === 'name' ? 0 : parseInt(fieldName.split('_')[1]);
+            const refName = `itemInput_${index}`;
+            const elements = document.querySelectorAll(`[data-ref="${refName}"]`);
+
+            if (elements.length > 0) {
+              const input = elements[0];
+              input.classList.remove('shake-animation');
+              void input.offsetWidth;
+              input.classList.add('shake-animation');
+
+              setTimeout(() => {
+                input.classList.remove('shake-animation');
+              }, 500);
+            }
+          }
+        });
+      });
+    };
+
+    const scrollToInvalidField = (index) => {
+      nextTick(() => {
+        const containerRef = `itemContainer_${index}`;
+        const containers = document.querySelectorAll(`[data-ref="${containerRef}"]`);
+
+        if (containers.length > 0 && modalContent.value) {
+          const container = containers[0];
+          const containerTop = container.offsetTop;
+          const modalHeight = modalContent.value.offsetHeight;
+          const scrollPosition = Math.min(
+            containerTop - 20,
+            modalContent.value.scrollHeight - modalHeight
+          );
+          modalContent.value.scrollTo({
+            top: scrollPosition,
+            behavior: 'smooth'
+          });
+        }
+      });
+    };
+
+    const scrollToNewField = () => {
+      nextTick(() => {
+        const lastIndex = form.items.length - 1;
+        const containerRef = `itemContainer_${lastIndex}`;
+        const containers = document.querySelectorAll(`[data-ref="${containerRef}"]`);
+
+        if (containers.length > 0 && modalContent.value) {
+          const container = containers[0];
+          const containerTop = container.offsetTop;
+          const modalHeight = modalContent.value.offsetHeight;
+          const scrollPosition = Math.min(
+            containerTop - 20,
+            modalContent.value.scrollHeight - modalHeight
+          );
+
+          modalContent.value.scrollTo({
+            top: scrollPosition,
+            behavior: 'smooth'
+          });
+
+          const inputRef = `itemInput_${lastIndex}`;
+          const inputs = document.querySelectorAll(`[data-ref="${inputRef}"]`);
+          if (inputs.length > 0) {
+            inputs[0].focus();
+          }
+        }
+      });
+    };
+
+    const getInputLabel = (index) => {
+      if (form.isOutput) {
+        return isSupportCategory.value ? `Support Output ${index + 1}` : `Output ${index + 1}`;
+      }
+      return `MFO ${index + 1}`;
+    };
+
+    const addNewItem = () => {
+      form.items.push({ name: "" });
+      scrollToNewField();
+    };
+
+    const removeItem = (index) => {
+      if (form.items.length > 1) {
+        form.items.splice(index, 1);
+        errors.value = {};
+        const fieldName = `item_${index}`;
+        delete touchedFields.value[fieldName];
+
+        for (let i = index + 1; i < form.items.length + 1; i++) {
+          if (touchedFields.value[`item_${i}`]) {
+            touchedFields.value[`item_${i - 1}`] = touchedFields.value[`item_${i}`];
+            delete touchedFields.value[`item_${i}`];
+          }
+        }
+      }
+    };
+
+    const resetForm = () => {
+      Object.assign(form, {
+        category: null,
+        items: [{ name: "" }],
+        isOutput: false,
+        parentMfo: null
+      });
+      errors.value = {};
+      touchedFields.value = {};
+      firstInvalidFieldFocused.value = false;
+    };
+
+    const findCategoryByType = (categoryType) => {
+      return categoryOptions.value.find(cat => {
+        if (categoryType === 'strategic') {
+          return cat.name.includes("STRATEGIC") || cat.name.includes("A.");
+        } else if (categoryType === 'core') {
+          return cat.name.includes("CORE") || cat.name.includes("B.");
+        } else {
+          return cat.name.includes("SUPPORT") || cat.name.includes("C.");
+        }
+      });
+    };
+
+    const getCategoryName = (categoryType) => {
+      switch (categoryType) {
+        case 'strategic': return 'Strategic MFO';
+        case 'core': return 'Core MFO';
+        case 'support': return 'Support Output';
+        default: return 'MFO/Output';
+      }
+    };
+
+    const openAddModal = (categoryType) => {
+      resetForm();
+      const isSupport = categoryType === 'support';
+
+      Object.assign(modal, {
+        show: true,
+        title: isSupport ? 'Add Support Output' : `Add ${getCategoryName(categoryType)}`,
+        mode: "add",
+        loading: false,
+        context: { categoryType }
+      });
+
+      const categoryForType = findCategoryByType(categoryType);
+      if (!categoryForType) {
+        console.error('Could not find appropriate category for type:', categoryType);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to set category. Please try again.',
+          confirmButtonColor: '#00703C'
+        });
+        closeModal();
+        return;
+      }
+
+      form.category = categoryForType;
+      form.isOutput = isSupport;
+      form.parentMfo = null;
+    };
+
+    const openAddOutputModal = (mfo, categoryType) => {
+      resetForm();
+      Object.assign(modal, {
+        show: true,
+        title: "Add Outputs",
+        mode: "add",
+        loading: false,
+        context: { mfo, categoryType }
+      });
+
+      form.category = findCategoryByType(categoryType);
+      form.parentMfo = mfo;
+      form.isOutput = true;
+    };
+
+    const editMfo = (mfo, categoryType) => {
+      resetForm();
+      Object.assign(modal, {
+        show: true,
+        title: "Edit MFO",
+        mode: "edit",
+        loading: false,
+        context: {
+          mfo: { ...mfo },
+          categoryType
+        }
+      });
+
+      form.category = mfo.category || findCategoryByType(categoryType);
+      form.items = [{ name: mfo.name }];
+      form.isOutput = false;
+    };
+
+    const editOutput = (output, mfo, categoryType) => {
+      resetForm();
+      Object.assign(modal, {
+        show: true,
+        title: "Edit Output",
+        mode: "edit",
+        loading: false,
+        context: { output, mfo, categoryType }
+      });
+
+      form.category = mfo.category || findCategoryByType(categoryType);
+      form.parentMfo = mfo;
+      form.items = [{ name: output.name }];
+      form.isOutput = true;
+    };
+
+    const editSupport = (output) => {
+      resetForm();
+      Object.assign(modal, {
+        show: true,
+        title: "Edit Support Output",
+        mode: "edit",
+        loading: false,
+        context: { output }
+      });
+
+      form.category = findCategoryByType('support');
+      form.items = [{ name: output.name }];
+      form.isOutput = true;
+    };
+
+    const confirmSave = async () => {
+      if (!validateForm()) {
+        return;
+      }
+
+      // Temporarily close the modal while showing SweetAlert
+      const modalWasOpen = modal.show;
+      modal.show = false;
+>>>>>>> Stashed changes
 
       try {
         const result = await Swal.fire({
@@ -617,9 +1028,10 @@ export default {
           text: 'Do you want to save these changes?',
           icon: 'question',
           showCancelButton: true,
-          confirmButtonColor: '#00703C', // Your app's primary color
+          confirmButtonColor: '#00703C',
           cancelButtonColor: '#d33',
           confirmButtonText: 'Yes, save it!',
+<<<<<<< Updated upstream
           allowOutsideClick: false, // Prevent closing by clicking outside
           backdrop: 'rgba(0,0,0,0.5)', // Semi-transparent backdrop
           focusConfirm: false, // Don't auto-focus the confirm button
@@ -633,9 +1045,25 @@ export default {
       } catch (error) {
         console.error('Confirmation error:', error)
         if (modalWasOpen) this.modal.show = true
-      }
-    },
+=======
+          allowOutsideClick: false,
+          backdrop: 'rgba(0,0,0,0.5)',
+          focusConfirm: false
+        });
 
+        if (result.isConfirmed) {
+          await proceedWithSave();
+        } else if (modalWasOpen) {
+          modal.show = true; // Reopen modal if canceled
+        }
+      } catch (error) {
+        console.error('Confirmation error:', error);
+        if (modalWasOpen) modal.show = true;
+>>>>>>> Stashed changes
+      }
+    };
+
+<<<<<<< Updated upstream
     async proceedWithSave() {
       try {
         this.modal.loading = true
@@ -648,21 +1076,39 @@ export default {
         } else {
           await this.saveOutputs()
           return
+=======
+    const proceedWithSave = async () => {
+      try {
+        modal.loading = true;
+
+        // Save logic based on form type
+        if (form.isOutput) {
+          await saveOutputs();
+        } else if (!isSupportCategory.value) {
+          await saveMfos();
+        } else {
+          await saveOutputs();
+>>>>>>> Stashed changes
         }
 
         // Show success message
         await Swal.fire({
           title: 'Success!',
-          text: this.getSuccessMessage(),
+          text: getSuccessMessage(),
           icon: 'success',
           confirmButtonColor: '#00703C',
-          timer: 2000, // Auto-close after 2 seconds
+          timer: 2000,
           timerProgressBar: true,
           showConfirmButton: false,
         })
 
+<<<<<<< Updated upstream
         await this.fetchData()
         this.closeModal()
+=======
+        await fetchData();
+        closeModal();
+>>>>>>> Stashed changes
       } catch (error) {
         console.error('Save error:', error)
 
@@ -675,12 +1121,19 @@ export default {
         })
 
         // Reopen modal on error
+<<<<<<< Updated upstream
         this.modal.show = true
       } finally {
         this.modal.loading = false
+=======
+        modal.show = true;
+      } finally {
+        modal.loading = false;
+>>>>>>> Stashed changes
       }
-    },
+    };
 
+<<<<<<< Updated upstream
     getSuccessMessage() {
       if (this.modal.mode === 'add') {
         return this.form.isOutput ? 'Output added successfully!' : 'MFO added successfully!'
@@ -970,23 +1423,58 @@ export default {
           await Promise.all(promises)
         } else {
           const mfoId = this.modal.context?.mfo?.id
+=======
+    const getSuccessMessage = () => {
+      if (modal.mode === 'add') {
+        return form.isOutput
+          ? 'Output added successfully!'
+          : 'MFO added successfully!';
+      } else {
+        return form.isOutput
+          ? 'Output updated successfully!'
+          : 'MFO updated successfully!';
+      }
+    };
+
+    const saveMfos = async () => {
+      try {
+        if (modal.mode === 'add') {
+          await mfoStore.addMfos(
+            user.value.office_id,
+            form.items.map(item => item.name),
+            form.category.id
+          );
+        } else {
+          const mfoId = modal.context?.mfo?.id;
+>>>>>>> Stashed changes
           if (!mfoId) {
             throw new Error('MFO ID is missing')
           }
 
+<<<<<<< Updated upstream
           await api.post(`/mfos/${mfoId}`, {
             office_id: this.user.office_id,
             name: this.form.items[0].name,
             f_category_id: this.form.category.id,
           })
+=======
+          await mfoStore.updateMfo(
+            mfoId,
+            user.value.office_id,
+            form.items[0].name,
+            form.category.id
+          );
+>>>>>>> Stashed changes
         }
       } catch (error) {
         console.error('Error saving MFO:', error)
         throw error
       }
-    },
-    async saveOutputs() {
+    };
+
+    const saveOutputs = async () => {
       try {
+<<<<<<< Updated upstream
         if (this.modal.mode === 'add') {
           const promises = this.form.items.map((item) => {
             const payload = {
@@ -1005,10 +1493,24 @@ export default {
           await Promise.all(promises)
         } else {
           const outputId = this.modal.context?.output?.id || this.modal.context?.mfo?.id
+=======
+        if (modal.mode === 'add') {
+          const outputData = form.items.map(item => ({
+            name: item.name,
+            f_category_id: form.category.id,
+            office_id: user.value.office_id,
+            mfo_id: !isSupportCategory.value && form.parentMfo ? form.parentMfo.id : null
+          }));
+
+          await mfoStore.addOutputs(outputData);
+        } else {
+          const outputId = modal.context?.output?.id || modal.context?.mfo?.id;
+>>>>>>> Stashed changes
           if (!outputId) {
             throw new Error('Output ID is missing')
           }
 
+<<<<<<< Updated upstream
           const payload = {
             name: this.form.items[0].name,
             f_category_id: this.form.category.id,
@@ -1020,16 +1522,32 @@ export default {
           }
 
           await api.post(`/outputs/${outputId}`, payload)
+=======
+          const outputData = {
+            name: form.items[0].name,
+            f_category_id: form.category.id,
+            office_id: user.value.office_id,
+            mfo_id: !isSupportCategory.value && form.parentMfo ? form.parentMfo.id : null
+          };
+
+          await mfoStore.updateOutput(outputId, outputData);
+>>>>>>> Stashed changes
         }
       } catch (error) {
         console.error('Error saving outputs:', error)
         throw error
       }
-    },
+    };
 
+<<<<<<< Updated upstream
     async confirmDelete(mfo) {
       const modalWasOpen = this.modal.show
       this.modal.show = false
+=======
+    const confirmDelete = async (mfo) => {
+      const modalWasOpen = modal.show;
+      modal.show = false;
+>>>>>>> Stashed changes
 
       try {
         const result = await Swal.fire({
@@ -1045,7 +1563,11 @@ export default {
         })
 
         if (result.isConfirmed) {
+<<<<<<< Updated upstream
           await this.deleteMfo(mfo)
+=======
+          await deleteMfo(mfo);
+>>>>>>> Stashed changes
           await Swal.fire({
             title: 'Deleted!',
             text: 'MFO has been deleted.',
@@ -1055,6 +1577,7 @@ export default {
             showConfirmButton: false,
           })
         } else if (modalWasOpen) {
+<<<<<<< Updated upstream
           this.modal.show = true
         }
       } catch (error) {
@@ -1065,6 +1588,19 @@ export default {
     async confirmDeleteOutput(output) {
       const modalWasOpen = this.modal.show
       this.modal.show = false
+=======
+          modal.show = true;
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        if (modalWasOpen) modal.show = true;
+      }
+    };
+
+    const confirmDeleteOutput = async (output) => {
+      const modalWasOpen = modal.show;
+      modal.show = false;
+>>>>>>> Stashed changes
 
       try {
         const result = await Swal.fire({
@@ -1081,19 +1617,31 @@ export default {
         })
 
         if (result.isConfirmed) {
+<<<<<<< Updated upstream
           await this.deleteOutput(output)
         } else if (modalWasOpen) {
           this.modal.show = true
+=======
+          await deleteOutput(output);
+        } else if (modalWasOpen) {
+          modal.show = true;
+>>>>>>> Stashed changes
         }
       } catch (error) {
         console.error('Delete confirmation error:', error)
         if (modalWasOpen) {
+<<<<<<< Updated upstream
           this.modal.show = true
+=======
+          modal.show = true;
+>>>>>>> Stashed changes
         }
       }
-    },
-    async deleteMfo(mfo) {
+    };
+
+    const deleteMfo = async (mfo) => {
       try {
+<<<<<<< Updated upstream
         await api.delete(`/mfos/${mfo.id}`)
         this.$q.notify({
           type: 'positive',
@@ -1108,10 +1656,31 @@ export default {
           message: error.response?.data?.message || 'Failed to delete MFO',
           position: 'top',
         })
+=======
+        await mfoStore.deleteMfo(mfo.id);
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'MFO deleted successfully',
+          confirmButtonColor: '#00703C',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } catch (error) {
+        console.error('Delete error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.response?.data?.message || 'Failed to delete MFO',
+          confirmButtonColor: '#d33'
+        });
+>>>>>>> Stashed changes
       }
-    },
-    async deleteOutput(output) {
+    };
+
+    const deleteOutput = async (output) => {
       try {
+<<<<<<< Updated upstream
         await api.delete(`/outputs/${output.id}`)
         this.$q.notify({
           type: 'positive',
@@ -1134,6 +1703,75 @@ export default {
     },
   },
 }
+=======
+        await mfoStore.deleteOutput(output.id);
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Output deleted successfully',
+          confirmButtonColor: '#00703C',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } catch (error) {
+        console.error('Delete output error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.response?.data?.message || 'Failed to delete output',
+          confirmButtonColor: '#d33'
+        });
+      }
+    };
+
+    const closeModal = () => {
+      modal.show = false;
+      resetForm();
+    };
+
+    return {
+      // State
+      loading,
+      expandedMfos,
+      errors,
+      modal,
+      confirmDialog,
+      form,
+      touchedFields,
+      modalContent,
+
+      // Computed
+      user,
+      mfos,
+      outputs,
+      strategicMfos,
+      coreMfos,
+      supportOutputs,
+      categoryOptions,
+      isSupportCategory,
+      supportCategory,
+
+      // Methods
+      toggleMfoExpansion,
+      getOutputsForMfo,
+      validateField,
+      getInputLabel,
+      addNewItem,
+      removeItem,
+      openAddModal,
+      openAddOutputModal,
+      editMfo,
+      editOutput,
+      editSupport,
+      confirmSave,
+      proceedWithSave,
+      confirmDelete,
+      confirmDeleteOutput,
+      closeModal
+    };
+  }
+};
+>>>>>>> Stashed changes
 </script>
 
 <style scoped>

@@ -107,7 +107,7 @@
 import AddEmployeeModal from '../../components/add_employee_Modal.vue'
 import { api } from 'src/boot/axios'
 import { useUserStore } from 'src/stores/userStore'
-import { useEmployeeStore } from 'stores/office/employeeStore'
+import { useEmployeeStore } from 'src/stores/office/employee_Store'
 
 export default {
   components: { AddEmployeeModal },

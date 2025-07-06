@@ -13,6 +13,7 @@ export const useOrganizationStore = defineStore('organization', {
   }),
 
   actions: {
+    
     async fetchStructure() {
       this.loading = true;
       try {

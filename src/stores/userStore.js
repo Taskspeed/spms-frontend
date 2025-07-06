@@ -20,6 +20,7 @@ export const useUserStore = defineStore('user', {
       }
       return roleMap[state.user.role_id] || null
     },
+    
     officeName: (state) => state.user?.office?.name || 'Unknown Office',
     groupedMfos: (state) => {
       const grouped = {}
@@ -66,6 +67,7 @@ export const useUserStore = defineStore('user', {
         throw error
       }
     },
+
     async logout(router) {
       const token = localStorage.getItem('token')
       if (!token) return
