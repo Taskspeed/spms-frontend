@@ -45,11 +45,11 @@
                 clickable
                 v-ripple
                 :to="subItem.route"
-                class="sidebar__menu-item"
+                class="sidebar__submenu-item"
                 active-class="sidebar__menu-item--active"
                 exact-active-class="sidebar__menu-item--active"
               >
-                <q-item-section avatar>
+                <q-item-section avatar class="sidebar__submenu-avatar">
                   <q-icon :name="subItem.icon" class="sidebar__icon" />
                 </q-item-section>
                 <q-item-section>{{ subItem.label }}</q-item-section>
@@ -210,13 +210,15 @@ export default {
 /* Header section */
 .sidebar__header {
   text-align: center;
-  padding: 0.5rem 1.5rem;
+  padding: 1rem 1.5rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0.5rem;
 }
 
 .sidebar__logo {
   width: 70px;
   height: auto;
-  margin: 1.25rem 0;
+  margin: 0.5rem 0 1rem;
 }
 
 .sidebar__title-container {
@@ -237,60 +239,106 @@ export default {
 /* Menu styles */
 .sidebar__menu {
   flex: 1;
-  overflow-y: hidden;
+  overflow-y: auto;
   padding: 0.5rem 0;
-  padding-bottom: calc(1rem + 64px);
+  padding-bottom: calc(1rem + 70px);
 }
 
-/* Fixed expansion item styling for vertical alignment */
+/* Expansion item styling */
 .sidebar__expansion-item {
-  margin: 0.25rem 1rem;
-  border-radius: 0.5rem;
+  margin: 0.375rem 1rem 0.75rem;
+  border-radius: 0.625rem;
   opacity: 0.85;
   transition: all 0.2s ease-in-out;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .sidebar__expansion-header {
-  min-height: 40px; /* Match the height of regular menu items */
-  padding: 0.5rem 1rem;
+  min-height: 44px;
+  padding: 0.75rem 1rem;
   font-size: 0.9375rem;
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   color: white !important;
+  font-weight: 500;
 }
 
 .sidebar__expansion-header:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
   opacity: 1;
-  transform: translateX(4px);
+  transform: translateX(2px);
 }
 
+/* Regular menu items */
 .sidebar__menu-item {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.625rem;
   color: white !important;
   transition: all 0.2s ease-in-out;
   font-size: 0.9375rem;
   font-family: 'Poppins', sans-serif;
-  margin: 0.25rem 1rem;
+  margin: 0.375rem 1rem 0.5rem;
   opacity: 0.85;
   white-space: nowrap;
   width: calc(100% - 2rem);
   display: flex;
   align-items: center;
-  min-height: 40px; /* Ensure consistent height */
+  min-height: 44px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .sidebar__menu-item:hover {
   background: rgba(255, 255, 255, 0.15) !important;
   opacity: 1;
-  transform: translateX(4px);
+  transform: translateX(3px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .sidebar__menu-item--active {
   background: rgba(255, 255, 255, 0.2) !important;
   opacity: 1;
   font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+  border-color: rgba(233, 224, 224, 0.3);
+}
+
+/* Submenu items */
+.sidebar__submenu {
+  overflow: hidden;
+  padding: 0.5rem 0;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 0.625rem 0.625rem;
+  margin-top: -1px;
+}
+
+.sidebar__submenu-item {
+  padding: 0.625rem 1rem 0.625rem 2.5rem;
+  border-radius: 0.5rem;
+  color: white !important;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.875rem;
+  font-family: 'Poppins', sans-serif;
+  margin: 0.25rem 0.75rem;
+  opacity: 0.8;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  font-weight: 400;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sidebar__submenu-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.sidebar__submenu-avatar {
+  min-width: 32px !important;
+  padding-right: 0.5rem !important;
 }
 
 .sidebar__icon {
@@ -302,16 +350,11 @@ export default {
 
 .sidebar__avatar-section {
   min-width: 40px !important;
-  padding-right: 0 !important;
+  padding-right: 0.75rem !important;
 }
 
 .sidebar__menu-text {
   color: white;
-}
-
-.sidebar__submenu {
-  overflow: hidden;
-  padding: 0;
 }
 
 /* Logout section */
@@ -320,7 +363,7 @@ export default {
   bottom: 0;
   left: 0;
   width: 100%;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.25rem 1.25rem;
   background: inherit;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(8px);
@@ -335,7 +378,7 @@ export default {
   font-weight: 600;
   font-family: 'Poppins', sans-serif;
   padding: 0.875rem;
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   transition: all 0.2s ease-in-out;
   opacity: 0.9;
   display: flex;
@@ -343,13 +386,15 @@ export default {
   justify-content: center;
   gap: 0.5rem;
   background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  min-height: 48px;
 }
 
 .sidebar__logout-btn:hover {
   opacity: 1;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  background-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: rgba(255, 255, 255, 0.18);
 }
 
 .sidebar__logout-icon {
@@ -376,15 +421,15 @@ export default {
 
 /* Role-based background colors */
 .bg-office-admin {
-  background-color: #205540;
+  background: linear-gradient(135deg, #205540 0%, #2d6e52 100%);
 }
 
 .bg-planning-admin {
-  background-color: #f7899c;
+  background: linear-gradient(135deg, #f7899c 0%, #f5a3b3 100%);
 }
 
 .bg-hr-admin {
-  background-color: #722b2b;
+  background: linear-gradient(135deg, #722b2b 0%, #8b3636 100%);
 }
 
 /* Responsive styles */
@@ -393,21 +438,50 @@ export default {
     padding-top: 2rem;
   }
 
+  .sidebar__header {
+    padding: 0.75rem 1rem 1rem;
+  }
+
   .sidebar__menu-item {
-    margin: 0.25rem 0.75rem;
+    margin: 0.25rem 0.75rem 0.375rem;
+    padding: 0.625rem 0.75rem;
   }
 
   .sidebar__expansion-item {
-    margin: 0.25rem 0.75rem;
+    margin: 0.25rem 0.75rem 0.5rem;
+  }
+
+  .sidebar__submenu-item {
+    margin: 0.25rem 0.5rem;
+    padding: 0.5rem 0.75rem 0.5rem 2rem;
   }
 
   .sidebar__logout-container {
-    padding: 0.75rem;
+    padding: 0.75rem 0.75rem 1rem;
     border-top-width: 2px;
   }
 
   .sidebar__menu {
-    padding-bottom: calc(1rem + 56px);
+    padding-bottom: calc(1rem + 60px);
   }
+}
+
+/* Scrollbar styling */
+.sidebar__menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar__menu::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.sidebar__menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.sidebar__menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 </style>

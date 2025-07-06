@@ -1,14 +1,26 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
+<div v-if="loading" class="full-page-loader">
+    <div class="loader-content">
+      <q-spinner-hourglass
+        color="primary"
+        size="4em"
+        :thickness="3"
+      />
+      <div class="text-h6 q-mt-md text-primary">Loading MFO Data...</div>
+    </div>
+  </div>
   <q-page class="q-px-md q-pb-md">
     <div class="q-mb-md">
-      <h6 class="text-h6 q-mb-md">Major Final Outputs (MFO)</h6>
+      <h6 class="text-h5 q-mb-md">Major Final Outputs (MFO)</h6>
+
       <q-separator class="q-mt-sm" />
     </div>
 
     <!-- Loading indicator -->
-    <div v-if="loading" class="flex justify-center q-pa-lg">
+    <!-- <div v-if="loading" class="flex justify-center q-pa-lg">
       <q-spinner-hourglass color="green" size="3em" />
-    </div>
+    </div> -->
 
     <!-- Table inside a responsive card -->
     <q-card flat bordered class="full-width shadow-1">
@@ -20,7 +32,7 @@
                 <span class="text-subtitle2 text-weight-bold">A. Strategic Function</span>
                 <q-btn
                   icon="add"
-                  size="sm"
+                  size="md"
                   flat
                   round
                   dense
@@ -35,7 +47,7 @@
                 <span class="text-subtitle2 text-weight-bold">B. Core Function</span>
                 <q-btn
                   icon="add"
-                  size="sm"
+                  size="md"
                   flat
                   round
                   dense
@@ -50,7 +62,7 @@
                 <span class="text-subtitle2 text-weight-bold">C. Support Function</span>
                 <q-btn
                   icon="add"
-                  size="sm"
+                  size="md"
                   flat
                   round
                   dense
@@ -79,13 +91,14 @@
                       class="q-mr-xs"
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
-                      <div class="mfo-number">{{ `MFO ${index + 1}.` }}</div>
-                      <strong class="mfo-name">{{ mfo.name }}</strong>
+                      <div class="mfo-number"><strong>{{ `MFO ${index + 1}.` }}</strong></div>
+                     <p class="mfo-name">{{ mfo.name }}</p>
+
                     </div>
                     <div class="mfo-actions">
                       <q-btn
                         icon="edit"
-                        size="xs"
+                        size="md"
                         flat
                         round
                         dense
@@ -94,7 +107,7 @@
                       />
                       <q-btn
                         icon="delete"
-                        size="xs"
+                        size="md"
                         flat
                         round
                         dense
@@ -112,12 +125,13 @@
                           class="output-item"
                         >
                           <div class="output-content">
-                            <div class="output-number">{{ `OUTPUT ${outputIndex + 1}.` }}</div>
-                            <strong class="output-name">{{ output.name }}</strong>
+                            <div class="output-number"><strong>{{ `OUTPUT ${outputIndex + 1}.` }}</strong></div>
+                            <!-- <strong class="output-name">{{ output.name }}</strong> -->
+                            <p class="output-name">{{ output.name }}</p>
                             <div class="output-actions">
                               <q-btn
                                 icon="edit"
-                                size="xs"
+                                size="md"
                                 flat
                                 round
                                 dense
@@ -126,7 +140,7 @@
                               />
                               <q-btn
                                 icon="delete"
-                                size="xs"
+                                size="md"
                                 flat
                                 round
                                 dense
@@ -138,15 +152,15 @@
                         </li>
                       </ul>
                       <div class="row justify-center q-mt-sm">
-                        <q-btn
-                          label="Add Output"
-                          size="xs"
-                          dense
-                          color="primary"
-                          @click="openAddOutputModal(mfo, 'strategic')"
-                          class="add-output-btn"
-                        />
-                      </div>
+                          <q-btn
+                            label="Add output"
+                            size="md"
+                            dense
+                            color="primary"
+                            @click="openAddOutputModal(mfo, 'strategic')"
+                            class="add-output-btn"
+                          />
+                        </div>
                     </div>
                   </q-slide-transition>
                 </li>
@@ -172,13 +186,14 @@
                       class="q-mr-xs"
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
-                      <div class="mfo-number">{{ `MFO ${index + 1}.` }}</div>
-                      <strong class="mfo-name">{{ mfo.name }}</strong>
+                      <div class="mfo-number"><strong>{{ `MFO ${index + 1}.` }}</strong></div>
+                      <!-- <strong class="mfo-name">{{ mfo.name }}</strong> -->
+                      <p class="mfo-name">{{ mfo.name }} </p>
                     </div>
                     <div class="mfo-actions">
                       <q-btn
                         icon="edit"
-                        size="xs"
+                        size="md"
                         flat
                         round
                         dense
@@ -187,7 +202,7 @@
                       />
                       <q-btn
                         icon="delete"
-                        size="xs"
+                        size="md"
                         flat
                         round
                         dense
@@ -205,12 +220,13 @@
                           class="output-item"
                         >
                           <div class="output-content">
-                            <div class="output-number">{{ `OUTPUT ${outputIndex + 1}.` }}</div>
-                            <strong class="output-name">{{ output.name }}</strong>
+                            <div class="output-number"><strong>{{ `OUTPUT ${outputIndex + 1}.` }}</strong></div>
+                            <!-- <strong class="output-name">{{ output.name }}</strong> -->
+                            <p class="output-name">{{ output.name }}</p>
                             <div class="output-actions">
                               <q-btn
                                 icon="edit"
-                                size="xs"
+                                 size="md"
                                 flat
                                 round
                                 dense
@@ -219,7 +235,7 @@
                               />
                               <q-btn
                                 icon="delete"
-                                size="xs"
+                                   size="md"
                                 flat
                                 round
                                 dense
@@ -233,7 +249,7 @@
                       <div class="row justify-center q-mt-sm">
                         <q-btn
                           label="Add Output"
-                          size="xs"
+                          size="md"
                           dense
                           color="primary"
                           @click="openAddOutputModal(mfo, 'core')"
@@ -255,13 +271,14 @@
                 <li v-for="(output, index) in supportOutputs" :key="output.id" class="mfo-item">
                   <div class="mfo-content">
                     <div class="mfo-title">
-                      <div class="output-number">{{ `OUTPUT ${index + 1}.` }}</div>
-                      <strong class="output-name">{{ output.name }}</strong>
+                      <div class="output-number"><strong>{{ `OUTPUT ${index + 1}.` }}</strong></div>
+                      <!-- <strong class="output-name">{{ output.name }}</strong> -->
+                      <p class="output-name">{{ output.name }}</p>
                     </div>
                     <div class="mfo-actions">
                       <q-btn
                         icon="edit"
-                        size="xs"
+                           size="md"
                         flat
                         round
                         dense
@@ -270,7 +287,7 @@
                       />
                       <q-btn
                         icon="delete"
-                        size="xs"
+                          size="md"
                         flat
                         round
                         dense
@@ -318,6 +335,12 @@
               <div class="text-body1 text-weight-medium">{{ form.category.name }}</div>
             </div>
 
+            <!-- Parent MFO Display (for outputs) -->
+            <div v-if="form.parentMfo" class="q-mb-md">
+              <div class="text-caption text-grey-6">MFO</div>
+              <div class="text-body1 text-weight-medium">{{ form.parentMfo.name }}</div>
+            </div>
+
             <!-- Single input for edit mode -->
             <template v-if="modal.mode === 'edit'">
               <div :ref="'itemContainer_0'">
@@ -325,10 +348,10 @@
                   v-model="form.items[0].name"
                   :label="
                     form.isOutput
-                      ? 'Output Name'
+                      ? 'Name'
                       : isSupportCategory
-                        ? 'Support Output Name'
-                        : 'MFO Name'
+                        ? 'Name'
+                        : 'Name'
                   "
                   class="q-mt-sm modern-input"
                   outlined
@@ -388,74 +411,14 @@
             @click="addNewItem"
             class="q-mr-sm"
           />
-          <q-btn label="Save" color="primary" @click="confirmSave" :loading="modal.loading" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Confirmation Dialog -->
-    <q-dialog v-model="confirmDialog.show" persistent>
-      <q-card class="modal-card" style="min-width: 500px; max-width: 600px">
-        <q-card-section class="row items-center q-pb-none" style="background-color: #00703c">
-          <div class="text-subtitle1 text-white">Confirm Details</div>
-          <q-space />
-          <q-icon name="task_alt" size="md" class="text-white" />
-        </q-card-section>
-
-        <div class="modal-scrollable-content">
-          <q-card-section class="q-pt-md">
-            <div class="text-subtitle2 text-grey-8 q-mb-sm">
-              Please review the details before saving:
-            </div>
-
-            <!-- Category/Function first -->
-            <q-item>
-              <q-item-section avatar>
-                <q-icon name="category" color="orange" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-weight-medium">Category/Function</q-item-label>
-                <q-item-label caption>{{ form.category.name }}</q-item-label>
-              </q-item-section>
-            </q-item>
-
-            <!-- Parent MFO if exists -->
-            <q-item v-if="form.parentMfo">
-              <q-item-section avatar>
-                <q-icon name="account_tree" color="green" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-weight-medium">Parent MFO</q-item-label>
-                <q-item-label caption>{{ form.parentMfo.name }}</q-item-label>
-              </q-item-section>
-            </q-item>
-
-            <!-- Items list -->
-            <q-list bordered separator class="rounded-borders q-mt-sm">
-              <q-item v-for="(item, index) in form.items" :key="index">
-                <q-item-section avatar>
-                  <q-icon :name="form.isOutput ? 'description' : 'folder'" color="primary" />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label class="text-weight-medium">
-                    {{ form.isOutput ? 'Output' : 'MFO' }} {{ index + 1 }}
-                  </q-item-label>
-                  <q-item-label caption>{{ item.name }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-card-section>
-        </div>
-
-        <q-card-actions align="right" class="q-pa-md modal-fixed-actions">
-          <q-btn flat label="Cancel" color="grey-7" v-close-popup />
           <q-btn
-            label="Confirm & Save"
+            label="Save"
             color="primary"
-            @click="proceedWithSave"
-            icon="save"
-            unelevated
-            class="q-px-sm"
+            @click="confirmSave"
+            :loading="modal.loading"
+            :disable="modal.loading || isProcessing"
+            size="md"
+
           />
         </q-card-actions>
       </q-card>
@@ -463,1318 +426,445 @@
   </q-page>
 </template>
 
-<script>
-<<<<<<< Updated upstream
-import { api } from 'src/boot/axios'
-import { useUserStore } from 'src/stores/userStore'
-import { mapState } from 'pinia'
+<script setup>
+import { ref, computed, onMounted, reactive } from 'vue'
+import { useUserStore } from '/src/stores/userStore'
+import { useMfoStore } from 'src/stores/office/mfo_Store'
+import { useQuasar } from 'quasar'
 import Swal from 'sweetalert2'
-=======
-import { useUserStore } from '/src/stores/userStore';
-import { useMfoStore } from 'src/stores/office/mfo_Store';
 
-
-import { computed, ref, reactive, nextTick, onMounted } from 'vue';
-import { storeToRefs } from 'pinia';
-import Swal from 'sweetalert2';
->>>>>>> Stashed changes
-
-
-
-export default {
-<<<<<<< Updated upstream
-  name: 'MFOComponent',
-  data() {
-    return {
-      loading: true,
-      mfos: [],
-      outputs: [],
-      categories: [],
-      expandedMfos: [],
-      errors: {},
-      firstInvalidFieldFocused: false,
-      modal: {
-        show: false,
-        title: 'Add MFO / Output',
-        mode: 'add',
-        loading: false,
-        context: null,
-      },
-      confirmDialog: {
-        show: false,
-      },
-      form: {
-        category: null,
-        items: [{ name: '' }],
-        isOutput: false,
-        parentMfo: null,
-      },
-      touchedFields: {},
-    }
-  },
-  computed: {
-    ...mapState(useUserStore, ['user']),
-    categoryOptions() {
-=======
-  name: "MFOComponent",
-  setup() {
-    // Stores
-    const userStore = useUserStore();
-    const mfoStore = useMfoStore();
-    const { user } = storeToRefs(userStore);
-    const { mfos, outputs, categories, loading } = storeToRefs(mfoStore);
-
-    // Local state
-    const expandedMfos = ref([]);
-    const errors = ref({});
-    const touchedFields = ref({});
-    const firstInvalidFieldFocused = ref(false);
-    const modalContent = ref(null);
-
-    // Modal state
-    const modal = reactive({
-      show: false,
-      title: "Add MFO / Output",
-      mode: "add",
-      loading: false,
-      context: null
-    });
-
-    const confirmDialog = reactive({
-      show: false
-    });
-
-    // Form state
-    const form = reactive({
-      category: null,
-      items: [{ name: "" }],
-      isOutput: false,
-      parentMfo: null
-    });
-
-    // Computed properties
-    const categoryOptions = computed(() => {
->>>>>>> Stashed changes
-      const standardCategories = [
-        { id: 1, name: 'A. STRATEGIC FUNCTION', type: 'strategic' },
-        { id: 2, name: 'B. CORE FUNCTION', type: 'core' },
-        { id: 3, name: 'C. SUPPORT FUNCTION', type: 'support' },
-      ]
-
-<<<<<<< Updated upstream
-      if (this.categories && this.categories.length > 0) {
-        const existingCategoryNames = this.categories.map((c) => c.name)
-        const missingCategories = standardCategories.filter(
-          (sc) => !existingCategoryNames.some((name) => name.includes(sc.name.split(' ')[0])),
-        )
-        return [...this.categories, ...missingCategories]
-      }
-      return standardCategories
-    },
-    isSupportCategory() {
-      return (
-        this.form.category &&
-        (this.form.category.name.includes('SUPPORT') || this.form.category.name.includes('C.'))
-      )
-    },
-    supportCategory() {
-      return this.categoryOptions.find(
-        (cat) => cat.name.includes('SUPPORT') || cat.name.includes('C.'),
-      )
-    },
-    strategicMfos() {
-      return this.mfos.filter(
-        (mfo) =>
-          mfo.category &&
-          (mfo.category.name?.includes('STRATEGIC') || mfo.category.name?.includes('A.')),
-      )
-    },
-    coreMfos() {
-      return this.mfos.filter(
-        (mfo) =>
-          mfo.category &&
-          (mfo.category.name?.includes('CORE') || mfo.category.name?.includes('B.')),
-      )
-    },
-    supportOutputs() {
-      if (!this.supportCategory) return []
-      return this.outputs.filter(
-        (output) =>
-          output.f_category_id === this.supportCategory.id &&
-          (!output.mfo_id || output.mfo_id === null),
-      )
-    },
-  },
-  created() {
-    this.fetchData()
-  },
-  methods: {
-    toggleMfoExpansion(mfoId) {
-      const index = this.expandedMfos.indexOf(mfoId)
-      if (index === -1) {
-        this.expandedMfos.push(mfoId)
-      } else {
-        this.expandedMfos.splice(index, 1)
-      }
-    },
-    validateField(fieldName, force = false) {
-      if (!force && !this.touchedFields[fieldName]) {
-        return true
-=======
-      if (categories.value && categories.value.length > 0) {
-        const existingCategoryNames = categories.value.map(c => c.name);
-        const missingCategories = standardCategories.filter(
-          sc => !existingCategoryNames.some(name => name.includes(sc.name.split(' ')[0]))
-        );
-        return [...categories.value, ...missingCategories];
-      }
-      return standardCategories;
-    });
-
-    const isSupportCategory = computed(() => {
-      return form.category &&
-        (form.category.name.includes("SUPPORT") ||
-          form.category.name.includes("C."));
-    });
-
-    const supportCategory = computed(() => {
-      return categoryOptions.value.find(cat =>
-        cat.name.includes("SUPPORT") ||
-        cat.name.includes("C.")
-      );
-    });
-
-    const strategicMfos = computed(() => {
-      return mfos.value.filter(mfo =>
-        mfo.category && (
-          mfo.category.name?.includes("STRATEGIC") ||
-          mfo.category.name?.includes("A.")
-        )
-      );
-    });
-
-    const coreMfos = computed(() => {
-      return mfos.value.filter(mfo =>
-        mfo.category && (
-          mfo.category.name?.includes("CORE") ||
-          mfo.category.name?.includes("B.")
-        )
-      );
-    });
-
-    const supportOutputs = computed(() => {
-      if (!supportCategory.value) return [];
-      return outputs.value.filter(output =>
-        output.f_category_id === supportCategory.value.id &&
-        (!output.mfo_id || output.mfo_id === null)
-      );
-    });
-
-    // Initialize data
-    onMounted(() => {
-      fetchData();
-    });
-
-    // Methods
-    const fetchData = async () => {
-      try {
-        await userStore.loadUserData();
-        await mfoStore.fetchData(user.value.office_id);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to load data. Please try again.',
-          confirmButtonColor: '#00703C'
-        });
-      }
-    };
-
-    const toggleMfoExpansion = (mfoId) => {
-      const index = expandedMfos.value.indexOf(mfoId);
-      if (index === -1) {
-        expandedMfos.value.push(mfoId);
-      } else {
-        expandedMfos.value.splice(index, 1);
-      }
-    };
-
-    const getOutputsForMfo = (mfoId) => {
-      return outputs.value.filter(output => output.mfo_id === mfoId);
-    };
-
-    const validateField = (fieldName, force = false) => {
-      if (!force && !touchedFields.value[fieldName]) {
-        return true;
->>>>>>> Stashed changes
-      }
-
-      let isValid = false
-      if (fieldName === 'name') {
-<<<<<<< Updated upstream
-        isValid = !!this.form.items[0]?.name?.trim()
-      } else if (fieldName.startsWith('item_')) {
-        const index = parseInt(fieldName.split('_')[1])
-        isValid = !!this.form.items[index]?.name?.trim()
-      }
-      this.errors[fieldName] = !isValid
-      return isValid
-    },
-    validateForm() {
-      this.errors = {}
-      let isValid = true
-      let firstInvalidIndex = -1
-
-      this.form.items.forEach((item, index) => {
-        const fieldName = this.modal.mode === 'edit' && index === 0 ? 'name' : `item_${index}`
-        if (!this.validateField(fieldName, true)) {
-          isValid = false
-=======
-        isValid = !!form.items[0]?.name?.trim();
-      } else if (fieldName.startsWith('item_')) {
-        const index = parseInt(fieldName.split('_')[1]);
-        isValid = !!form.items[index]?.name?.trim();
-      }
-      errors.value[fieldName] = !isValid;
-      return isValid;
-    };
-
-    const validateForm = () => {
-      errors.value = {};
-      let isValid = true;
-      let firstInvalidIndex = -1;
-
-      form.items.forEach((item, index) => {
-        const fieldName = modal.mode === 'edit' && index === 0 ? 'name' : `item_${index}`;
-        if (!validateField(fieldName, true)) {
-          isValid = false;
->>>>>>> Stashed changes
-          if (firstInvalidIndex === -1) {
-            firstInvalidIndex = index
-          }
-        }
-      })
-
-      if (!isValid) {
-<<<<<<< Updated upstream
-        this.$nextTick(() => {
-          this.shakeInvalidFields()
-          this.scrollToInvalidField(firstInvalidIndex)
-        })
-      }
-
-      return isValid
-    },
-    async confirmSave() {
-      if (!this.validateForm()) {
-        return
-      }
-
-      // Temporarily close the modal while showing SweetAlert
-      const modalWasOpen = this.modal.show
-      this.modal.show = false
-=======
-        nextTick(() => {
-          shakeInvalidFields();
-          scrollToInvalidField(firstInvalidIndex);
-        });
-      }
-
-      return isValid;
-    };
-
-    const shakeInvalidFields = () => {
-      nextTick(() => {
-        Object.keys(errors.value).forEach(fieldName => {
-          if (errors.value[fieldName]) {
-            const index = fieldName === 'name' ? 0 : parseInt(fieldName.split('_')[1]);
-            const refName = `itemInput_${index}`;
-            const elements = document.querySelectorAll(`[data-ref="${refName}"]`);
-
-            if (elements.length > 0) {
-              const input = elements[0];
-              input.classList.remove('shake-animation');
-              void input.offsetWidth;
-              input.classList.add('shake-animation');
-
-              setTimeout(() => {
-                input.classList.remove('shake-animation');
-              }, 500);
-            }
-          }
-        });
-      });
-    };
-
-    const scrollToInvalidField = (index) => {
-      nextTick(() => {
-        const containerRef = `itemContainer_${index}`;
-        const containers = document.querySelectorAll(`[data-ref="${containerRef}"]`);
-
-        if (containers.length > 0 && modalContent.value) {
-          const container = containers[0];
-          const containerTop = container.offsetTop;
-          const modalHeight = modalContent.value.offsetHeight;
-          const scrollPosition = Math.min(
-            containerTop - 20,
-            modalContent.value.scrollHeight - modalHeight
-          );
-          modalContent.value.scrollTo({
-            top: scrollPosition,
-            behavior: 'smooth'
-          });
-        }
-      });
-    };
-
-    const scrollToNewField = () => {
-      nextTick(() => {
-        const lastIndex = form.items.length - 1;
-        const containerRef = `itemContainer_${lastIndex}`;
-        const containers = document.querySelectorAll(`[data-ref="${containerRef}"]`);
-
-        if (containers.length > 0 && modalContent.value) {
-          const container = containers[0];
-          const containerTop = container.offsetTop;
-          const modalHeight = modalContent.value.offsetHeight;
-          const scrollPosition = Math.min(
-            containerTop - 20,
-            modalContent.value.scrollHeight - modalHeight
-          );
-
-          modalContent.value.scrollTo({
-            top: scrollPosition,
-            behavior: 'smooth'
-          });
-
-          const inputRef = `itemInput_${lastIndex}`;
-          const inputs = document.querySelectorAll(`[data-ref="${inputRef}"]`);
-          if (inputs.length > 0) {
-            inputs[0].focus();
-          }
-        }
-      });
-    };
-
-    const getInputLabel = (index) => {
-      if (form.isOutput) {
-        return isSupportCategory.value ? `Support Output ${index + 1}` : `Output ${index + 1}`;
-      }
-      return `MFO ${index + 1}`;
-    };
-
-    const addNewItem = () => {
-      form.items.push({ name: "" });
-      scrollToNewField();
-    };
-
-    const removeItem = (index) => {
-      if (form.items.length > 1) {
-        form.items.splice(index, 1);
-        errors.value = {};
-        const fieldName = `item_${index}`;
-        delete touchedFields.value[fieldName];
-
-        for (let i = index + 1; i < form.items.length + 1; i++) {
-          if (touchedFields.value[`item_${i}`]) {
-            touchedFields.value[`item_${i - 1}`] = touchedFields.value[`item_${i}`];
-            delete touchedFields.value[`item_${i}`];
-          }
-        }
-      }
-    };
-
-    const resetForm = () => {
-      Object.assign(form, {
-        category: null,
-        items: [{ name: "" }],
-        isOutput: false,
-        parentMfo: null
-      });
-      errors.value = {};
-      touchedFields.value = {};
-      firstInvalidFieldFocused.value = false;
-    };
-
-    const findCategoryByType = (categoryType) => {
-      return categoryOptions.value.find(cat => {
-        if (categoryType === 'strategic') {
-          return cat.name.includes("STRATEGIC") || cat.name.includes("A.");
-        } else if (categoryType === 'core') {
-          return cat.name.includes("CORE") || cat.name.includes("B.");
-        } else {
-          return cat.name.includes("SUPPORT") || cat.name.includes("C.");
-        }
-      });
-    };
-
-    const getCategoryName = (categoryType) => {
-      switch (categoryType) {
-        case 'strategic': return 'Strategic MFO';
-        case 'core': return 'Core MFO';
-        case 'support': return 'Support Output';
-        default: return 'MFO/Output';
-      }
-    };
-
-    const openAddModal = (categoryType) => {
-      resetForm();
-      const isSupport = categoryType === 'support';
-
-      Object.assign(modal, {
-        show: true,
-        title: isSupport ? 'Add Support Output' : `Add ${getCategoryName(categoryType)}`,
-        mode: "add",
-        loading: false,
-        context: { categoryType }
-      });
-
-      const categoryForType = findCategoryByType(categoryType);
-      if (!categoryForType) {
-        console.error('Could not find appropriate category for type:', categoryType);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to set category. Please try again.',
-          confirmButtonColor: '#00703C'
-        });
-        closeModal();
-        return;
-      }
-
-      form.category = categoryForType;
-      form.isOutput = isSupport;
-      form.parentMfo = null;
-    };
-
-    const openAddOutputModal = (mfo, categoryType) => {
-      resetForm();
-      Object.assign(modal, {
-        show: true,
-        title: "Add Outputs",
-        mode: "add",
-        loading: false,
-        context: { mfo, categoryType }
-      });
-
-      form.category = findCategoryByType(categoryType);
-      form.parentMfo = mfo;
-      form.isOutput = true;
-    };
-
-    const editMfo = (mfo, categoryType) => {
-      resetForm();
-      Object.assign(modal, {
-        show: true,
-        title: "Edit MFO",
-        mode: "edit",
-        loading: false,
-        context: {
-          mfo: { ...mfo },
-          categoryType
-        }
-      });
-
-      form.category = mfo.category || findCategoryByType(categoryType);
-      form.items = [{ name: mfo.name }];
-      form.isOutput = false;
-    };
-
-    const editOutput = (output, mfo, categoryType) => {
-      resetForm();
-      Object.assign(modal, {
-        show: true,
-        title: "Edit Output",
-        mode: "edit",
-        loading: false,
-        context: { output, mfo, categoryType }
-      });
-
-      form.category = mfo.category || findCategoryByType(categoryType);
-      form.parentMfo = mfo;
-      form.items = [{ name: output.name }];
-      form.isOutput = true;
-    };
-
-    const editSupport = (output) => {
-      resetForm();
-      Object.assign(modal, {
-        show: true,
-        title: "Edit Support Output",
-        mode: "edit",
-        loading: false,
-        context: { output }
-      });
-
-      form.category = findCategoryByType('support');
-      form.items = [{ name: output.name }];
-      form.isOutput = true;
-    };
-
-    const confirmSave = async () => {
-      if (!validateForm()) {
-        return;
-      }
-
-      // Temporarily close the modal while showing SweetAlert
-      const modalWasOpen = modal.show;
-      modal.show = false;
->>>>>>> Stashed changes
-
-      try {
-        const result = await Swal.fire({
-          title: 'Confirm Save',
-          text: 'Do you want to save these changes?',
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonColor: '#00703C',
-          cancelButtonColor: '#d33',
-          confirmButtonText: 'Yes, save it!',
-<<<<<<< Updated upstream
-          allowOutsideClick: false, // Prevent closing by clicking outside
-          backdrop: 'rgba(0,0,0,0.5)', // Semi-transparent backdrop
-          focusConfirm: false, // Don't auto-focus the confirm button
-        })
-
-        if (result.isConfirmed) {
-          await this.proceedWithSave()
-        } else if (modalWasOpen) {
-          this.modal.show = true // Reopen modal if canceled
-        }
-      } catch (error) {
-        console.error('Confirmation error:', error)
-        if (modalWasOpen) this.modal.show = true
-=======
-          allowOutsideClick: false,
-          backdrop: 'rgba(0,0,0,0.5)',
-          focusConfirm: false
-        });
-
-        if (result.isConfirmed) {
-          await proceedWithSave();
-        } else if (modalWasOpen) {
-          modal.show = true; // Reopen modal if canceled
-        }
-      } catch (error) {
-        console.error('Confirmation error:', error);
-        if (modalWasOpen) modal.show = true;
->>>>>>> Stashed changes
-      }
-    };
-
-<<<<<<< Updated upstream
-    async proceedWithSave() {
-      try {
-        this.modal.loading = true
-
-        // Save logic based on form type
-        if (this.form.isOutput) {
-          await this.saveOutputs()
-        } else if (!this.isSupportCategory) {
-          await this.saveMfos()
-        } else {
-          await this.saveOutputs()
-          return
-=======
-    const proceedWithSave = async () => {
-      try {
-        modal.loading = true;
-
-        // Save logic based on form type
-        if (form.isOutput) {
-          await saveOutputs();
-        } else if (!isSupportCategory.value) {
-          await saveMfos();
-        } else {
-          await saveOutputs();
->>>>>>> Stashed changes
-        }
-
-        // Show success message
-        await Swal.fire({
-          title: 'Success!',
-          text: getSuccessMessage(),
-          icon: 'success',
-          confirmButtonColor: '#00703C',
-          timer: 2000,
-          timerProgressBar: true,
-          showConfirmButton: false,
-        })
-
-<<<<<<< Updated upstream
-        await this.fetchData()
-        this.closeModal()
-=======
-        await fetchData();
-        closeModal();
->>>>>>> Stashed changes
-      } catch (error) {
-        console.error('Save error:', error)
-
-        // Show error message
-        await Swal.fire({
-          title: 'Error!',
-          text: error.response?.data?.message || 'Failed to save entries',
-          icon: 'error',
-          confirmButtonColor: '#d33',
-        })
-
-        // Reopen modal on error
-<<<<<<< Updated upstream
-        this.modal.show = true
-      } finally {
-        this.modal.loading = false
-=======
-        modal.show = true;
-      } finally {
-        modal.loading = false;
->>>>>>> Stashed changes
-      }
-    };
-
-<<<<<<< Updated upstream
-    getSuccessMessage() {
-      if (this.modal.mode === 'add') {
-        return this.form.isOutput ? 'Output added successfully!' : 'MFO added successfully!'
-      } else {
-        return this.form.isOutput ? 'Output updated successfully!' : 'MFO updated successfully!'
-      }
-    },
-    shakeInvalidFields() {
-      this.$nextTick(() => {
-        Object.keys(this.errors).forEach((fieldName) => {
-          if (this.errors[fieldName]) {
-            const index = fieldName === 'name' ? 0 : parseInt(fieldName.split('_')[1])
-            const refName = `itemInput_${index}`
-            if (this.$refs[refName]) {
-              const input = Array.isArray(this.$refs[refName])
-                ? this.$refs[refName][0].$el
-                : this.$refs[refName].$el
-
-              input.classList.remove('shake-animation')
-              void input.offsetWidth
-              input.classList.add('shake-animation')
-
-              setTimeout(() => {
-                input.classList.remove('shake-animation')
-              }, 500)
-            }
-          }
-        })
-      })
-    },
-
-    scrollToInvalidField(index) {
-      this.$nextTick(() => {
-        const containerRef = `itemContainer_${index}`
-        if (this.$refs[containerRef]) {
-          const container = Array.isArray(this.$refs[containerRef])
-            ? this.$refs[containerRef][0]
-            : this.$refs[containerRef]
-
-          if (container && this.$refs.modalContent) {
-            const containerTop = container.offsetTop
-            const modalHeight = this.$refs.modalContent.offsetHeight
-            const scrollPosition = Math.min(
-              containerTop - 20,
-              this.$refs.modalContent.scrollHeight - modalHeight,
-            )
-
-            this.$refs.modalContent.scrollTo({
-              top: scrollPosition,
-              behavior: 'smooth',
-            })
-          }
-        }
-      })
-    },
-
-    scrollToNewField() {
-      this.$nextTick(() => {
-        const lastIndex = this.form.items.length - 1
-        const containerRef = `itemContainer_${lastIndex}`
-        if (this.$refs[containerRef] && this.$refs.modalContent) {
-          const container = Array.isArray(this.$refs[containerRef])
-            ? this.$refs[containerRef][0]
-            : this.$refs[containerRef]
-
-          if (container) {
-            const containerTop = container.offsetTop
-            const modalHeight = this.$refs.modalContent.offsetHeight
-            const scrollPosition = Math.min(
-              containerTop - 20,
-              this.$refs.modalContent.scrollHeight - modalHeight,
-            )
-
-            this.$refs.modalContent.scrollTo({
-              top: scrollPosition,
-              behavior: 'smooth',
-            })
-
-            const inputRef = `itemInput_${lastIndex}`
-            if (this.$refs[inputRef]) {
-              const input = Array.isArray(this.$refs[inputRef])
-                ? this.$refs[inputRef][0]
-                : this.$refs[inputRef]
-              input.focus()
-            }
-          }
-        }
-      })
-    },
-    async fetchData() {
-      this.loading = true
-      try {
-        const userStore = useUserStore()
-        await userStore.loadUserData()
-        this.mfos = userStore.mfos
-
-        const categoriesResponse = await api.get('/fetch_f_category')
-        this.categories = categoriesResponse.data
-
-        const outputsResponse = await api.get('/allOutputs', {
-          params: {
-            office_id: this.user.office_id,
-          },
-        })
-
-        this.outputs = outputsResponse.data.map((output) => {
-          return {
-            ...output,
-            category: this.categories.find((c) => c.id === output.f_category_id),
-            mfo: this.mfos.find((m) => m.id === output.mfo_id),
-          }
-        })
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        this.$q.notify({
-          type: 'negative',
-          message: 'Failed to load data. Please try again.',
-          position: 'top',
-        })
-      } finally {
-        this.loading = false
-      }
-    },
-    getOutputsForMfo(mfoId) {
-      return this.outputs.filter((output) => output.mfo_id === mfoId)
-    },
-    getInputLabel(index) {
-      if (this.form.isOutput) {
-        return this.isSupportCategory ? `Support Output ${index + 1}` : `Output ${index + 1}`
-      }
-      return `MFO ${index + 1}`
-    },
-    addNewItem() {
-      this.form.items.push({ name: '' })
-      this.scrollToNewField()
-    },
-    removeItem(index) {
-      if (this.form.items.length > 1) {
-        this.form.items.splice(index, 1)
-        this.errors = {}
-        const fieldName = `item_${index}`
-        delete this.touchedFields[fieldName]
-
-        for (let i = index + 1; i < this.form.items.length + 1; i++) {
-          if (this.touchedFields[`item_${i}`]) {
-            this.touchedFields[`item_${i - 1}`] = this.touchedFields[`item_${i}`]
-            delete this.touchedFields[`item_${i}`]
-          }
-        }
-      }
-    },
-    resetForm() {
-      this.form = {
-        category: null,
-        items: [{ name: '' }],
-        isOutput: false,
-        parentMfo: null,
-      }
-      this.errors = {}
-      this.touchedFields = {}
-      this.firstInvalidFieldFocused = false
-    },
-    openAddModal(categoryType) {
-      this.resetForm()
-      const isSupport = categoryType === 'support'
-
-      this.modal = {
-        show: true,
-        title: isSupport ? 'Add Support Output' : `Add ${this.getCategoryName(categoryType)}`,
-        mode: 'add',
-        loading: false,
-        context: { categoryType },
-      }
-
-      const categoryForType = this.findCategoryByType(categoryType)
-      if (!categoryForType) {
-        console.error('Could not find appropriate category for type:', categoryType)
-        this.$q.notify({
-          type: 'negative',
-          message: 'Failed to set category. Please try again.',
-          position: 'top',
-        })
-        this.closeModal()
-        return
-      }
-
-      this.form.category = categoryForType
-      this.form.isOutput = isSupport
-      this.form.parentMfo = null
-    },
-    openAddOutputModal(mfo, categoryType) {
-      this.resetForm()
-      this.modal = {
-        show: true,
-        title: 'Add Outputs',
-        mode: 'add',
-        loading: false,
-        context: { mfo, categoryType },
-      }
-
-      this.form.category = this.findCategoryByType(categoryType)
-      this.form.parentMfo = mfo
-      this.form.isOutput = true
-    },
-    editMfo(mfo, categoryType) {
-      this.resetForm()
-      this.modal = {
-        show: true,
-        title: 'Edit MFO',
-        mode: 'edit',
-        loading: false,
-        context: {
-          mfo: { ...mfo },
-          categoryType,
-        },
-      }
-
-      this.form.category = mfo.category || this.findCategoryByType(categoryType)
-      this.form.items = [{ name: mfo.name }]
-      this.form.isOutput = false
-    },
-    editOutput(output, mfo, categoryType) {
-      this.resetForm()
-      this.modal = {
-        show: true,
-        title: 'Edit Output',
-        mode: 'edit',
-        loading: false,
-        context: { output, mfo, categoryType },
-      }
-
-      this.form.category = mfo.category || this.findCategoryByType(categoryType)
-      this.form.parentMfo = mfo
-      this.form.items = [{ name: output.name }]
-      this.form.isOutput = true
-    },
-    editSupport(mfo) {
-      this.resetForm()
-      this.modal = {
-        show: true,
-        title: 'Edit Support Output',
-        mode: 'edit',
-        loading: false,
-        context: { mfo },
-      }
-
-      this.form.category = this.findCategoryByType('support')
-      this.form.items = [{ name: mfo.name }]
-      this.form.isOutput = true
-    },
-    findCategoryByType(categoryType) {
-      return this.categoryOptions.find((cat) => {
-        if (categoryType === 'strategic') {
-          return cat.name.includes('STRATEGIC') || cat.name.includes('A.')
-        } else if (categoryType === 'core') {
-          return cat.name.includes('CORE') || cat.name.includes('B.')
-        } else {
-          return cat.name.includes('SUPPORT') || cat.name.includes('C.')
-        }
-      })
-    },
-    getCategoryName(categoryType) {
-      switch (categoryType) {
-        case 'strategic':
-          return 'Strategic MFO'
-        case 'core':
-          return 'Core MFO'
-        case 'support':
-          return 'Support Output'
-        default:
-          return 'MFO/Output'
-      }
-    },
-    async saveEntry() {
-      // This is now handled by confirmSave and proceedWithSave
-    },
-    async saveMfos() {
-      try {
-        if (this.modal.mode === 'add') {
-          const promises = this.form.items.map((item) => {
-            return api.post('/add_mfo', {
-              office_id: this.user.office_id,
-              name: item.name,
-              f_category_id: this.form.category.id,
-            })
-          })
-          await Promise.all(promises)
-        } else {
-          const mfoId = this.modal.context?.mfo?.id
-=======
-    const getSuccessMessage = () => {
-      if (modal.mode === 'add') {
-        return form.isOutput
-          ? 'Output added successfully!'
-          : 'MFO added successfully!';
-      } else {
-        return form.isOutput
-          ? 'Output updated successfully!'
-          : 'MFO updated successfully!';
-      }
-    };
-
-    const saveMfos = async () => {
-      try {
-        if (modal.mode === 'add') {
-          await mfoStore.addMfos(
-            user.value.office_id,
-            form.items.map(item => item.name),
-            form.category.id
-          );
-        } else {
-          const mfoId = modal.context?.mfo?.id;
->>>>>>> Stashed changes
-          if (!mfoId) {
-            throw new Error('MFO ID is missing')
-          }
-
-<<<<<<< Updated upstream
-          await api.post(`/mfos/${mfoId}`, {
-            office_id: this.user.office_id,
-            name: this.form.items[0].name,
-            f_category_id: this.form.category.id,
-          })
-=======
-          await mfoStore.updateMfo(
-            mfoId,
-            user.value.office_id,
-            form.items[0].name,
-            form.category.id
-          );
->>>>>>> Stashed changes
-        }
-      } catch (error) {
-        console.error('Error saving MFO:', error)
-        throw error
-      }
-    };
-
-    const saveOutputs = async () => {
-      try {
-<<<<<<< Updated upstream
-        if (this.modal.mode === 'add') {
-          const promises = this.form.items.map((item) => {
-            const payload = {
-              name: item.name,
-              f_category_id: this.form.category.id,
-              office_id: this.user.office_id,
-            }
-
-            if (!this.isSupportCategory && this.form.parentMfo) {
-              payload.mfo_id = this.form.parentMfo.id
-            }
-
-            return api.post('/add_output', payload)
-          })
-
-          await Promise.all(promises)
-        } else {
-          const outputId = this.modal.context?.output?.id || this.modal.context?.mfo?.id
-=======
-        if (modal.mode === 'add') {
-          const outputData = form.items.map(item => ({
-            name: item.name,
-            f_category_id: form.category.id,
-            office_id: user.value.office_id,
-            mfo_id: !isSupportCategory.value && form.parentMfo ? form.parentMfo.id : null
-          }));
-
-          await mfoStore.addOutputs(outputData);
-        } else {
-          const outputId = modal.context?.output?.id || modal.context?.mfo?.id;
->>>>>>> Stashed changes
-          if (!outputId) {
-            throw new Error('Output ID is missing')
-          }
-
-<<<<<<< Updated upstream
-          const payload = {
-            name: this.form.items[0].name,
-            f_category_id: this.form.category.id,
-            office_id: this.user.office_id,
-          }
-
-          if (!this.isSupportCategory && this.form.parentMfo) {
-            payload.mfo_id = this.form.parentMfo.id
-          }
-
-          await api.post(`/outputs/${outputId}`, payload)
-=======
-          const outputData = {
-            name: form.items[0].name,
-            f_category_id: form.category.id,
-            office_id: user.value.office_id,
-            mfo_id: !isSupportCategory.value && form.parentMfo ? form.parentMfo.id : null
-          };
-
-          await mfoStore.updateOutput(outputId, outputData);
->>>>>>> Stashed changes
-        }
-      } catch (error) {
-        console.error('Error saving outputs:', error)
-        throw error
-      }
-    };
-
-<<<<<<< Updated upstream
-    async confirmDelete(mfo) {
-      const modalWasOpen = this.modal.show
-      this.modal.show = false
-=======
-    const confirmDelete = async (mfo) => {
-      const modalWasOpen = modal.show;
-      modal.show = false;
->>>>>>> Stashed changes
-
-      try {
-        const result = await Swal.fire({
-          title: 'Delete MFO?',
-          text: "You won't be able to revert this!",
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#d33',
-          cancelButtonColor: '#00703C',
-          confirmButtonText: 'Yes, delete it!',
-          backdrop: 'rgba(0,0,0,0.5)',
-          allowOutsideClick: false,
-        })
-
-        if (result.isConfirmed) {
-<<<<<<< Updated upstream
-          await this.deleteMfo(mfo)
-=======
-          await deleteMfo(mfo);
->>>>>>> Stashed changes
-          await Swal.fire({
-            title: 'Deleted!',
-            text: 'MFO has been deleted.',
-            icon: 'success',
-            confirmButtonColor: '#00703C',
-            timer: 1500,
-            showConfirmButton: false,
-          })
-        } else if (modalWasOpen) {
-<<<<<<< Updated upstream
-          this.modal.show = true
-        }
-      } catch (error) {
-        console.error('Delete error:', error)
-        if (modalWasOpen) this.modal.show = true
-      }
-    },
-    async confirmDeleteOutput(output) {
-      const modalWasOpen = this.modal.show
-      this.modal.show = false
-=======
-          modal.show = true;
-        }
-      } catch (error) {
-        console.error('Delete error:', error);
-        if (modalWasOpen) modal.show = true;
-      }
-    };
-
-    const confirmDeleteOutput = async (output) => {
-      const modalWasOpen = modal.show;
-      modal.show = false;
->>>>>>> Stashed changes
-
-      try {
-        const result = await Swal.fire({
-          title: 'Confirm Delete',
-          text: 'Are you sure you want to delete this output?',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#d33',
-          cancelButtonColor: '#00703C',
-          confirmButtonText: 'Yes, delete it!',
-          allowOutsideClick: false,
-          focusConfirm: false,
-          backdrop: true,
-        })
-
-        if (result.isConfirmed) {
-<<<<<<< Updated upstream
-          await this.deleteOutput(output)
-        } else if (modalWasOpen) {
-          this.modal.show = true
-=======
-          await deleteOutput(output);
-        } else if (modalWasOpen) {
-          modal.show = true;
->>>>>>> Stashed changes
-        }
-      } catch (error) {
-        console.error('Delete confirmation error:', error)
-        if (modalWasOpen) {
-<<<<<<< Updated upstream
-          this.modal.show = true
-=======
-          modal.show = true;
->>>>>>> Stashed changes
-        }
-      }
-    };
-
-    const deleteMfo = async (mfo) => {
-      try {
-<<<<<<< Updated upstream
-        await api.delete(`/mfos/${mfo.id}`)
-        this.$q.notify({
-          type: 'positive',
-          message: 'MFO deleted successfully',
-          position: 'top',
-        })
-        await this.fetchData()
-      } catch (error) {
-        console.error('Delete error:', error)
-        this.$q.notify({
-          type: 'negative',
-          message: error.response?.data?.message || 'Failed to delete MFO',
-          position: 'top',
-        })
-=======
-        await mfoStore.deleteMfo(mfo.id);
-        Swal.fire({
-          icon: 'success',
-          title: 'Success',
-          text: 'MFO deleted successfully',
-          confirmButtonColor: '#00703C',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      } catch (error) {
-        console.error('Delete error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Failed to delete MFO',
-          confirmButtonColor: '#d33'
-        });
->>>>>>> Stashed changes
-      }
-    };
-
-    const deleteOutput = async (output) => {
-      try {
-<<<<<<< Updated upstream
-        await api.delete(`/outputs/${output.id}`)
-        this.$q.notify({
-          type: 'positive',
-          message: 'Output deleted successfully',
-          position: 'top',
-        })
-        await this.fetchData()
-      } catch (error) {
-        console.error('Delete output error:', error)
-        this.$q.notify({
-          type: 'negative',
-          message: error.response?.data?.message || 'Failed to delete output',
-          position: 'top',
-        })
-      }
-    },
-    closeModal() {
-      this.modal.show = false
-      this.resetForm()
-    },
-  },
-}
-=======
-        await mfoStore.deleteOutput(output.id);
-        Swal.fire({
-          icon: 'success',
-          title: 'Success',
-          text: 'Output deleted successfully',
-          confirmButtonColor: '#00703C',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      } catch (error) {
-        console.error('Delete output error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Failed to delete output',
-          confirmButtonColor: '#d33'
-        });
-      }
-    };
-
-    const closeModal = () => {
-      modal.show = false;
-      resetForm();
-    };
-
-    return {
-      // State
-      loading,
-      expandedMfos,
-      errors,
-      modal,
-      confirmDialog,
-      form,
-      touchedFields,
-      modalContent,
-
-      // Computed
-      user,
-      mfos,
-      outputs,
-      strategicMfos,
-      coreMfos,
-      supportOutputs,
-      categoryOptions,
-      isSupportCategory,
-      supportCategory,
-
-      // Methods
-      toggleMfoExpansion,
-      getOutputsForMfo,
-      validateField,
-      getInputLabel,
-      addNewItem,
-      removeItem,
-      openAddModal,
-      openAddOutputModal,
-      editMfo,
-      editOutput,
-      editSupport,
-      confirmSave,
-      proceedWithSave,
-      confirmDelete,
-      confirmDeleteOutput,
-      closeModal
-    };
+const userStore = useUserStore()
+const mfoStore = useMfoStore()
+const $q = useQuasar()
+
+const loading = ref(false)
+const expandedMfos = ref([])
+const errors = reactive({})
+const isProcessing = ref(false)
+
+// Modal state
+const modal = reactive({
+  show: false,
+  title: '',
+  mode: 'add',
+  loading: false
+})
+
+// Form state
+const form = reactive({
+  category: null,
+  parentMfo: null,
+  isOutput: false,
+  items: [{ name: '' }]
+})
+
+// Computed properties for categorized MFOs
+const strategicMfos = computed(() => userStore.mfos.filter(mfo => mfo.f_category_id === 1))
+const coreMfos = computed(() => userStore.mfos.filter(mfo => mfo.f_category_id === 2))
+const supportOutputs = computed(() => userStore.outputs.filter(output => output.f_category_id === 3 && !output.mfo_id))
+
+const getOutputsForMfo = (mfoId) => userStore.outputs.filter(output => output.mfo_id === mfoId)
+
+// Check if current category is support
+const isSupportCategory = computed(() => form.category?.id === 3)
+
+// Methods
+const loadUserData = async () => {
+  loading.value = true
+  try {
+    await userStore.loadUserData()
+  // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    $q.notify({ type: 'negative', message: 'Failed to load user data' })
+  } finally {
+    loading.value = false
   }
-};
->>>>>>> Stashed changes
+}
+
+onMounted(loadUserData)
+
+const toggleMfoExpansion = (mfoId) => {
+  const index = expandedMfos.value.indexOf(mfoId)
+  if (index > -1) {
+    expandedMfos.value.splice(index, 1)
+  } else {
+    expandedMfos.value.push(mfoId)
+  }
+}
+
+// Single confirmation dialog for Save
+const confirmSave = async () => {
+  if (isProcessing.value) return
+
+  // Validate form first
+  let hasErrors = false
+  Object.keys(errors).forEach(key => delete errors[key])
+
+  if (modal.mode === 'edit') {
+    if (!form.items[0].name.trim()) {
+      errors.name = true
+      hasErrors = true
+    }
+  } else {
+    form.items.forEach((item, index) => {
+      if (!item.name.trim()) {
+        errors[`item_${index}`] = true
+        hasErrors = true
+      }
+    })
+  }
+
+  if (hasErrors) {
+    $q.notify({
+      type: 'negative',
+      message: 'Please fill in all required fields',
+      position: 'top'
+    })
+    return
+  }
+
+  // Create confirmation message
+  let confirmationMessage = ''
+  let itemType = ''
+
+  if (modal.mode === 'edit') {
+    itemType = form.isOutput ? 'output' : 'MFO'
+    confirmationMessage = `Are you sure you want to update "${form.items[0].name}"?`
+  } else {
+    itemType = form.isOutput ? 'output' : 'MFO'
+    if (form.items.length === 1) {
+      confirmationMessage = `Are you sure you want to add "${form.items[0].name}"?`
+    } else {
+      const itemNames = form.items.map(item => item.name).join('", "')
+      confirmationMessage = `Are you sure you want to add the following ${itemType}s?<br><br><strong>"${itemNames}"</strong>`
+    }
+  }
+
+  // Set processing flag
+  isProcessing.value = true
+
+  // Temporarily hide the modal to show SweetAlert properly
+  const originalModalState = modal.show
+  modal.show = false
+
+  try {
+    // Small delay to ensure modal is hidden
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    const result = await Swal.fire({
+      title: `${modal.mode === 'edit' ? 'Update' : 'Add'} ${itemType.toUpperCase()}`,
+      html: confirmationMessage,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#00703c',
+      cancelButtonColor: '#d33',
+      confirmButtonText: `Confirm`,
+      cancelButtonText: 'Cancel',
+      allowOutsideClick: false,
+      allowEscapeKey: true
+    })
+
+    if (result.isConfirmed) {
+      await proceedWithSave()
+    } else {
+      // Restore modal if user cancels
+      modal.show = originalModalState
+      isProcessing.value = false
+    }
+  } catch (error) {
+    console.error('SweetAlert error:', error)
+    // Restore modal on error
+    modal.show = originalModalState
+    isProcessing.value = false
+  }
+}
+
+// Proceed with save after confirmation
+const proceedWithSave = async () => {
+  try {
+    modal.loading = true
+
+    let successMessage = ''
+
+    if (modal.mode === 'edit') {
+      // Edit mode - single item
+      const item = form.items[0]
+      const data = {
+        name: item.name,
+        office_id: userStore.officeId,
+        f_category_id: form.category.id
+      }
+
+      if (form.isOutput) {
+        // Update output
+        if (form.parentMfo) {
+          data.mfo_id = form.parentMfo.id
+        }
+        const response = await mfoStore.updateOutput(item.id, data)
+        if (response) {
+          successMessage = 'Output has been updated successfully.'
+        }
+      } else {
+        // Update MFO
+        const response = await mfoStore.updateMfo(item.id, data)
+        if (response) {
+          successMessage = 'MFO has been updated successfully.'
+        }
+      }
+    } else {
+      // Add mode - can be multiple items
+      const items = form.items.map(item => ({
+        name: item.name,
+        office_id: userStore.officeId,
+        f_category_id: form.category.id
+      }))
+
+      if (form.items.length === 1) {
+        // Single item
+        const data = items[0]
+
+        if (form.isOutput) {
+          if (form.parentMfo) {
+            data.mfo_id = form.parentMfo.id
+          }
+          const response = await mfoStore.addOutput(data)
+          if (response) {
+            successMessage = 'Output has been added successfully.'
+          }
+        } else {
+          const response = await mfoStore.addMfo(data)
+          if (response) {
+            successMessage = 'MFO has been added successfully.'
+          }
+        }
+      } else {
+        // Multiple items
+        const response = await mfoStore.addMultipleItems(
+          items,
+          form.isOutput,
+          form.parentMfo?.id
+        )
+        if (response) {
+          const itemTypeText = form.isOutput ? 'outputs' : 'MFOs'
+          successMessage = `${items.length} ${itemTypeText} have been added successfully.`
+        }
+      }
+    }
+
+    // Close modal first
+    closeModal()
+
+    // Reload user data to get updated MFOs/outputs
+    await loadUserData()
+
+    // Show success message only once after everything is complete
+    if (successMessage) {
+      await Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: successMessage,
+        confirmButtonColor: '#00703c',
+        timer: 2000,
+        timerProgressBar: true
+      })
+    }
+
+  } catch (error) {
+    console.error('Error saving:', error)
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Failed to save. Please try again.',
+      confirmButtonColor: '#00703c'
+    })
+    // Restore modal on error
+    modal.show = true
+  } finally {
+    modal.loading = false
+    isProcessing.value = false
+  }
+}
+
+// Delete functions - these keep their confirmation dialogs since they're called directly
+const confirmDelete = async (mfo) => {
+  try {
+    const result = await mfoStore.deleteMfo(mfo.id, mfo.name)
+    if (result) {
+      await loadUserData()
+    }
+  // eslint-disable-next-line no-unused-vars
+  } catch (error) {
+    // Error handling is done in the store
+  }
+}
+
+const confirmDeleteOutput = async (output) => {
+  try {
+    const result = await mfoStore.deleteOutput(output.id, output.name)
+    if (result) {
+      await loadUserData()
+    }
+  // eslint-disable-next-line no-unused-vars
+  } catch (error) {
+    // Error handling is done in the store
+  }
+}
+
+// Rest of your existing methods remain the same...
+const openAddModal = (categoryType) => {
+  Object.assign(form, {
+    category: getCategoryByType(categoryType),
+    parentMfo: null,
+    isOutput: categoryType === 'support',
+    items: [{ name: '' }]
+  })
+
+  modal.show = true
+  modal.mode = 'add'
+  modal.title = `Add ${getModalTitle(categoryType)}`
+
+  Object.keys(errors).forEach(key => delete errors[key])
+}
+
+const openAddOutputModal = (mfo, categoryType) => {
+  Object.assign(form, {
+    category: getCategoryByType(categoryType),
+    parentMfo: mfo,
+    isOutput: true,
+    items: [{ name: '' }]
+  })
+
+  modal.show = true
+  modal.mode = 'add'
+  modal.title = 'Add Output'
+
+  Object.keys(errors).forEach(key => delete errors[key])
+}
+
+const editMfo = (mfo, categoryType) => {
+  Object.assign(form, {
+    category: getCategoryByType(categoryType),
+    parentMfo: null,
+    isOutput: false,
+    items: [{ name: mfo.name, id: mfo.id }]
+  })
+
+  modal.show = true
+  modal.mode = 'edit'
+  modal.title = 'Edit MFO'
+
+  Object.keys(errors).forEach(key => delete errors[key])
+}
+
+const editOutput = (output, mfo, categoryType) => {
+  Object.assign(form, {
+    category: getCategoryByType(categoryType),
+    parentMfo: mfo,
+    isOutput: true,
+    items: [{ name: output.name, id: output.id }]
+  })
+
+  modal.show = true
+  modal.mode = 'edit'
+  modal.title = 'Edit Output'
+
+  Object.keys(errors).forEach(key => delete errors[key])
+}
+
+const editSupport = (output) => {
+  Object.assign(form, {
+    category: { id: 3, name: 'C. SUPPORT FUNCTION' },
+    parentMfo: null,
+    isOutput: true,
+    items: [{ name: output.name, id: output.id }]
+  })
+
+  modal.show = true
+  modal.mode = 'edit'
+  modal.title = 'Edit Support Output'
+
+  Object.keys(errors).forEach(key => delete errors[key])
+}
+
+const getCategoryByType = (categoryType) => {
+  const categories = {
+    strategic: { id: 1, name: 'A. STRATEGIC FUNCTION' },
+    core: { id: 2, name: 'B. CORE FUNCTION' },
+    support: { id: 3, name: 'C. SUPPORT FUNCTION' }
+  }
+  return categories[categoryType]
+}
+
+const getModalTitle = (categoryType) => {
+  const titles = {
+    strategic: 'Strategic MFO',
+    core: 'Core MFO',
+    support: 'Support Output'
+  }
+  return titles[categoryType]
+}
+
+// eslint-disable-next-line no-unused-vars
+const getInputLabel = (index) => {
+  const baseLabel = form.isOutput
+    ? (isSupportCategory.value ? 'Name' : 'Output')
+    : 'Name'
+  return `${baseLabel} `
+} // ${index + 1}
+
+const addNewItem = () => {
+  form.items.push({ name: '' })
+}
+
+const removeItem = (index) => {
+  if (form.items.length > 1) {
+    form.items.splice(index, 1)
+  }
+}
+
+const closeModal = () => {
+  modal.show = false
+  Object.keys(errors).forEach(key => delete errors[key])
+}
+
+onMounted(() => {
+  loadUserData()
+})
 </script>
 
 <style scoped>
+.full-page-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+
+.loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* Your existing styles remain the same */
 .mfo-table {
   border-collapse: collapse;
   width: 100%;
@@ -1854,7 +944,7 @@ export default {
 }
 
 .mfo-name {
-  font-weight: bold;
+   margin-top:13px;
   word-break: break-word;
 }
 
@@ -1871,9 +961,10 @@ export default {
 }
 
 .output-name {
-  font-weight: bold;
+  /* font-weight: bold; */
   word-break: break-word;
   flex-grow: 1;
+  margin-top: 15px;
 }
 
 .mfo-actions {
@@ -1922,29 +1013,36 @@ export default {
   border-top: 1px solid #e0e0e0;
 }
 
-.modern-input {
-  :deep(.q-field__control) {
-    border-radius: 6px;
-    transition: all 0.3s ease;
-  }
+/* .modern-input {
 
-  :deep(.q-field__control:hover) {
-    border-color: #a0c0e8;
-  }
+} */
 
-  :deep(.q-field--focused .q-field__control) {
-    border-color: #1976d2;
-    box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.2);
-  }
+.modern-input ::v-deep(.q-field__control) {
+  border-radius: 6px;
+  transition: all 0.3s ease;
 
-  :deep(.q-field--error .q-field__control) {
-    border-color: #f44336;
-    box-shadow: 0 0 0 1px rgba(244, 67, 54, 0.2);
-  }
+}
 
-  :deep(.q-field__native) {
-    font-size: 0.95rem;
-  }
+.modern-input ::v-deep(.q-field__control:hover) {
+  border-color: #a0c0e8;
+
+}
+
+.modern-input ::v-deep(.q-field--focused .q-field__control) {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.2);
+
+}
+
+.modern-input ::v-deep(.q-field--error .q-field__control) {
+  border-color: #f44336;
+  box-shadow: 0 0 0 1px rgba(244, 67, 54, 0.2);
+
+}
+
+.modern-input ::v-deep(.q-field__native) {
+  font-size: 0.95rem;
+
 }
 
 .shake-animation {
@@ -1964,15 +1062,6 @@ export default {
 .output-list {
   margin-top: 8px;
   margin-bottom: 8px;
-}
-
-.confirmation-list {
-  margin-left: 20px;
-  margin-top: 8px;
-}
-
-.confirmation-list li {
-  margin-bottom: 4px;
 }
 
 @keyframes shake {
@@ -2040,5 +1129,8 @@ export default {
     margin-left: 0;
     margin-top: 8px;
   }
+}
+.text-subtitle2{
+  font-size: large;
 }
 </style>

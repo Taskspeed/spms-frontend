@@ -1,134 +1,247 @@
-import { defineStore } from 'pinia';
-import { api } from 'src/boot/axios';
-import { ref } from 'vue';
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import { api } from 'src/boot/axios'
+import Swal from 'sweetalert2'
 
 export const useMfoStore = defineStore('mfoStore', () => {
   // State
-  const mfos = ref([]);
-  const outputs = ref([]);
-  const categories = ref([]);
-  const loading = ref(false);
+  const loading = ref(false)
+  const error = ref(null)
 
-  // Actions
-  async function fetchData(officeId) {
-    loading.value = true;
+  // Helper function to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token')
+    return { Authorization: `Bearer ${token}` }
+  }
+
+  // Helper function to handle API errors
+  const handleError = (error, action) => {
+    console.error(`Error ${action}:`, error)
+    const message = error.response?.data?.message || `Failed to ${action}`
+
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: message,
+      confirmButtonColor: '#00703c'
+    })
+
+    throw error
+  }
+
+  // Add MFO function (without confirmation - handled in component)
+  const addMfo = async (mfoData) => {
     try {
-      // Fetch categories first
-      const categoriesResponse = await api.get('/fetch_f_category');
-      categories.value = categoriesResponse.data;
+      loading.value = true
+      error.value = null
 
-      // Fetch MFOs
-      const mfosResponse = await api.get('/allMfos', {
-        params: { office_id: officeId }
-      });
+      const response = await api.post('/add_mfo', mfoData, {
+        headers: getAuthHeaders()
+      })
 
-      mfos.value = mfosResponse.data.map(mfo => ({
-        ...mfo,
-        category: categories.value.find(c => c.id === mfo.f_category_id)
-      }));
-
-      // Fetch outputs
-      const outputsResponse = await api.get('/allOutputs', {
-        params: { office_id: officeId }
-      });
-
-      outputs.value = outputsResponse.data.map(output => ({
-        ...output,
-        category: categories.value.find(c => c.id === output.f_category_id),
-        mfo: mfos.value.find(m => m.id === output.mfo_id)
-      }));
+      return response.data
     } catch (error) {
-      console.error('Error fetching data:', error);
-      throw error;
+      handleError(error, 'add MFO')
     } finally {
-      loading.value = false;
+      loading.value = false
     }
   }
 
-  async function addMfos(officeId, mfoNames, categoryId) {
+  // Update MFO function (without confirmation - handled in component)
+  const updateMfo = async (mfoId, mfoData) => {
     try {
-      const promises = mfoNames.map(name => {
-        return api.post('/add_mfo', {
-          office_id: officeId,
-          name: name,
-          f_category_id: categoryId
-        });
-      });
+      loading.value = true
+      error.value = null
 
-      await Promise.all(promises);
+      const response = await api.post(`/mfos/${mfoId}`, mfoData, {
+        headers: getAuthHeaders()
+      })
+
+      return response.data
     } catch (error) {
-      console.error('Error adding MFOs:', error);
-      throw error;
+      handleError(error, 'update MFO')
+    } finally {
+      loading.value = false
     }
   }
 
-  async function updateMfo(mfoId, officeId, name, categoryId) {
+  // Delete MFO function (with confirmation - called directly from component)
+  const deleteMfo = async (mfoId, mfoName) => {
     try {
-      await api.post(`/mfos/${mfoId}`, {
-        office_id: officeId,
-        name: name,
-        f_category_id: categoryId
-      });
+      loading.value = true
+      error.value = null
+
+      // Show confirmation dialog with warning
+      const result = await Swal.fire({
+        title: 'Delete MFO',
+        html: `
+          <p>Are you sure you want to delete <strong>"${mfoName}"</strong>?</p>
+          <p class="text-red-600"><small>This action cannot be undone and will also delete all associated outputs.</small></p>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        focusCancel: true
+      })
+
+      if (!result.isConfirmed) {
+        return null
+      }
+
+      const response = await api.delete(`/mfos/${mfoId}`, {
+        headers: getAuthHeaders()
+      })
+
+      // Show success message
+      await Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: 'MFO has been deleted successfully.',
+        confirmButtonColor: '#00703c',
+        timer: 2000,
+        timerProgressBar: true
+      })
+
+      return response.data
     } catch (error) {
-      console.error('Error updating MFO:', error);
-      throw error;
+      handleError(error, 'delete MFO')
+    } finally {
+      loading.value = false
     }
   }
 
-  async function deleteMfo(mfoId) {
+  // Add Output function (without confirmation - handled in component)
+  const addOutput = async (outputData) => {
     try {
-      await api.delete(`/mfos/${mfoId}`);
+      loading.value = true
+      error.value = null
+
+      const response = await api.post('/add_output', outputData, {
+        headers: getAuthHeaders()
+      })
+
+      return response.data
     } catch (error) {
-      console.error('Error deleting MFO:', error);
-      throw error;
+      handleError(error, 'add output')
+    } finally {
+      loading.value = false
     }
   }
 
-  async function addOutputs(outputsData) {
+  // Update Output function (without confirmation - handled in component)
+  const updateOutput = async (outputId, outputData) => {
     try {
-      const promises = outputsData.map(output => {
-        return api.post('/add_output', output);
-      });
+      loading.value = true
+      error.value = null
 
-      await Promise.all(promises);
+      const response = await api.post(`/outputs/${outputId}`, outputData, {
+        headers: getAuthHeaders()
+      })
+
+      return response.data
     } catch (error) {
-      console.error('Error adding outputs:', error);
-      throw error;
+      handleError(error, 'update output')
+    } finally {
+      loading.value = false
     }
   }
 
-  async function updateOutput(outputId, outputData) {
+  // Delete Output function (with confirmation - called directly from component)
+  const deleteOutput = async (outputId, outputName) => {
     try {
-      await api.post(`/outputs/${outputId}`, outputData);
+      loading.value = true
+      error.value = null
+
+      // Show confirmation dialog
+      const result = await Swal.fire({
+        title: 'Delete Output',
+        html: `
+          <p>Are you sure you want to delete <strong>"${outputName}"</strong>?</p>
+          <p class="text-red-600"><small>This action cannot be undone.</small></p>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        focusCancel: true
+      })
+
+      if (!result.isConfirmed) {
+        return null
+      }
+
+      const response = await api.delete(`/outputs/${outputId}`, {
+        headers: getAuthHeaders()
+      })
+
+      // Show success message
+      await Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: 'Output has been deleted successfully.',
+        confirmButtonColor: '#00703c',
+        timer: 2000,
+        timerProgressBar: true
+      })
+
+      return response.data
     } catch (error) {
-      console.error('Error updating output:', error);
-      throw error;
+      handleError(error, 'delete output')
+    } finally {
+      loading.value = false
     }
   }
 
-  async function deleteOutput(outputId) {
+  // Batch add function for multiple items (without confirmation - handled in component)
+  const addMultipleItems = async (items, isOutput = false, parentMfoId = null) => {
     try {
-      await api.delete(`/outputs/${outputId}`);
+      loading.value = true
+      error.value = null
+
+      const promises = items.map(item => {
+        const data = {
+          ...item,
+          office_id: item.office_id,
+          f_category_id: item.f_category_id
+        }
+
+        if (isOutput && parentMfoId) {
+          data.mfo_id = parentMfoId
+        }
+
+        const endpoint = isOutput ? '/add_output' : '/add_mfo'
+        return api.post(endpoint, data, {
+          headers: getAuthHeaders()
+        })
+      })
+
+      const responses = await Promise.all(promises)
+
+      return responses.map(response => response.data)
     } catch (error) {
-      console.error('Error deleting output:', error);
-      throw error;
+      handleError(error, `add multiple ${isOutput ? 'outputs' : 'MFOs'}`)
+    } finally {
+      loading.value = false
     }
   }
 
   return {
     // State
-    mfos,
-    outputs,
-    categories,
     loading,
+    error,
 
     // Actions
-    fetchData,
-    addMfos,
+    addMfo,
     updateMfo,
     deleteMfo,
-    addOutputs,
+    addOutput,
     updateOutput,
-    deleteOutput
-  };
-});
+    deleteOutput,
+    addMultipleItems
+  }
+})
