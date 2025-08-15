@@ -127,7 +127,7 @@ export const routes = [
         meta: { role: 'office-admin' },
       },
       {
-        path: 'office/profile',
+        path: 'office/account',
         component: officeProfile,
         meta: { role: 'office-admin' },
       },
@@ -136,7 +136,7 @@ export const routes = [
         component: rating,
         meta: { role: 'office-admin' },
       },
-      
+
       // Planning Admin Routes
       {
         path: 'planning/dashboard',

@@ -13,12 +13,12 @@ export const useOrganizationStore = defineStore('organization', {
   }),
 
   actions: {
-    
+
     async fetchStructure() {
       this.loading = true;
       try {
         const { officeId } = useUserStore();
-        const { data: structureData } = await api.get('Spms/office/structure', { params: { office_id: officeId } });
+        const { data: structureData } = await api.get('/spms/office/structure', { params: { office_id: officeId } });
         if (structureData?.length) {
           this.officeName = structureData[0].office;
           const { data: { data: employees = [] } } = await api.get('Spms/fetch_employees', { params: { office_id: officeId } });

@@ -35,10 +35,22 @@ export const useUserStore = defineStore('user', () => {
     })
     return grouped
   })
-  async function loadUserData() {
+
+  // Helper function to handle unauthenticated errors
+  function handleUnauthenticated(router) {
+    clearUser()
+    if (router) {
+      router.push('/login')
+    }
+  }
+
+  async function loadUserData(router = null) {
     const token = localStorage.getItem('token')
     if (!token) {
       console.log('No token found')
+      if (router) {
+        router.push('/login')
+      }
       return
     }
 
@@ -48,6 +60,13 @@ export const useUserStore = defineStore('user', () => {
       })
 
       const data = response.data
+
+      // Check for unauthenticated message
+      if (data.message === "Unauthenticated.") {
+        console.log('User is unauthenticated, redirecting to login')
+        handleUnauthenticated(router)
+        return
+      }
 
       user.value = data.user
       officeId.value = data.user.office_id
@@ -96,25 +115,47 @@ export const useUserStore = defineStore('user', () => {
       categories.value = allCategories
       outputs.value = allOutputs
 
-      // Optionally: console.log({mfos: allMfos, outputs: allOutputs, categories: allCategories})
-
     } catch (error) {
       console.error('Failed to load user data:', error)
+
+      // Check if the error response contains the unauthenticated message
+      if (error.response?.data?.message === "Unauthenticated." ||
+          error.response?.status === 401) {
+        console.log('Authentication error, redirecting to login')
+        handleUnauthenticated(router)
+        return
+      }
+
       throw error
     }
   }
 
-
-  async function updateUserCredentials(updatedData) {
+  async function updateUserCredentials(updatedData, router = null) {
     const token = localStorage.getItem('token')
     if (!token) return
+
     try {
       const response = await api.post(`/user/update/credentials/{id}`, updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       })
+
+      // Check for unauthenticated message
+      if (response.data.message === "Unauthenticated.") {
+        handleUnauthenticated(router)
+        return
+      }
+
       return response.data
     } catch (error) {
       console.error('Failed to update user credentials:', error)
+
+      // Check if the error response contains the unauthenticated message
+      if (error.response?.data?.message === "Unauthenticated." ||
+          error.response?.status === 401) {
+        handleUnauthenticated(router)
+        return
+      }
+
       throw error
     }
   }
@@ -122,6 +163,7 @@ export const useUserStore = defineStore('user', () => {
   async function logout(router) {
     const token = localStorage.getItem('token')
     if (!token) return
+
     try {
       await api.post('/user_logout', {}, { headers: { Authorization: `Bearer ${token}` } })
       clearUser()
@@ -163,5 +205,6 @@ export const useUserStore = defineStore('user', () => {
     logout,
     setUser,
     clearUser,
+    handleUnauthenticated,
   }
 })
