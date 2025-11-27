@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-px-md q-pb-md">
+  <q-page class="q-pa-md">
     <!-- Main table view -->
     <div v-if="!showDetails">
       <h6 class="text-h6 q-mb-md">Ratings</h6>

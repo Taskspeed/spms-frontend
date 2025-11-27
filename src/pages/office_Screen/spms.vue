@@ -42,10 +42,7 @@
                       />
                       <div class="column tree-label full-width">
                         <div class="row items-center">
-                          <div
-                            :class="{ 'text-weight-bold': scope.node.isHead }"
-                            class="node-label"
-                          >
+                          <div class="node-label">
                             {{ scope.node.label }}
                           </div>
                           <q-badge
@@ -70,19 +67,24 @@
             <q-card flat bordered>
               <q-card-section>
                 <div class="row items-center justify-between q-mb-md" v-if="selectedNode">
-                  <div class="text-h6 office-title">{{ selectedNode.label }}</div>
+                  <div class="office-title">{{ selectedNode.label }}</div>
                   <div class="row q-gutter-sm button-container">
                     <q-btn
                       class="neu-button-rect"
                       flat
+                      size="sm"
                       color="green"
                       icon="person_add"
                       label="Create UWP"
                       @click="createUnitWorkPlan"
-                    />
+                    >
+                      <q-tooltip>Create Unit Work Plan</q-tooltip>
+                    </q-btn>
+
                     <q-btn
                       class="neu-button-rect"
                       flat
+                      size="sm"
                       color="primary"
                       label="Preview UWP"
                       icon="print"
@@ -123,7 +125,7 @@
                             class="q-mr-sm flex-shrink-0"
                           />
                           <div class="employee-info full-width">
-                            <div :class="{ 'text-weight-bold': props.row.isHead }">
+                            <div>
                               {{ props.row.label }}
                             </div>
                             <div class="text-caption text-grey-7">{{ props.row.position }}</div>
@@ -158,7 +160,7 @@
                           >
                             <q-tooltip>IPCR</q-tooltip>
                           </q-btn>
-                          <q-btn
+                          <!-- <q-btn
                             class="neu-button"
                             flat
                             round
@@ -168,7 +170,7 @@
                             @click="unitWorkPlanEmployee(props.row)"
                           >
                             <q-tooltip>Unit Work Plan</q-tooltip>
-                          </q-btn>
+                          </q-btn> -->
                           <q-btn
                             class="neu-button"
                             flat
@@ -196,7 +198,7 @@
                     </q-tr>
                   </template>
                   <template v-slot:no-data>
-                    <div class="text-center q-pa-md">
+                    <div class="text-center q-pa-md col-12">
                       <q-icon name="error_outline" size="2rem" color="grey" />
                       <div class="text-grey-7 q-mt-sm">
                         No employees found in this {{ selectedNode?.type || 'node' }}
@@ -247,7 +249,6 @@ import unitWorkplan_report from 'src/components/unitworkplant_Report.vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import ipcr_Report from 'src/components/ipcr_Report.vue'
-
 const $q = useQuasar(),
   orgStore = useOrganizationStore(),
   userStore = useUserStore(),
@@ -265,7 +266,7 @@ const show_ipcr_ModalOpen = ref(false)
 const columns = ref([
   { name: 'name', align: 'left', label: 'Name', field: 'label', sortable: true },
   { name: 'rank', align: 'left', label: 'Rank', field: 'rank', sortable: true },
-  { name: 'ipcr_status', align: 'left', label: 'IPCR Status', field: 'ipcrStatus', sortable: true },
+  { name: 'ipcr_status', align: 'left', label: 'Status', field: 'ipcrStatus', sortable: true },
   { name: 'actions', align: 'center', label: 'Actions', field: 'actions' },
 ])
 const organizationTree = computed(() => orgStore.structure)
@@ -394,15 +395,15 @@ const createUnitWorkPlan = () => {
   router.push({ name: 'unitworkplan', query: { type, id: selectedNode.value.id } })
 }
 
-const unitWorkPlanEmployee = (employee) =>
-  router.push({
-    name: 'unitworkplan',
-    query: {
-      type: 'employee',
-      id: employee.employeeData?.id || employee.id.replace('emp_', ''),
-      name: employee.label,
-    },
-  })
+// const unitWorkPlanEmployee = (employee) =>
+//   router.push({
+//     name: 'unitworkplan',
+//     query: {
+//       type: 'employee',
+//       id: employee.employeeData?.id || employee.id.replace('emp_', ''),
+//       name: employee.label,
+//     },
+//   })
 const editEmployee = (employee) =>
   router.push({
     name: 'employee-edit',
@@ -525,7 +526,7 @@ onMounted(async () => {
 
 /* New styles for the office title and button container */
 .office-title {
-  font-size: 1.1rem; /* Reduced from text-h6 default size */
+  font-size: 12pt; /* Reduced from text-h6 default size */
   max-width: 50%; /* Limit width of the title */
   overflow: hidden;
   text-overflow: ellipsis;

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-px-md q-pb-md">
     <div class="q-mb-md">
-      <h6 class="text-h6 q-mb-md">Major Final Outputs (MFO)</h6>
+      <div class="text-subtitle q-mb-md q-mt-xl text-grey-7">Major Final Outputs (MFO)</div>
       <q-separator class="q-mt-sm" />
     </div>
 
@@ -11,7 +11,7 @@
     </div>
 
     <!-- Table inside a responsive card -->
-    <q-card flat bordered class="full-width shadow-1">
+    <q-card v-else flat bordered class="full-width shadow-1">
       <table class="mfo-table full-width">
         <thead>
           <tr>
@@ -80,7 +80,7 @@
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
                       <div class="mfo-number">{{ `MFO ${index + 1}.` }}</div>
-                      <strong class="mfo-name">{{ mfo.name }}</strong>
+                      <span class="mfo-name">{{ mfo.name }}</span>
                     </div>
                     <div class="mfo-actions">
                       <q-btn
@@ -140,7 +140,7 @@
                       <div class="row justify-center q-mt-sm">
                         <q-btn
                           label="Add Output"
-                          size="xs"
+                          size="sm"
                           dense
                           color="primary"
                           @click="openAddOutputModal(mfo, 'strategic')"
@@ -384,11 +384,11 @@
             label="Add Another"
             flat
             dense
-            color="primary"
+            color="green-7"
             @click="addNewItem"
             class="q-mr-sm"
           />
-          <q-btn label="Save" color="primary" @click="confirmSave" :loading="modal.loading" />
+          <q-btn label="Save" color="green-7" @click="confirmSave" :loading="modal.loading" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1216,7 +1216,6 @@ export default {
 }
 
 .mfo-name {
-  font-weight: bold;
   word-break: break-word;
 }
 

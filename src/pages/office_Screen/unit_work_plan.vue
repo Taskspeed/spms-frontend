@@ -3,7 +3,7 @@
     <!-- Top Header Row -->
     <div class="row items-center justify-between q-mb-md">
       <!-- Back Button -->
-      <q-btn flat dense icon="arrow_back" label="Back" color="grey-8" @click="$emit('back')" />
+      <q-btn flat dense icon="arrow_back" label="Back" color="grey-8" @click="onBack" />
 
       <!-- Title and Subtitle -->
       <div class="column items-end">
@@ -514,7 +514,7 @@
                                     v-model="standard.indicatorName"
                                     label="Performance Indicator"
                                     dense
-                                    class="full-width"
+                                    class="full-width q-pt-sm"
                                     @update:model-value="generateSuccessIndicator(index)"
                                   >
                                     <template v-slot:prepend>
@@ -986,7 +986,7 @@
     </q-dialog>
 
     <div class="row justify-end q-mt-sm">
-      <q-btn label="Cancel" color="grey" flat dense class="q-mr-sm" @click="onCancel" />
+      <q-btn label="Cancel" color="grey" flat dense class="q-mr-sm" @click="onBack" />
       <q-btn label="Submit" color="green-7" icon="save" @click="onSubmit" :disable="!isFormValid" />
     </div>
   </q-page>
@@ -994,12 +994,25 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
+
 import { useQuasar } from 'quasar'
-import { v4 as uuidv4 } from 'uuid' // You might need to install this dependency
+import { v4 as uuidv4 } from 'uuid'
 
 export default {
   setup() {
     const $q = useQuasar()
+
+    const onBack = () => {
+      // Emit the event to the parent
+      // emit('back')
+      if (window && window.history && window.history.length > 1) {
+        window.history.back()
+      }
+      // Or if you use vue-router:
+      // import { useRouter } from 'vue-router'
+      // const router = useRouter()
+      // router.back()
+    }
 
     // Configuration for visible tabs
     const maxVisibleTabs = ref(3) // Number of tabs to show before using the overflow menu
@@ -2059,6 +2072,8 @@ export default {
       onQuantityUpdate,
       onTimelinessUpdate,
       onEffectivenessUpdate,
+
+      onBack,
     }
   },
 }

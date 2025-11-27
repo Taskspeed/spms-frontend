@@ -171,7 +171,7 @@ export default {
         return !!this.selectedDate
       }
       if (this.step === 2) {
-        return !!this.title // Require at least a title to continue
+        return !!this.title 
       }
       return true
     },

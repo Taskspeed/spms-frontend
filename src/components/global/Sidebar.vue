@@ -155,6 +155,7 @@ export default {
         3: [
           { label: 'Dashboard', icon: 'dashboard', route: '/hr/dashboard' },
           { label: 'SPMS', icon: 'event_note', route: '/hr/spms' },
+          { label: 'Library', icon: 'fact_check', route: '/hr/library' },
           {
             label: 'Account',
             icon: 'person',

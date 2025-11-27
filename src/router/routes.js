@@ -4,8 +4,9 @@ import AdminLayout from 'src/layouts/MainLayout.vue'
 import Login from 'src/pages/Auth/LoginPage.vue'
 
 // HR Admin Pages
-import hrDashboard from 'src/pages/hr_Screen/dashboard.vue'
+import hrDashboard from 'src/pages/hr_Screen/HRdashboard.vue'
 import hrSpms from 'src/pages/hr_Screen/spms.vue'
+import hrlibrary from 'src/pages/hr_Screen/LibraryPage.vue'
 import opcr from 'src/pages/hr_Screen/opcr.vue'
 import ipcr from 'src/pages/hr_Screen/ipcr.vue'
 import user from 'src/pages/hr_Screen/user.vue'
@@ -71,6 +72,11 @@ export const routes = [
       {
         path: 'hr/spms',
         component: hrSpms,
+        meta: { role: 'hr-admin' },
+      },
+      {
+        path: 'hr/library',
+        component: hrlibrary,
         meta: { role: 'hr-admin' },
       },
       {
