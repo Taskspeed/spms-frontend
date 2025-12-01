@@ -1,96 +1,210 @@
-//UserStore.js
 import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 import { api } from 'src/boot/axios'
 
-export const useUserStore = defineStore('user', {
-  state: () => ({
-    user: null,
-    mfos: [],
-    categories: [],
-    officeId: null,
-  }),
+export const useUserStore = defineStore('user', () => {
+  // --- State ---
+  const user = ref(null)
+  const mfos = ref([])
+  const categories = ref([])
+  const officeId = ref(null)
+  // Add support for outputs if needed
+  const outputs = ref([])
 
-  getters: {
-    role: (state) => {
-      if (!state.user) return null
-      const roleMap = {
-        3: 'hr-admin',
-        1: 'office-admin',
-        2: 'planning-admin',
+  // --- Getters (computed) ---
+  const role = computed(() => {
+    if (!user.value) return null
+    const roleMap = {
+      3: 'hr-admin',
+      1: 'office-admin',
+      2: 'planning-admin',
+    }
+    return roleMap[user.value.role_id] || null
+  })
+
+  const officeName = computed(() => user.value?.office?.name || 'Unknown Office')
+
+  const groupedMfos = computed(() => {
+    const grouped = {}
+    mfos.value.forEach((mfo) => {
+      const categoryName = mfo.category?.name || 'Uncategorized'
+      if (!grouped[categoryName]) {
+        grouped[categoryName] = []
       }
-      return roleMap[state.user.role_id] || null
-    },
-    officeName: (state) => state.user?.office?.name || 'Unknown Office',
-    groupedMfos: (state) => {
-      const grouped = {}
-      state.mfos.forEach((mfo) => {
-        const categoryName = mfo.category?.name || 'Uncategorized'
-        if (!grouped[categoryName]) {
-          grouped[categoryName] = []
-        }
-        grouped[categoryName].push(mfo)
+      grouped[categoryName].push(mfo)
+    })
+    return grouped
+  })
+
+  // Helper function to handle unauthenticated errors
+  function handleUnauthenticated(router) {
+    clearUser()
+    if (router) {
+      router.push('/login')
+    }
+  }
+
+  async function loadUserData(router = null) {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.log('No token found')
+      if (router) {
+        router.push('/login')
+      }
+      return
+    }
+
+    try {
+      const response = await api.get('/user_data', {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      return grouped
-    },
-  },
 
-  actions: {
-    async loadUserData() {
-      const token = localStorage.getItem('token')
-      if (!token) return
-      try {
-        const response = await api.get('/user_data', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        this.user = response.data.user
-        this.mfos = response.data.mfos
-        this.categories = [
-          ...new Map(this.mfos.map((mfo) => [mfo.category?.id, mfo.category])).values(),
-        ]
-        this.officeId = response.data.user.office_id // Add this line
-      } catch (error) {
-        console.error('Failed to load user data:', error)
+      const data = response.data
+
+      // Check for unauthenticated message
+      if (data.message === "Unauthenticated.") {
+        console.log('User is unauthenticated, redirecting to login')
+        handleUnauthenticated(router)
+        return
       }
-    },
 
-    async updateUserCredentials(updatedData) {
-      const token = localStorage.getItem('token')
-      if (!token) return
-      try {
-        const response = await api.post(`/user/update/credentials/{id}`, updatedData, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        return response.data
-      } catch (error) {
-        console.error('Failed to update user credentials:', error)
-        throw error
+      user.value = data.user
+      officeId.value = data.user.office_id
+
+      // Flatten all MFOs across categories
+      let allMfos = []
+      let allOutputs = []
+      let allCategories = []
+
+      for (const cat of data.categories) {
+        // Attach category info to each MFO for easier filtering later
+        if (cat.mfos && cat.mfos.length) {
+          for (const mfo of cat.mfos) {
+            allMfos.push({
+              ...mfo,
+              f_category_id: cat.id,
+              category: { id: cat.id, name: cat.name },
+            })
+            // Each output gets its category, mfo_id, etc.
+            if (Array.isArray(mfo.outpots)) {
+              for (const output of mfo.outpots) {
+                allOutputs.push({
+                  ...output,
+                  mfo_id: mfo.id,
+                  f_category_id: cat.id,
+                })
+              }
+            }
+          }
+        }
+        // Category outputs are outputs not attached to any MFO
+        if (cat.category_outputs && cat.category_outputs.length) {
+          for (const output of cat.category_outputs) {
+            allOutputs.push({
+              ...output,
+              mfo_id: null,
+              f_category_id: cat.id,
+            })
+          }
+        }
+
+        allCategories.push({ id: cat.id, name: cat.name })
       }
-    },
-    async logout(router) {
-      const token = localStorage.getItem('token')
-      if (!token) return
-      try {
-        await api.post('/user_logout', {}, { headers: { Authorization: `Bearer ${token}` } })
-        this.clearUser()
-        router.push('/login')
-      } catch (error) {
-        console.error('Logout failed:', error)
-        this.clearUser()
-        router.push('/login')
+
+      mfos.value = allMfos
+      categories.value = allCategories
+      outputs.value = allOutputs
+
+    } catch (error) {
+      console.error('Failed to load user data:', error)
+
+      // Check if the error response contains the unauthenticated message
+      if (error.response?.data?.message === "Unauthenticated." ||
+          error.response?.status === 401) {
+        console.log('Authentication error, redirecting to login')
+        handleUnauthenticated(router)
+        return
       }
-    },
 
-    setUser(user) {
-      this.user = user
-      localStorage.setItem('user', JSON.stringify(user))
-    },
+      throw error
+    }
+  }
 
-    clearUser() {
-      this.user = null
-      this.mfos = []
-      this.categories = []
-      localStorage.removeItem('user')
-      localStorage.removeItem('token')
-    },
-  },
+  async function updateUserCredentials(updatedData, router = null) {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    try {
+      const response = await api.post(`/user/update/credentials/{id}`, updatedData, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      // Check for unauthenticated message
+      if (response.data.message === "Unauthenticated.") {
+        handleUnauthenticated(router)
+        return
+      }
+
+      return response.data
+    } catch (error) {
+      console.error('Failed to update user credentials:', error)
+
+      // Check if the error response contains the unauthenticated message
+      if (error.response?.data?.message === "Unauthenticated." ||
+          error.response?.status === 401) {
+        handleUnauthenticated(router)
+        return
+      }
+
+      throw error
+    }
+  }
+
+  async function logout(router) {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    try {
+      await api.post('/user_logout', {}, { headers: { Authorization: `Bearer ${token}` } })
+      clearUser()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      clearUser()
+      router.push('/login')
+    }
+  }
+
+  function setUser(newUser) {
+    user.value = newUser
+    localStorage.setItem('user', JSON.stringify(newUser))
+  }
+
+  function clearUser() {
+    user.value = null
+    mfos.value = []
+    categories.value = []
+    outputs.value = []
+    officeId.value = null
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+  }
+
+  // Return state, getters, actions for the store
+  return {
+    user,
+    mfos,
+    categories,
+    outputs,
+    officeId,
+    role,
+    officeName,
+    groupedMfos,
+    loadUserData,
+    updateUserCredentials,
+    logout,
+    setUser,
+    clearUser,
+    handleUnauthenticated,
+  }
 })

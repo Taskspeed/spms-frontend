@@ -413,7 +413,11 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+<<<<<<< HEAD
 import { useOpcrStore } from 'src/stores/office/opcrStore'
+=======
+import { useOpcrStore } from 'src/stores/office/opcr_Store'
+>>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
 import { useUserStore } from 'src/stores/userStore'
 
 export default {

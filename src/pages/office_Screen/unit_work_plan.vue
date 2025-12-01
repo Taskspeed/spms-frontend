@@ -3,7 +3,11 @@
     <!-- Top Header Row -->
     <div class="row items-center justify-between q-mb-md">
       <!-- Back Button -->
+<<<<<<< HEAD
       <q-btn flat dense icon="arrow_back" label="Back" color="grey-8" @click="onBack" />
+=======
+      <q-btn flat dense icon="arrow_back" label="Back" color="grey-8" @click="$emit('back')" />
+>>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
 
       <!-- Title and Subtitle -->
       <div class="column items-end">
@@ -514,7 +518,11 @@
                                     v-model="standard.indicatorName"
                                     label="Performance Indicator"
                                     dense
+<<<<<<< HEAD
                                     class="full-width q-pt-sm"
+=======
+                                    class="full-width"
+>>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                                     @update:model-value="generateSuccessIndicator(index)"
                                   >
                                     <template v-slot:prepend>
@@ -986,7 +994,11 @@
     </q-dialog>
 
     <div class="row justify-end q-mt-sm">
+<<<<<<< HEAD
       <q-btn label="Cancel" color="grey" flat dense class="q-mr-sm" @click="onBack" />
+=======
+      <q-btn label="Cancel" color="grey" flat dense class="q-mr-sm" @click="onCancel" />
+>>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
       <q-btn label="Submit" color="green-7" icon="save" @click="onSubmit" :disable="!isFormValid" />
     </div>
   </q-page>
@@ -994,14 +1006,20 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
+<<<<<<< HEAD
 
 import { useQuasar } from 'quasar'
 import { v4 as uuidv4 } from 'uuid'
+=======
+import { useQuasar } from 'quasar'
+import { v4 as uuidv4 } from 'uuid' // You might need to install this dependency
+>>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
 
 export default {
   setup() {
     const $q = useQuasar()
 
+<<<<<<< HEAD
     const onBack = () => {
       // Emit the event to the parent
       // emit('back')
@@ -1014,6 +1032,8 @@ export default {
       // router.back()
     }
 
+=======
+>>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
     // Configuration for visible tabs
     const maxVisibleTabs = ref(3) // Number of tabs to show before using the overflow menu
 
@@ -2072,8 +2092,11 @@ export default {
       onQuantityUpdate,
       onTimelinessUpdate,
       onEffectivenessUpdate,
+<<<<<<< HEAD
 
       onBack,
+=======
+>>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
     }
   },
 }

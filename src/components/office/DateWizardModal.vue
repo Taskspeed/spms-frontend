@@ -171,7 +171,11 @@ export default {
         return !!this.selectedDate
       }
       if (this.step === 2) {
+<<<<<<< HEAD
         return !!this.title 
+=======
+        return !!this.title // Require at least a title to continue
+>>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
       }
       return true
     },
