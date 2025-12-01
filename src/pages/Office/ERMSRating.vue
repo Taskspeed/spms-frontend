@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md">
     <!-- Main table view -->
-    <div v-if="!showDetails">
+    <div v-if="!showDetails && !showPerformanceDisplay">
       <h6 class="text-h6 q-mb-md">Ratings</h6>
 
       <div class="row q-mb-md">
@@ -78,14 +78,12 @@
       </q-table>
     </div>
 
-    <!-- Details view -->
-    <div v-else>
-      <!-- The details view code remains the same -->
+    <!-- Details view (Step 1) -->
+    <div v-else-if="showDetails && !showPerformanceDisplay">
       <div class="row items-center justify-between q-mb-md">
         <div class="row items-center">
           <h6 class="text-h6 q-mb-md">{{ selectedPeriod.targetPeriod }}</h6>
         </div>
-        <!-- X button in the top right -->
         <q-btn
           flat
           round
@@ -99,12 +97,8 @@
         </q-btn>
       </div>
 
-      <!-- Enhanced Date Filter Implementation -->
-      <!-- Date filter code remains the same -->
       <div class="row justify-between items-center q-mb-md">
-        <!-- Date filter content -->
         <div class="row q-col-gutter-md items-center">
-          <!-- Date filter type selector -->
           <div class="col-auto">
             <q-btn-toggle
               v-model="dateFilterType"
@@ -119,9 +113,7 @@
             />
           </div>
 
-          <!-- Single date picker -->
           <div v-if="dateFilterType === 'single'" class="col-auto">
-            <!-- Single date picker code -->
             <q-input
               outlined
               dense
@@ -139,7 +131,6 @@
                 <q-icon name="arrow_drop_down" color="primary" class="cursor-pointer" />
               </template>
             </q-input>
-            <!-- Detached popup proxy with no transition -->
             <q-popup-proxy ref="specificDateProxy" anchor="bottom left" self="top left">
               <q-date
                 v-model="specificDate"
@@ -174,9 +165,7 @@
             </q-popup-proxy>
           </div>
 
-          <!-- Date range picker -->
           <div v-if="dateFilterType === 'range'" class="col-auto">
-            <!-- Date range picker code -->
             <q-input
               outlined
               dense
@@ -194,7 +183,6 @@
                 <q-icon name="arrow_drop_down" color="primary" class="cursor-pointer" />
               </template>
             </q-input>
-            <!-- Detached popup proxy with no transition -->
             <q-popup-proxy ref="dateRangeProxy" anchor="bottom left" self="top left">
               <q-date
                 v-model="dateRange"
@@ -237,6 +225,8 @@
         :columns="functionColumns"
         row-key="id"
         :loading="detailsLoading"
+        @row-click="onRowClick"
+        class="cursor-pointer"
       >
         <template v-slot:no-data>
           <div class="full-width row flex-center q-pa-md text-grey-6">
@@ -244,8 +234,28 @@
             No matching records found
           </div>
         </template>
+
+        <template v-slot:body="props">
+          <q-tr :props="props" @click="onRowClick(props.row)" class="hover-highlight">
+            <q-td v-for="col in props.cols" :key="col.name" :props="props">
+              {{ col.value }}
+            </q-td>
+          </q-tr>
+        </template>
       </q-table>
     </div>
+
+    <!-- Step 2: Performance Display -->
+    <performance-display
+      v-else-if="showPerformanceDisplay"
+      :selected-period="selectedPeriod"
+      :selected-rating="selectedRating"
+      :selected-rating-date="selectedRatingDate"
+      :performance-data="performanceData"
+      @back="backToDetails"
+      @edit="onEditPerformance"
+      @submit="onSubmitPerformance"
+    />
 
     <!-- Report Modal Dialog -->
     <q-dialog v-model="show_ipcr_ModalOpen" full-width>
@@ -253,23 +263,32 @@
     </q-dialog>
 
     <!-- Date Wizard Modal Dialog -->
-    <date-wizard-modal v-model="showDateWizard" @submit="handleDateWizardSubmit" />
+
+    <date-wizard-modal
+      v-model="showDateWizard"
+      :target-period="selectedPeriod?.targetPeriod || 'January - June 2025'"
+      :status="selectedPeriod?.status || 'In Progress'"
+      :rating-id="functionData.length + 1"
+      :performance-data="performanceData"
+      @submit="handleDateWizardSubmit"
+    />
   </q-page>
 </template>
 
 <script>
 import { date } from 'quasar'
 import IpcrReport from 'src/components/ipcr_Report.vue'
-import DateWizardModal from 'src/components/office/DateWizardModal.vue'
+import DateWizardModal from 'src/components/office/DatePickerModal.vue'
+import PerformanceDisplay from 'src/components/office/RatingForm.vue'
 
 export default {
   name: 'IPCRTable',
   components: {
     'ipcr-report': IpcrReport,
     'date-wizard-modal': DateWizardModal,
+    'performance-display': PerformanceDisplay,
   },
   data() {
-    // Current date based on the provided timestamp
     const currentDate = '2025-06-18'
 
     return {
@@ -339,22 +358,21 @@ export default {
 
       // View state flags
       showDetails: false,
+      showPerformanceDisplay: false,
       show_ipcr_ModalOpen: false,
-      showDateWizard: false, // New flag for date wizard modal
+      showDateWizard: false,
       selectedPeriod: null,
+      selectedRating: null,
+      selectedRatingDate: null,
       detailsLoading: false,
 
       // Current date for defaults
       currentDate: currentDate,
-      defaultYearMonth: '2025/06', // Format YYYY/MM for default calendar view
+      defaultYearMonth: '2025/06',
 
       // Date filter options
-      dateFilterType: 'single', // 'single' or 'range'
-
-      // Single date filter
+      dateFilterType: 'single',
       specificDate: '',
-
-      // Date range filter
       dateRange: {
         from: '',
         to: '',
@@ -429,7 +447,160 @@ export default {
           supportFunction: '5',
         },
       ],
-      originalFunctionData: [], // Will hold a copy of the original data for filtering
+      originalFunctionData: [],
+
+      // Performance Data
+      performanceData: {
+        employee: {
+          name: 'Juan Dela Cruz',
+          position: 'Software Engineer II',
+          rank: 'Technical Function',
+        },
+        performanceStandards: [
+          {
+            expanded: true,
+            category: 'Strategic Function',
+            mfo: 'Digital Transformation Services',
+            output: 'Software Applications Developed',
+            outputName: 'Mobile Application',
+            indicatorName: 'Number of applications delivered',
+            successIndicator: 'Successfully developed and deployed mobile applications on time',
+            requiredOutput: 'Fully functional mobile application with all required features',
+            competencies: {
+              core: [
+                { code: 'CC1', value: '5', legend: 'Excellence' },
+                { code: 'CC2', value: '4', legend: 'Very Good' },
+              ],
+              technical: [
+                { code: 'TC1', value: '5', legend: 'Expert' },
+                { code: 'TC2', value: '5', legend: 'Expert' },
+              ],
+              leadership: [{ code: 'LC1', value: '4', legend: 'Proficient' }],
+            },
+            standardOutcomeRows: [
+              {
+                rating: '5',
+                quantity: '120% or more',
+                effectiveness: 'All features implemented with zero critical bugs',
+                timelinessRange: '7',
+                timelinessDate: '2025/06/15',
+                timelinessText: 'Before deadline',
+              },
+              {
+                rating: '4',
+                quantity: '100% to 119%',
+                effectiveness: 'All features implemented with minor bugs',
+                timelinessRange: '3',
+                timelinessDate: '2025/06/20',
+                timelinessText: 'On time',
+              },
+              {
+                rating: '3',
+                quantity: '80% to 99%',
+                effectiveness: 'Most features implemented with some bugs',
+                timelinessRange: '0',
+                timelinessDate: '2025/06/30',
+                timelinessText: 'On deadline',
+              },
+              {
+                rating: '2',
+                quantity: '60% to 79%',
+                effectiveness: 'Some features missing or multiple bugs',
+                timelinessRange: '',
+                timelinessDate: '',
+                timelinessText: 'Delayed',
+              },
+              {
+                rating: '1',
+                quantity: 'Below 60%',
+                effectiveness: 'Incomplete or not functional',
+                timelinessRange: '',
+                timelinessDate: '',
+                timelinessText: 'Significantly delayed',
+              },
+            ],
+            timelinessType: ['range', 'date', 'description'],
+            inputs: {
+              quantity: '',
+              effectiveness: '',
+              timelinessRange: '',
+              timelinessDate: '',
+              timelinessDescription: '',
+            },
+          },
+          {
+            expanded: false,
+            category: 'Core Function',
+            mfo: 'System Maintenance',
+            output: 'System Updates Completed',
+            outputName: 'Security Patches',
+            indicatorName: 'Number of patches deployed',
+            successIndicator: 'All critical security patches deployed within SLA',
+            requiredOutput: 'Zero security vulnerabilities in production systems',
+            competencies: {
+              core: [
+                { code: 'CC1', value: '4', legend: 'Very Good' },
+                { code: 'CC3', value: '5', legend: 'Excellence' },
+              ],
+              technical: [
+                { code: 'TC3', value: '5', legend: 'Expert' },
+                { code: 'TC4', value: '4', legend: 'Advanced' },
+              ],
+              leadership: [],
+            },
+            standardOutcomeRows: [
+              {
+                rating: '5',
+                quantity: '100% patches deployed',
+                effectiveness: 'Zero security incidents, all patches tested',
+                timelinessRange: '5',
+                timelinessDate: '',
+                timelinessText: 'Within 24 hours of release',
+              },
+              {
+                rating: '4',
+                quantity: '95% to 99%',
+                effectiveness: 'Minor security incidents resolved quickly',
+                timelinessRange: '2',
+                timelinessDate: '',
+                timelinessText: 'Within 48 hours',
+              },
+              {
+                rating: '3',
+                quantity: '85% to 94%',
+                effectiveness: 'Some security gaps identified and patched',
+                timelinessRange: '0',
+                timelinessDate: '',
+                timelinessText: 'Within 72 hours',
+              },
+              {
+                rating: '2',
+                quantity: '70% to 84%',
+                effectiveness: 'Multiple security vulnerabilities exist',
+                timelinessRange: '',
+                timelinessDate: '',
+                timelinessText: 'Beyond 72 hours',
+              },
+              {
+                rating: '1',
+                quantity: 'Below 70%',
+                effectiveness: 'Critical vulnerabilities unpatched',
+                timelinessRange: '',
+                timelinessDate: '',
+                timelinessText: 'Significantly delayed',
+              },
+            ],
+            timelinessType: ['range', 'description'],
+            inputs: {
+              quantity: '',
+              effectiveness: '',
+              timelinessRange: '',
+              timelinessDate: '',
+              timelinessDescription: '',
+            },
+          },
+        ],
+      },
     }
   },
   computed: {
@@ -447,16 +618,13 @@ export default {
       })
     },
     filteredFunctionData() {
-      // Handle specific date filter
       if (this.dateFilterType === 'single' && this.specificDate) {
         return this.functionData.filter((item) => {
-          // Compare only the date part (ignore time)
-          const itemDate = item.date.substring(0, 10) // Extract YYYY-MM-DD part
+          const itemDate = item.date.substring(0, 10)
           return itemDate === this.specificDate
         })
       }
 
-      // Handle date range filter
       if (this.dateFilterType === 'range' && (this.dateRange.from || this.dateRange.to)) {
         return this.functionData.filter((item) => {
           const itemDate = item.date
@@ -471,7 +639,6 @@ export default {
         })
       }
 
-      // No filter applied, return all data
       return this.functionData
     },
     dateRangeText() {
@@ -494,10 +661,17 @@ export default {
     },
   },
   created() {
-    // Store original function data for filtering
     this.originalFunctionData = [...this.functionData]
   },
   methods: {
+    formatDate(dateString) {
+      if (!dateString) return '-'
+      try {
+        return date.formatDate(dateString, 'MMMM D, YYYY')
+      } catch {
+        return dateString
+      }
+    },
     getStatusColor(status) {
       switch (status) {
         case 'Completed':
@@ -514,11 +688,9 @@ export default {
       console.log(`${action} action for period: ${row.targetPeriod}`)
 
       if (action === 'Reports') {
-        // Open the report modal
         this.selectedPeriod = row
         this.show_ipcr_ModalOpen = true
       } else if (action === 'Rate') {
-        // Open the date wizard modal
         this.selectedPeriod = row
         this.showDateWizard = true
       }
@@ -526,12 +698,13 @@ export default {
     handleDateWizardSubmit(formData) {
       console.log('Date wizard submitted:', formData)
 
-      // Display success notification
+      this.performanceData.performanceStandards = formData.performanceStandards
+
       this.$q.notify({
         color: 'positive',
         textColor: 'white',
         icon: 'check_circle',
-        message: `Rating for ${this.selectedPeriod.targetPeriod} on ${date.formatDate(formData.date, 'MMM D, YYYY')} submitted successfully.`,
+        message: `Performance rating for ${date.formatDate(formData.date, 'MMM D, YYYY')} submitted successfully. `,
         position: 'bottom-right',
         timeout: 3000,
       })
@@ -541,26 +714,35 @@ export default {
       this.showDetails = true
       this.loadPeriodFunctionData()
     },
+    onRowClick(row) {
+      this.selectedRating = row
+      this.selectedRatingDate = row.date
+      this.showPerformanceDisplay = true
+    },
     backToTable() {
       this.showDetails = false
+      this.showPerformanceDisplay = false
       this.selectedPeriod = null
+      this.selectedRating = null
+      this.selectedRatingDate = null
       this.clearAllDateFilters()
+    },
+    backToDetails() {
+      this.showPerformanceDisplay = false
+      this.selectedRating = null
+      this.selectedRatingDate = null
     },
     loadPeriodFunctionData() {
       this.detailsLoading = true
 
-      // For demo purposes, we're just using mock data with a timeout
       setTimeout(() => {
-        // The mock data is already set in data()
         this.detailsLoading = false
       }, 500)
     },
     onDateRangeChange() {
-      // Filter is automatically applied through the computed property
       console.log('Date range changed:', this.dateRange)
     },
     onSpecificDateChange() {
-      // Filter is automatically applied through the computed property
       console.log('Specific date changed:', this.specificDate)
     },
     clearDateRange() {
@@ -573,9 +755,30 @@ export default {
       this.clearDateRange()
       this.clearSpecificDate()
     },
-    // Added missing close method for the report modal
     close_ipcr_Modal() {
       this.show_ipcr_ModalOpen = false
+    },
+    onEditPerformance() {
+      this.$q.notify({
+        color: 'info',
+        message: 'Edit mode activated',
+        icon: 'edit',
+        position: 'top',
+      })
+    },
+    onSubmitPerformance(updatedStandards) {
+      this.$q.notify({
+        color: 'positive',
+        message: 'Performance standards submitted successfully',
+        icon: 'check_circle',
+        position: 'top',
+      })
+
+      // Update the performance data with the submitted values
+      this.performanceData.performanceStandards = updatedStandards
+
+      // Navigate back or reset
+      this.backToTable()
     },
   },
 }
@@ -595,7 +798,6 @@ export default {
   background-color: rgba(0, 0, 0, 0.03);
 }
 
-/* Add styling for table headers */
 .q-table thead tr th {
   background-color: #f5f5f5;
   font-weight: bold;
@@ -608,5 +810,14 @@ export default {
 .close-button:hover {
   transform: scale(1.1);
   color: #000;
+}
+
+@media (max-width: 1023px) {
+  .col-md-3,
+  .col-md-4,
+  .col-md-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
 }
 </style>

@@ -4,28 +4,28 @@ import AdminLayout from 'src/layouts/MainLayout.vue'
 import Login from 'src/pages/Auth/LoginPage.vue'
 
 // HR Admin Pages
-import hrDashboard from 'src/pages/hr_Screen/HRdashboard.vue'
-import hrSpms from 'src/pages/hr_Screen/spms.vue'
-import hrlibrary from 'src/pages/hr_Screen/LibraryPage.vue'
-import opcr from 'src/pages/hr_Screen/opcr.vue'
-import ipcr from 'src/pages/hr_Screen/ipcr.vue'
-import user from 'src/pages/hr_Screen/user.vue'
-import hrProfile from 'src/pages/hr_Screen/profile.vue'
+import hrDashboard from 'src/pages/HR/HRdashboard.vue'
+import hrSpms from 'src/pages/HR/HRSPMS.vue'
+import hrlibrary from 'src/pages/HR/HRLibrary.vue'
+import opcr from 'src/pages/HR/HROPCR.vue'
+import ipcr from 'src/pages/HR/HRIPCR.vue'
+import user from 'src/pages/HR/HRUser.vue'
+import hrProfile from 'src/pages/HR/HRProfile.vue'
 
 // Office Admin Pages
 
-import officeDashboard from 'src/pages/office_Screen/dashboard.vue'
-import employee from 'src/pages/office_Screen/employee.vue'
-import officeSpms from 'src/pages/office_Screen/spms.vue'
-import officeProfile from 'src/pages/office_Screen/profile.vue'
-import unitworkplan from 'src/pages/office_Screen/unit_work_plan.vue'
-import library from 'src/pages/office_Screen/library.vue'
-import rating from 'src/pages/office_Screen/ratingModule.vue'
+import officeDashboard from 'src/pages/Office/OfficeDashboard.vue'
+import employee from 'src/pages/Office/OfficeEmployee.vue'
+import officeSpms from 'src/pages/Office/OfficeSPMS.vue'
+import officeProfile from 'src/pages/Office/OfficeProfile.vue'
+import unitworkplan from 'src/pages/Office/OfficeUnitWorkPlan.vue'
+import library from 'src/pages/Office/OfficeLibrary.vue'
+import rating from 'src/pages/Office/ERMSRating.vue'
 
 // Planning Admin Pages
 import PlanningDashboard from 'src/pages/Planning/PlanningDashboard.vue'
-import SPMS from 'src/pages/Planning/SPMS.vue'
-import PlanningAccount from 'src/pages/Planning/AccountPage.vue'
+import SPMS from 'src/pages/Planning/PlanningSPMS.vue'
+import PlanningAccount from 'src/pages/Planning/PlanningAccount.vue'
 
 export const routes = [
   {
