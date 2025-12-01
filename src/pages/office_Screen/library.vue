@@ -1,45 +1,17 @@
-<<<<<<< HEAD
 <template>
   <q-page class="q-px-md q-pb-md">
     <div class="q-mb-md">
       <div class="text-subtitle q-mb-md q-mt-xl text-grey-7">Major Final Outputs (MFO)</div>
-=======
-<!-- eslint-disable vue/multi-word-component-names -->
-<template>
-<div v-if="loading" class="full-page-loader">
-    <div class="loader-content">
-      <q-spinner-hourglass
-        color="primary"
-        size="4em"
-        :thickness="3"
-      />
-      <div class="text-h6 q-mt-md text-primary">Loading MFO Data...</div>
-    </div>
-  </div>
-  <q-page class="q-px-md q-pb-md">
-    <div class="q-mb-md">
-      <h6 class="text-h5 q-mb-md">Major Final Outputs (MFO)</h6>
-
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
       <q-separator class="q-mt-sm" />
     </div>
 
     <!-- Loading indicator -->
-<<<<<<< HEAD
     <div v-if="loading" class="flex justify-center q-pa-lg">
       <q-spinner-hourglass color="green" size="3em" />
     </div>
 
     <!-- Table inside a responsive card -->
     <q-card v-else flat bordered class="full-width shadow-1">
-=======
-    <!-- <div v-if="loading" class="flex justify-center q-pa-lg">
-      <q-spinner-hourglass color="green" size="3em" />
-    </div> -->
-
-    <!-- Table inside a responsive card -->
-    <q-card flat bordered class="full-width shadow-1">
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
       <table class="mfo-table full-width">
         <thead>
           <tr>
@@ -48,11 +20,7 @@
                 <span class="text-subtitle2 text-weight-bold">A. Strategic Function</span>
                 <q-btn
                   icon="add"
-<<<<<<< HEAD
                   size="sm"
-=======
-                  size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                   flat
                   round
                   dense
@@ -67,11 +35,7 @@
                 <span class="text-subtitle2 text-weight-bold">B. Core Function</span>
                 <q-btn
                   icon="add"
-<<<<<<< HEAD
                   size="sm"
-=======
-                  size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                   flat
                   round
                   dense
@@ -86,11 +50,7 @@
                 <span class="text-subtitle2 text-weight-bold">C. Support Function</span>
                 <q-btn
                   icon="add"
-<<<<<<< HEAD
                   size="sm"
-=======
-                  size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                   flat
                   round
                   dense
@@ -119,23 +79,13 @@
                       class="q-mr-xs"
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
-<<<<<<< HEAD
                       <div class="mfo-number">{{ `MFO ${index + 1}.` }}</div>
                       <span class="mfo-name">{{ mfo.name }}</span>
-=======
-                      <div class="mfo-number"><strong>{{ `MFO ${index + 1}.` }}</strong></div>
-                     <p class="mfo-name">{{ mfo.name }}</p>
-
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                     </div>
                     <div class="mfo-actions">
                       <q-btn
                         icon="edit"
-<<<<<<< HEAD
                         size="xs"
-=======
-                        size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                         flat
                         round
                         dense
@@ -144,11 +94,7 @@
                       />
                       <q-btn
                         icon="delete"
-<<<<<<< HEAD
                         size="xs"
-=======
-                        size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                         flat
                         round
                         dense
@@ -166,22 +112,12 @@
                           class="output-item"
                         >
                           <div class="output-content">
-<<<<<<< HEAD
                             <div class="output-number">{{ `OUTPUT ${outputIndex + 1}.` }}</div>
                             <strong class="output-name">{{ output.name }}</strong>
                             <div class="output-actions">
                               <q-btn
                                 icon="edit"
                                 size="xs"
-=======
-                            <div class="output-number"><strong>{{ `OUTPUT ${outputIndex + 1}.` }}</strong></div>
-                            <!-- <strong class="output-name">{{ output.name }}</strong> -->
-                            <p class="output-name">{{ output.name }}</p>
-                            <div class="output-actions">
-                              <q-btn
-                                icon="edit"
-                                size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                                 flat
                                 round
                                 dense
@@ -190,11 +126,7 @@
                               />
                               <q-btn
                                 icon="delete"
-<<<<<<< HEAD
                                 size="xs"
-=======
-                                size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                                 flat
                                 round
                                 dense
@@ -206,7 +138,6 @@
                         </li>
                       </ul>
                       <div class="row justify-center q-mt-sm">
-<<<<<<< HEAD
                         <q-btn
                           label="Add Output"
                           size="sm"
@@ -216,17 +147,6 @@
                           class="add-output-btn"
                         />
                       </div>
-=======
-                          <q-btn
-                            label="Add output"
-                            size="md"
-                            dense
-                            color="primary"
-                            @click="openAddOutputModal(mfo, 'strategic')"
-                            class="add-output-btn"
-                          />
-                        </div>
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                     </div>
                   </q-slide-transition>
                 </li>
@@ -252,23 +172,13 @@
                       class="q-mr-xs"
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
-<<<<<<< HEAD
                       <div class="mfo-number">{{ `MFO ${index + 1}.` }}</div>
                       <strong class="mfo-name">{{ mfo.name }}</strong>
-=======
-                      <div class="mfo-number"><strong>{{ `MFO ${index + 1}.` }}</strong></div>
-                      <!-- <strong class="mfo-name">{{ mfo.name }}</strong> -->
-                      <p class="mfo-name">{{ mfo.name }} </p>
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                     </div>
                     <div class="mfo-actions">
                       <q-btn
                         icon="edit"
-<<<<<<< HEAD
                         size="xs"
-=======
-                        size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                         flat
                         round
                         dense
@@ -277,11 +187,7 @@
                       />
                       <q-btn
                         icon="delete"
-<<<<<<< HEAD
                         size="xs"
-=======
-                        size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                         flat
                         round
                         dense
@@ -299,22 +205,12 @@
                           class="output-item"
                         >
                           <div class="output-content">
-<<<<<<< HEAD
                             <div class="output-number">{{ `OUTPUT ${outputIndex + 1}.` }}</div>
                             <strong class="output-name">{{ output.name }}</strong>
                             <div class="output-actions">
                               <q-btn
                                 icon="edit"
                                 size="xs"
-=======
-                            <div class="output-number"><strong>{{ `OUTPUT ${outputIndex + 1}.` }}</strong></div>
-                            <!-- <strong class="output-name">{{ output.name }}</strong> -->
-                            <p class="output-name">{{ output.name }}</p>
-                            <div class="output-actions">
-                              <q-btn
-                                icon="edit"
-                                 size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                                 flat
                                 round
                                 dense
@@ -323,11 +219,7 @@
                               />
                               <q-btn
                                 icon="delete"
-<<<<<<< HEAD
                                 size="xs"
-=======
-                                   size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                                 flat
                                 round
                                 dense
@@ -341,11 +233,7 @@
                       <div class="row justify-center q-mt-sm">
                         <q-btn
                           label="Add Output"
-<<<<<<< HEAD
                           size="xs"
-=======
-                          size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                           dense
                           color="primary"
                           @click="openAddOutputModal(mfo, 'core')"
@@ -367,23 +255,13 @@
                 <li v-for="(output, index) in supportOutputs" :key="output.id" class="mfo-item">
                   <div class="mfo-content">
                     <div class="mfo-title">
-<<<<<<< HEAD
                       <div class="output-number">{{ `OUTPUT ${index + 1}.` }}</div>
                       <strong class="output-name">{{ output.name }}</strong>
-=======
-                      <div class="output-number"><strong>{{ `OUTPUT ${index + 1}.` }}</strong></div>
-                      <!-- <strong class="output-name">{{ output.name }}</strong> -->
-                      <p class="output-name">{{ output.name }}</p>
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                     </div>
                     <div class="mfo-actions">
                       <q-btn
                         icon="edit"
-<<<<<<< HEAD
                         size="xs"
-=======
-                           size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                         flat
                         round
                         dense
@@ -392,11 +270,7 @@
                       />
                       <q-btn
                         icon="delete"
-<<<<<<< HEAD
                         size="xs"
-=======
-                          size="md"
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                         flat
                         round
                         dense
@@ -444,15 +318,6 @@
               <div class="text-body1 text-weight-medium">{{ form.category.name }}</div>
             </div>
 
-<<<<<<< HEAD
-=======
-            <!-- Parent MFO Display (for outputs) -->
-            <div v-if="form.parentMfo" class="q-mb-md">
-              <div class="text-caption text-grey-6">MFO</div>
-              <div class="text-body1 text-weight-medium">{{ form.parentMfo.name }}</div>
-            </div>
-
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
             <!-- Single input for edit mode -->
             <template v-if="modal.mode === 'edit'">
               <div :ref="'itemContainer_0'">
@@ -460,17 +325,10 @@
                   v-model="form.items[0].name"
                   :label="
                     form.isOutput
-<<<<<<< HEAD
                       ? 'Output Name'
                       : isSupportCategory
                         ? 'Support Output Name'
                         : 'MFO Name'
-=======
-                      ? 'Name'
-                      : isSupportCategory
-                        ? 'Name'
-                        : 'Name'
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
                   "
                   class="q-mt-sm modern-input"
                   outlined
@@ -526,7 +384,6 @@
             label="Add Another"
             flat
             dense
-<<<<<<< HEAD
             color="green-7"
             @click="addNewItem"
             class="q-mr-sm"
@@ -599,20 +456,6 @@
             icon="save"
             unelevated
             class="q-px-sm"
-=======
-            color="primary"
-            @click="addNewItem"
-            class="q-mr-sm"
-          />
-          <q-btn
-            label="Save"
-            color="primary"
-            @click="confirmSave"
-            :loading="modal.loading"
-            :disable="modal.loading || isProcessing"
-            size="md"
-
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
           />
         </q-card-actions>
       </q-card>
@@ -620,7 +463,6 @@
   </q-page>
 </template>
 
-<<<<<<< HEAD
 <script>
 import { api } from 'src/boot/axios'
 import { useUserStore } from 'src/stores/userStore'
@@ -1295,447 +1137,6 @@ export default {
 </script>
 
 <style scoped>
-=======
-<script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
-import { useUserStore } from '/src/stores/userStore'
-import { useMfoStore } from 'src/stores/office/mfo_Store'
-import { useQuasar } from 'quasar'
-import Swal from 'sweetalert2'
-
-const userStore = useUserStore()
-const mfoStore = useMfoStore()
-const $q = useQuasar()
-
-const loading = ref(false)
-const expandedMfos = ref([])
-const errors = reactive({})
-const isProcessing = ref(false)
-
-// Modal state
-const modal = reactive({
-  show: false,
-  title: '',
-  mode: 'add',
-  loading: false
-})
-
-// Form state
-const form = reactive({
-  category: null,
-  parentMfo: null,
-  isOutput: false,
-  items: [{ name: '' }]
-})
-
-// Computed properties for categorized MFOs
-const strategicMfos = computed(() => userStore.mfos.filter(mfo => mfo.f_category_id === 1))
-const coreMfos = computed(() => userStore.mfos.filter(mfo => mfo.f_category_id === 2))
-const supportOutputs = computed(() => userStore.outputs.filter(output => output.f_category_id === 3 && !output.mfo_id))
-
-const getOutputsForMfo = (mfoId) => userStore.outputs.filter(output => output.mfo_id === mfoId)
-
-// Check if current category is support
-const isSupportCategory = computed(() => form.category?.id === 3)
-
-// Methods
-const loadUserData = async () => {
-  loading.value = true
-  try {
-    await userStore.loadUserData()
-  // eslint-disable-next-line no-unused-vars
-  } catch (e) {
-    $q.notify({ type: 'negative', message: 'Failed to load user data' })
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(loadUserData)
-
-const toggleMfoExpansion = (mfoId) => {
-  const index = expandedMfos.value.indexOf(mfoId)
-  if (index > -1) {
-    expandedMfos.value.splice(index, 1)
-  } else {
-    expandedMfos.value.push(mfoId)
-  }
-}
-
-// Single confirmation dialog for Save
-const confirmSave = async () => {
-  if (isProcessing.value) return
-
-  // Validate form first
-  let hasErrors = false
-  Object.keys(errors).forEach(key => delete errors[key])
-
-  if (modal.mode === 'edit') {
-    if (!form.items[0].name.trim()) {
-      errors.name = true
-      hasErrors = true
-    }
-  } else {
-    form.items.forEach((item, index) => {
-      if (!item.name.trim()) {
-        errors[`item_${index}`] = true
-        hasErrors = true
-      }
-    })
-  }
-
-  if (hasErrors) {
-    $q.notify({
-      type: 'negative',
-      message: 'Please fill in all required fields',
-      position: 'top'
-    })
-    return
-  }
-
-  // Create confirmation message
-  let confirmationMessage = ''
-  let itemType = ''
-
-  if (modal.mode === 'edit') {
-    itemType = form.isOutput ? 'output' : 'MFO'
-    confirmationMessage = `Are you sure you want to update "${form.items[0].name}"?`
-  } else {
-    itemType = form.isOutput ? 'output' : 'MFO'
-    if (form.items.length === 1) {
-      confirmationMessage = `Are you sure you want to add "${form.items[0].name}"?`
-    } else {
-      const itemNames = form.items.map(item => item.name).join('", "')
-      confirmationMessage = `Are you sure you want to add the following ${itemType}s?<br><br><strong>"${itemNames}"</strong>`
-    }
-  }
-
-  // Set processing flag
-  isProcessing.value = true
-
-  // Temporarily hide the modal to show SweetAlert properly
-  const originalModalState = modal.show
-  modal.show = false
-
-  try {
-    // Small delay to ensure modal is hidden
-    await new Promise(resolve => setTimeout(resolve, 100))
-
-    const result = await Swal.fire({
-      title: `${modal.mode === 'edit' ? 'Update' : 'Add'} ${itemType.toUpperCase()}`,
-      html: confirmationMessage,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#00703c',
-      cancelButtonColor: '#d33',
-      confirmButtonText: `Confirm`,
-      cancelButtonText: 'Cancel',
-      allowOutsideClick: false,
-      allowEscapeKey: true
-    })
-
-    if (result.isConfirmed) {
-      await proceedWithSave()
-    } else {
-      // Restore modal if user cancels
-      modal.show = originalModalState
-      isProcessing.value = false
-    }
-  } catch (error) {
-    console.error('SweetAlert error:', error)
-    // Restore modal on error
-    modal.show = originalModalState
-    isProcessing.value = false
-  }
-}
-
-// Proceed with save after confirmation
-const proceedWithSave = async () => {
-  try {
-    modal.loading = true
-
-    let successMessage = ''
-
-    if (modal.mode === 'edit') {
-      // Edit mode - single item
-      const item = form.items[0]
-      const data = {
-        name: item.name,
-        office_id: userStore.officeId,
-        f_category_id: form.category.id
-      }
-
-      if (form.isOutput) {
-        // Update output
-        if (form.parentMfo) {
-          data.mfo_id = form.parentMfo.id
-        }
-        const response = await mfoStore.updateOutput(item.id, data)
-        if (response) {
-          successMessage = 'Output has been updated successfully.'
-        }
-      } else {
-        // Update MFO
-        const response = await mfoStore.updateMfo(item.id, data)
-        if (response) {
-          successMessage = 'MFO has been updated successfully.'
-        }
-      }
-    } else {
-      // Add mode - can be multiple items
-      const items = form.items.map(item => ({
-        name: item.name,
-        office_id: userStore.officeId,
-        f_category_id: form.category.id
-      }))
-
-      if (form.items.length === 1) {
-        // Single item
-        const data = items[0]
-
-        if (form.isOutput) {
-          if (form.parentMfo) {
-            data.mfo_id = form.parentMfo.id
-          }
-          const response = await mfoStore.addOutput(data)
-          if (response) {
-            successMessage = 'Output has been added successfully.'
-          }
-        } else {
-          const response = await mfoStore.addMfo(data)
-          if (response) {
-            successMessage = 'MFO has been added successfully.'
-          }
-        }
-      } else {
-        // Multiple items
-        const response = await mfoStore.addMultipleItems(
-          items,
-          form.isOutput,
-          form.parentMfo?.id
-        )
-        if (response) {
-          const itemTypeText = form.isOutput ? 'outputs' : 'MFOs'
-          successMessage = `${items.length} ${itemTypeText} have been added successfully.`
-        }
-      }
-    }
-
-    // Close modal first
-    closeModal()
-
-    // Reload user data to get updated MFOs/outputs
-    await loadUserData()
-
-    // Show success message only once after everything is complete
-    if (successMessage) {
-      await Swal.fire({
-        icon: 'success',
-        title: 'Success!',
-        text: successMessage,
-        confirmButtonColor: '#00703c',
-        timer: 2000,
-        timerProgressBar: true
-      })
-    }
-
-  } catch (error) {
-    console.error('Error saving:', error)
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'Failed to save. Please try again.',
-      confirmButtonColor: '#00703c'
-    })
-    // Restore modal on error
-    modal.show = true
-  } finally {
-    modal.loading = false
-    isProcessing.value = false
-  }
-}
-
-// Delete functions - these keep their confirmation dialogs since they're called directly
-const confirmDelete = async (mfo) => {
-  try {
-    const result = await mfoStore.deleteMfo(mfo.id, mfo.name)
-    if (result) {
-      await loadUserData()
-    }
-  // eslint-disable-next-line no-unused-vars
-  } catch (error) {
-    // Error handling is done in the store
-  }
-}
-
-const confirmDeleteOutput = async (output) => {
-  try {
-    const result = await mfoStore.deleteOutput(output.id, output.name)
-    if (result) {
-      await loadUserData()
-    }
-  // eslint-disable-next-line no-unused-vars
-  } catch (error) {
-    // Error handling is done in the store
-  }
-}
-
-// Rest of your existing methods remain the same...
-const openAddModal = (categoryType) => {
-  Object.assign(form, {
-    category: getCategoryByType(categoryType),
-    parentMfo: null,
-    isOutput: categoryType === 'support',
-    items: [{ name: '' }]
-  })
-
-  modal.show = true
-  modal.mode = 'add'
-  modal.title = `Add ${getModalTitle(categoryType)}`
-
-  Object.keys(errors).forEach(key => delete errors[key])
-}
-
-const openAddOutputModal = (mfo, categoryType) => {
-  Object.assign(form, {
-    category: getCategoryByType(categoryType),
-    parentMfo: mfo,
-    isOutput: true,
-    items: [{ name: '' }]
-  })
-
-  modal.show = true
-  modal.mode = 'add'
-  modal.title = 'Add Output'
-
-  Object.keys(errors).forEach(key => delete errors[key])
-}
-
-const editMfo = (mfo, categoryType) => {
-  Object.assign(form, {
-    category: getCategoryByType(categoryType),
-    parentMfo: null,
-    isOutput: false,
-    items: [{ name: mfo.name, id: mfo.id }]
-  })
-
-  modal.show = true
-  modal.mode = 'edit'
-  modal.title = 'Edit MFO'
-
-  Object.keys(errors).forEach(key => delete errors[key])
-}
-
-const editOutput = (output, mfo, categoryType) => {
-  Object.assign(form, {
-    category: getCategoryByType(categoryType),
-    parentMfo: mfo,
-    isOutput: true,
-    items: [{ name: output.name, id: output.id }]
-  })
-
-  modal.show = true
-  modal.mode = 'edit'
-  modal.title = 'Edit Output'
-
-  Object.keys(errors).forEach(key => delete errors[key])
-}
-
-const editSupport = (output) => {
-  Object.assign(form, {
-    category: { id: 3, name: 'C. SUPPORT FUNCTION' },
-    parentMfo: null,
-    isOutput: true,
-    items: [{ name: output.name, id: output.id }]
-  })
-
-  modal.show = true
-  modal.mode = 'edit'
-  modal.title = 'Edit Support Output'
-
-  Object.keys(errors).forEach(key => delete errors[key])
-}
-
-const getCategoryByType = (categoryType) => {
-  const categories = {
-    strategic: { id: 1, name: 'A. STRATEGIC FUNCTION' },
-    core: { id: 2, name: 'B. CORE FUNCTION' },
-    support: { id: 3, name: 'C. SUPPORT FUNCTION' }
-  }
-  return categories[categoryType]
-}
-
-const getModalTitle = (categoryType) => {
-  const titles = {
-    strategic: 'Strategic MFO',
-    core: 'Core MFO',
-    support: 'Support Output'
-  }
-  return titles[categoryType]
-}
-
-// eslint-disable-next-line no-unused-vars
-const getInputLabel = (index) => {
-  const baseLabel = form.isOutput
-    ? (isSupportCategory.value ? 'Name' : 'Output')
-    : 'Name'
-  return `${baseLabel} `
-} // ${index + 1}
-
-const addNewItem = () => {
-  form.items.push({ name: '' })
-}
-
-const removeItem = (index) => {
-  if (form.items.length > 1) {
-    form.items.splice(index, 1)
-  }
-}
-
-const closeModal = () => {
-  modal.show = false
-  Object.keys(errors).forEach(key => delete errors[key])
-}
-
-onMounted(() => {
-  loadUserData()
-})
-</script>
-
-<style scoped>
-.full-page-loader {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.9);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  backdrop-filter: blur(2px);
-}
-
-.loader-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 2rem;
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-/* Your existing styles remain the same */
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
 .mfo-table {
   border-collapse: collapse;
   width: 100%;
@@ -1815,10 +1216,6 @@ onMounted(() => {
 }
 
 .mfo-name {
-<<<<<<< HEAD
-=======
-   margin-top:13px;
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
   word-break: break-word;
 }
 
@@ -1835,16 +1232,9 @@ onMounted(() => {
 }
 
 .output-name {
-<<<<<<< HEAD
   font-weight: bold;
   word-break: break-word;
   flex-grow: 1;
-=======
-  /* font-weight: bold; */
-  word-break: break-word;
-  flex-grow: 1;
-  margin-top: 15px;
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
 }
 
 .mfo-actions {
@@ -1893,7 +1283,6 @@ onMounted(() => {
   border-top: 1px solid #e0e0e0;
 }
 
-<<<<<<< HEAD
 .modern-input {
   :deep(.q-field__control) {
     border-radius: 6px;
@@ -1917,38 +1306,6 @@ onMounted(() => {
   :deep(.q-field__native) {
     font-size: 0.95rem;
   }
-=======
-/* .modern-input {
-
-} */
-
-.modern-input ::v-deep(.q-field__control) {
-  border-radius: 6px;
-  transition: all 0.3s ease;
-
-}
-
-.modern-input ::v-deep(.q-field__control:hover) {
-  border-color: #a0c0e8;
-
-}
-
-.modern-input ::v-deep(.q-field--focused .q-field__control) {
-  border-color: #1976d2;
-  box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.2);
-
-}
-
-.modern-input ::v-deep(.q-field--error .q-field__control) {
-  border-color: #f44336;
-  box-shadow: 0 0 0 1px rgba(244, 67, 54, 0.2);
-
-}
-
-.modern-input ::v-deep(.q-field__native) {
-  font-size: 0.95rem;
-
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
 }
 
 .shake-animation {
@@ -1970,7 +1327,6 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-<<<<<<< HEAD
 .confirmation-list {
   margin-left: 20px;
   margin-top: 8px;
@@ -1980,8 +1336,6 @@ onMounted(() => {
   margin-bottom: 4px;
 }
 
-=======
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
 @keyframes shake {
   10%,
   90% {
@@ -2048,10 +1402,4 @@ onMounted(() => {
     margin-top: 8px;
   }
 }
-<<<<<<< HEAD
-=======
-.text-subtitle2{
-  font-size: large;
-}
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
 </style>

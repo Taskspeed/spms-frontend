@@ -43,7 +43,6 @@ export const useUserStore = defineStore('user', () => {
       router.push('/login')
     }
   }
-
   async function loadUserData(router = null) {
     const token = localStorage.getItem('token')
     if (!token) {
@@ -62,7 +61,7 @@ export const useUserStore = defineStore('user', () => {
       const data = response.data
 
       // Check for unauthenticated message
-      if (data.message === "Unauthenticated.") {
+      if (data.message === 'Unauthenticated.') {
         console.log('User is unauthenticated, redirecting to login')
         handleUnauthenticated(router)
         return
@@ -76,51 +75,48 @@ export const useUserStore = defineStore('user', () => {
       let allOutputs = []
       let allCategories = []
 
-      for (const cat of data.categories) {
-        // Attach category info to each MFO for easier filtering later
-        if (cat.mfos && cat.mfos.length) {
-          for (const mfo of cat.mfos) {
-            allMfos.push({
-              ...mfo,
-              f_category_id: cat.id,
-              category: { id: cat.id, name: cat.name },
-            })
-            // Each output gets its category, mfo_id, etc.
-            if (Array.isArray(mfo.outpots)) {
-              for (const output of mfo.outpots) {
-                allOutputs.push({
-                  ...output,
-                  mfo_id: mfo.id,
-                  f_category_id: cat.id,
-                })
-              }
+      // Extract categories from mfos
+      const categoryMap = new Map()
+
+      for (const mfo of data.mfos) {
+        const category = mfo.category
+        if (category) {
+          // Ensure each category is only added once
+          if (!categoryMap.has(category.id)) {
+            categoryMap.set(category.id, { id: category.id, name: category.name })
+          }
+
+          allMfos.push({
+            ...mfo,
+            f_category_id: category.id,
+            category: { id: category.id, name: category.name },
+          })
+
+          // Each output gets its category, mfo_id, etc.
+          if (Array.isArray(mfo.outpots)) {
+            for (const output of mfo.outpots) {
+              allOutputs.push({
+                ...output,
+                mfo_id: mfo.id,
+                f_category_id: category.id,
+              })
             }
           }
         }
-        // Category outputs are outputs not attached to any MFO
-        if (cat.category_outputs && cat.category_outputs.length) {
-          for (const output of cat.category_outputs) {
-            allOutputs.push({
-              ...output,
-              mfo_id: null,
-              f_category_id: cat.id,
-            })
-          }
-        }
-
-        allCategories.push({ id: cat.id, name: cat.name })
       }
 
+      // Add all categories to the list (unique ones only)
+      allCategories = Array.from(categoryMap.values())
+
+      // Populate the store
       mfos.value = allMfos
       categories.value = allCategories
       outputs.value = allOutputs
-
     } catch (error) {
       console.error('Failed to load user data:', error)
 
       // Check if the error response contains the unauthenticated message
-      if (error.response?.data?.message === "Unauthenticated." ||
-          error.response?.status === 401) {
+      if (error.response?.data?.message === 'Unauthenticated.' || error.response?.status === 401) {
         console.log('Authentication error, redirecting to login')
         handleUnauthenticated(router)
         return
@@ -140,7 +136,7 @@ export const useUserStore = defineStore('user', () => {
       })
 
       // Check for unauthenticated message
-      if (response.data.message === "Unauthenticated.") {
+      if (response.data.message === 'Unauthenticated.') {
         handleUnauthenticated(router)
         return
       }
@@ -150,8 +146,7 @@ export const useUserStore = defineStore('user', () => {
       console.error('Failed to update user credentials:', error)
 
       // Check if the error response contains the unauthenticated message
-      if (error.response?.data?.message === "Unauthenticated." ||
-          error.response?.status === 401) {
+      if (error.response?.data?.message === 'Unauthenticated.' || error.response?.status === 401) {
         handleUnauthenticated(router)
         return
       }

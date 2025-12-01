@@ -1,6 +1,5 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <template>
-<<<<<<< HEAD
   <q-layout view="lHh Lpr lFf">
     <q-page-container>
       <q-page padding class="q-pa-md">
@@ -573,12 +572,3 @@ onMounted(async () => {
   white-space: nowrap;
 }
 </style>
-=======
-  <q-page padding>
-    <h2>Dashboard</h2>
-    <p>Dashboard content goes here</p>
-  </q-page>
-</template>
-
-<script></script>
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f

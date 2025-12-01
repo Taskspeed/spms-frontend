@@ -1,9 +1,5 @@
 <template>
-<<<<<<< HEAD
   <q-page class="q-pa-md">
-=======
-  <q-page class="q-px-md q-pb-md">
->>>>>>> ac12b6dfdb8cce696abd824c5586a552f008fd1f
     <!-- Main table view -->
     <div v-if="!showDetails">
       <h6 class="text-h6 q-mb-md">Ratings</h6>
