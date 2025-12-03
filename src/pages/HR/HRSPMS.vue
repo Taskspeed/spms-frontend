@@ -10,6 +10,52 @@
           <div class="col-12 col-md-4">
             <q-card flat bordered>
               <q-card-section>
+                <!-- Office Dropdown -->
+                <div class="row q-mb-md">
+                  <q-select
+                    dense
+                    outlined
+                    v-model="selectedOffice"
+                    :options="filteredOfficeOptions"
+                    option-label="name"
+                    option-value="id"
+                    label="Select Office"
+                    class="full-width office-select"
+                    color="red-10"
+                    use-input
+                    hide-selected
+                    fill-input
+                    clearable
+                    input-debounce="300"
+                    @filter="filterOffices"
+                    @update:model-value="onOfficeChange"
+                    :loading="userManageStore.loading"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="business" />
+                    </template>
+                    <template v-slot:no-option>
+                      <q-item>
+                        <q-item-section class="text-grey"> No offices found </q-item-section>
+                      </q-item>
+                    </template>
+                    <template v-slot:selected-item="scope">
+                      <div class="selected-office-name">
+                        {{ scope.opt?.name || 'Select Office' }}
+                      </div>
+                    </template>
+                    <template v-slot:option="scope">
+                      <q-item v-bind="scope.itemProps">
+                        <q-item-section>
+                          <q-item-label class="office-option-label">{{
+                            scope.opt.name
+                          }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
+                <!-- Organization Tree Search -->
                 <div class="row q-mb-sm">
                   <q-input
                     dense
@@ -17,11 +63,21 @@
                     v-model="treeFilter"
                     placeholder="Search organization..."
                     class="full-width"
+                    :disable="!selectedOffice"
                   >
                     <template v-slot:append><q-icon name="search" /></template>
                   </q-input>
                 </div>
+                <!-- No Office Selected Message -->
+                <div v-if="!selectedOffice" class="text-center q-pa-lg">
+                  <q-icon name="business" size="3rem" color="grey-5" />
+                  <div class="text-grey-7 q-mt-sm">
+                    Please select an office to view the organization structure
+                  </div>
+                </div>
+                <!-- Organization Tree -->
                 <q-tree
+                  v-else
                   :nodes="organizationTree"
                   node-key="id"
                   v-model:selected="selectedNodeId"
@@ -92,120 +148,123 @@
                     />
                   </div>
                 </div>
-                <div class="row q-mb-md">
-                  <q-input
-                    dense
-                    outlined
-                    v-model="employeeFilter"
-                    placeholder="Search employees..."
-                    class="full-width"
-                  >
-                    <template v-slot:append><q-icon name="search" /></template>
-                  </q-input>
+                <!-- No Office Selected Message for Table -->
+                <div v-if="!selectedOffice" class="text-center q-pa-xl">
+                  <q-icon name="folder_open" size="4rem" color="grey-5" />
+                  <div class="text-h6 text-grey-7 q-mt-md">No Office Selected</div>
+                  <div class="text-grey-6 q-mt-sm">
+                    Select an office from the dropdown to view employees
+                  </div>
                 </div>
-                <q-table
-                  :rows="filteredEmployees"
-                  :columns="columns"
-                  row-key="id"
-                  flat
-                  bordered
-                  class="clean-table"
-                  :pagination="{ rowsPerPage: 10 }"
-                  :loading="loading"
-                  :filter="employeeFilter"
-                >
-                  <template v-slot:body="props">
-                    <q-tr :props="props">
-                      <q-td key="name" :props="props">
-                        <div class="row items-center no-wrap full-width">
-                          <q-icon
-                            :name="props.row.isHead ? 'supervisor_account' : 'person'"
-                            :color="props.row.isHead ? 'blue' : 'grey'"
-                            size="sm"
-                            class="q-mr-sm flex-shrink-0"
-                          />
-                          <div class="employee-info full-width">
-                            <div>
-                              {{ props.row.label }}
+                <template v-else>
+                  <div class="row q-mb-md">
+                    <q-input
+                      dense
+                      outlined
+                      v-model="employeeFilter"
+                      placeholder="Search employees..."
+                      class="full-width"
+                    >
+                      <template v-slot:append><q-icon name="search" /></template>
+                    </q-input>
+                  </div>
+                  <q-table
+                    :rows="filteredEmployees"
+                    :columns="columns"
+                    row-key="id"
+                    flat
+                    bordered
+                    class="clean-table"
+                    :pagination="{ rowsPerPage: 10 }"
+                    :loading="loading"
+                    :filter="employeeFilter"
+                  >
+                    <template v-slot:body="props">
+                      <q-tr :props="props">
+                        <q-td key="name" :props="props">
+                          <div class="row items-center no-wrap full-width">
+                            <q-icon
+                              :name="props.row.isHead ? 'supervisor_account' : 'person'"
+                              :color="props.row.isHead ? 'blue' : 'grey'"
+                              size="sm"
+                              class="q-mr-sm flex-shrink-0"
+                            />
+                            <div class="employee-info full-width">
+                              <div>
+                                {{ props.row.label }}
+                              </div>
+                              <div class="text-caption text-grey-7">{{ props.row.position }}</div>
                             </div>
-                            <div class="text-caption text-grey-7">{{ props.row.position }}</div>
                           </div>
+                        </q-td>
+                        <q-td key="rank" :props="props">
+                          <div class="text-body2">
+                            <q-badge
+                              v-if="isHeadRank(props.row.rank)"
+                              color="green"
+                              class="q-mr-xs"
+                            >
+                              {{ props.row.rank || '-' }}
+                            </q-badge>
+                            <span v-else>{{ props.row.rank || '-' }}</span>
+                          </div>
+                        </q-td>
+                        <q-td key="ipcr_status" :props="props">
+                          <q-badge
+                            :color="getStatusColor(props.row)"
+                            :label="props.row.ipcrStatus || '-'"
+                            class="status-badge"
+                          />
+                        </q-td>
+                        <q-td key="actions" :props="props" class="text-center">
+                          <div class="row justify-center q-gutter-xs">
+                            <q-btn
+                              class="neu-button"
+                              flat
+                              round
+                              color="blue"
+                              icon="assignment_ind"
+                              size="md"
+                              @click="show_ipcr_Modal(props.row)"
+                            >
+                              <q-tooltip>IPCR</q-tooltip>
+                            </q-btn>
+                            <q-btn
+                              class="neu-button"
+                              flat
+                              round
+                              color="amber"
+                              icon="edit"
+                              size="md"
+                              @click="editEmployee(props.row)"
+                            >
+                              <q-tooltip>Edit</q-tooltip>
+                            </q-btn>
+                            <q-btn
+                              class="neu-button"
+                              flat
+                              round
+                              color="negative"
+                              icon="delete"
+                              size="md"
+                              @click="confirmDeleteEmployee(props.row)"
+                            >
+                              <q-tooltip>Delete</q-tooltip>
+                            </q-btn>
+                          </div>
+                        </q-td>
+                      </q-tr>
+                    </template>
+                    <template v-slot:no-data>
+                      <div class="text-center q-pa-md col-12">
+                        <q-icon name="error_outline" size="2rem" color="grey" />
+                        <div class="text-grey-7 q-mt-sm">
+                          No employees found in this {{ selectedNode?.type || 'node' }}
                         </div>
-                      </q-td>
-                      <q-td key="rank" :props="props">
-                        <div class="text-body2">
-                          <q-badge v-if="isHeadRank(props.row.rank)" color="green" class="q-mr-xs">
-                            {{ props.row.rank || '-' }}
-                          </q-badge>
-                          <span v-else>{{ props.row.rank || '-' }}</span>
-                        </div>
-                      </q-td>
-                      <q-td key="ipcr_status" :props="props">
-                        <q-badge
-                          :color="getStatusColor(props.row)"
-                          :label="props.row.ipcrStatus || '-'"
-                          class="status-badge"
-                        />
-                      </q-td>
-                      <q-td key="actions" :props="props" class="text-center">
-                        <div class="row justify-center q-gutter-xs">
-                          <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="blue"
-                            icon="assignment_ind"
-                            size="md"
-                            @click="show_ipcr_Modal(props.row)"
-                          >
-                            <q-tooltip>IPCR</q-tooltip>
-                          </q-btn>
-                          <!-- <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="green"
-                            icon="article"
-                            size="md"
-                            @click="unitWorkPlanEmployee(props.row)"
-                          >
-                            <q-tooltip>Unit Work Plan</q-tooltip>
-                          </q-btn> -->
-                          <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="amber"
-                            icon="edit"
-                            size="md"
-                            @click="editEmployee(props.row)"
-                          >
-                            <q-tooltip>Edit</q-tooltip>
-                          </q-btn>
-                          <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="negative"
-                            icon="delete"
-                            size="md"
-                            @click="confirmDeleteEmployee(props.row)"
-                          >
-                            <q-tooltip>Delete</q-tooltip>
-                          </q-btn>
-                        </div>
-                      </q-td>
-                    </q-tr>
-                  </template>
-                  <template v-slot:no-data>
-                    <div class="text-center q-pa-md col-12">
-                      <q-icon name="error_outline" size="2rem" color="grey" />
-                      <div class="text-grey-7 q-mt-sm">
-                        No employees found in this {{ selectedNode?.type || 'node' }}
                       </div>
-                    </div>
-                  </template>
-                </q-table>
+                    </template>
+                  </q-table>
+                </template>
               </q-card-section>
             </q-card>
           </div>
@@ -243,32 +302,46 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { api } from 'boot/axios'
 import { useOrganizationStore } from 'src/stores/office/spmsStore'
 import { useUserStore } from 'src/stores/userStore'
+import { useUserManageStore } from 'src/stores/hr_Store/account_manage_Store'
 import unitWorkplan_report from 'src/components/unitworkplant_Report.vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import ipcr_Report from 'src/components/ipcr_Report.vue'
-const $q = useQuasar(),
-  orgStore = useOrganizationStore(),
-  userStore = useUserStore(),
-  router = useRouter()
-const selectedEmployee = ref(null),
-  selectedNodeId = ref(null),
-  loading = ref(false),
-  treeFilter = ref(''),
-  employeeFilter = ref('')
-const confirmDeleteDialog = ref(false),
-  employeeToDelete = ref(null),
-  showUnitWorkPlanModalOpen = ref(false),
-  filteredRows = ref([])
+
+const $q = useQuasar()
+const orgStore = useOrganizationStore()
+const userStore = useUserStore()
+const userManageStore = useUserManageStore()
+const router = useRouter()
+
+// Reactive state
+const selectedEmployee = ref(null)
+const selectedNodeId = ref(null)
+const loading = ref(false)
+const treeFilter = ref('')
+const employeeFilter = ref('')
+const confirmDeleteDialog = ref(false)
+const employeeToDelete = ref(null)
+const showUnitWorkPlanModalOpen = ref(false)
+const filteredRows = ref([])
 const show_ipcr_ModalOpen = ref(false)
+const targetPeriod = ref(null)
+
+// Office dropdown state
+const selectedOffice = ref(null)
+const filteredOfficeOptions = ref([])
+
 const columns = ref([
   { name: 'name', align: 'left', label: 'Name', field: 'label', sortable: true },
   { name: 'rank', align: 'left', label: 'Rank', field: 'rank', sortable: true },
   { name: 'ipcr_status', align: 'left', label: 'Status', field: 'ipcrStatus', sortable: true },
   { name: 'actions', align: 'center', label: 'Actions', field: 'actions' },
 ])
+
+// Computed properties
 const organizationTree = computed(() => orgStore.structure)
 
 const selectedNode = computed(() => {
@@ -297,14 +370,17 @@ const filteredEmployees = computed(() => {
   )
 })
 
+// Helper constants and functions
 const headRanks = ['office-head', 'division-head', 'section-head', 'unit-head']
 
 const isHeadRank = (rank) => !!rank && headRanks.some((h) => rank.toLowerCase().includes(h))
+
 const getNodeColor = (node) => {
-  // Always return the color based on node type, ignoring head status
   return (
     {
       office: 'green',
+      office2: 'teal', // NEW
+      group: 'purple', // NEW
       division: 'red',
       section: 'blue',
       unit: 'indigo',
@@ -313,15 +389,15 @@ const getNodeColor = (node) => {
   )
 }
 
-// 2. Make sure getNodeIcon is consistent with our color scheme
 const getNodeIcon = (node) => {
   if (node.type === 'employee') {
     return isHeadRank(node.rank) ? 'supervisor_account' : 'person'
   }
-
   return (
     {
       office: 'account_balance',
+      office2: 'business', // NEW
+      group: 'group_work', // NEW
       division: 'corporate_fare',
       section: 'view_quilt',
       unit: 'widgets',
@@ -329,9 +405,6 @@ const getNodeIcon = (node) => {
   )
 }
 
-// 3. Keep the other color helper functions the same
-
-// 4. Keep the status color logic the same
 const getStatusColor = (row) => {
   const s = row.ipcrStatus?.toLowerCase() || ''
   if (s.includes('approved')) return 'positive'
@@ -351,6 +424,42 @@ const filterMethod = (node, filter) => {
   )
     return true
   return node.children?.some((child) => filterMethod(child, filter))
+}
+
+// Office dropdown filter function
+const filterOffices = (val, update) => {
+  if (val === '') {
+    update(() => {
+      filteredOfficeOptions.value = userManageStore.offices
+    })
+    return
+  }
+
+  update(() => {
+    const needle = val.toLowerCase()
+    filteredOfficeOptions.value = userManageStore.offices.filter((office) =>
+      office.name.toLowerCase().includes(needle),
+    )
+  })
+}
+
+// Handle office selection change
+const onOfficeChange = async (office) => {
+  if (office) {
+    // Reset previous selections
+    selectedNodeId.value = null
+    employeeFilter.value = ''
+    treeFilter.value = ''
+
+    // Set the officeId in userStore, then fetch structure
+    userStore.officeId = office.id
+    await refreshData()
+  } else {
+    // Clear the structure if no office is selected
+    userStore.officeId = null
+    orgStore.structure = []
+    selectedNodeId.value = null
+  }
 }
 
 const onNodeSelect = (nodeId) => {
@@ -395,15 +504,6 @@ const createUnitWorkPlan = () => {
   router.push({ name: 'unitworkplan', query: { type, id: selectedNode.value.id } })
 }
 
-// const unitWorkPlanEmployee = (employee) =>
-//   router.push({
-//     name: 'unitworkplan',
-//     query: {
-//       type: 'employee',
-//       id: employee.employeeData?.id || employee.id.replace('emp_', ''),
-//       name: employee.label,
-//     },
-//   })
 const editEmployee = (employee) =>
   router.push({
     name: 'employee-edit',
@@ -419,7 +519,6 @@ const performDeleteEmployee = async () => {
   if (!employeeToDelete.value) return
   try {
     loading.value = true
-    // eslint-disable-next-line no-undef
     await api.delete(
       `Spms/employee/${employeeToDelete.value.employeeData?.id || employeeToDelete.value.id.replace('emp_', '')}`,
     )
@@ -453,15 +552,19 @@ const refreshData = async () => {
   }
 }
 
+// Watch for office changes in userManageStore
 watch(
-  () => userStore.officeId,
-  async (id) => {
-    if (id) await refreshData()
+  () => userManageStore.offices,
+  (offices) => {
+    filteredOfficeOptions.value = offices
   },
 )
+
 onMounted(async () => {
   await userStore.loadUserData()
-  await refreshData()
+  // Fetch offices for the dropdown
+  await userManageStore.fetchOffices()
+  filteredOfficeOptions.value = userManageStore.offices
 })
 </script>
 
@@ -480,15 +583,15 @@ onMounted(async () => {
   border-radius: 50%;
   box-shadow:
     3px 3px 6px rgba(0, 0, 0, 0.15),
-    -3px -3px 6px rgba(255, 255, 255, 0.8);
-  transition: all 0.2s ease;
+    -3px -3px 6px rgba(255, 255, 255, 0 8);
+  transition: all 0 2s ease;
   background: #f7fafc;
 }
 
 .neu-button:hover {
   box-shadow:
-    2px 2px 4px rgba(0, 0, 0, 0.2),
-    -2px -2px 4px rgba(255, 255, 255, 0.9);
+    2px 2px 4px rgba(0, 0, 0, 0 2),
+    -2px -2px 4px rgba(255, 255, 255, 0 9);
   transform: translateY(1px);
 }
 
@@ -499,13 +602,12 @@ onMounted(async () => {
   transform: translateY(2px);
 }
 
-/* New rectangular neumorphic button style */
 .neu-button-rect {
   border-radius: 8px;
   box-shadow:
     3px 3px 6px rgba(0, 0, 0, 0.15),
     -3px -3px 6px rgba(255, 255, 255, 0.8);
-  transition: all 0.2s ease;
+  transition: all 0 2s ease;
   background: #f7fafc;
   padding: 8px 16px;
 }
@@ -524,37 +626,34 @@ onMounted(async () => {
   transform: translateY(2px);
 }
 
-/* New styles for the office title and button container */
 .office-title {
-  font-size: 12pt; /* Reduced from text-h6 default size */
-  max-width: 50%; /* Limit width of the title */
+  font-size: 12pt;
+  max-width: 50%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .button-container {
-  flex-wrap: nowrap; /* Prevent buttons from wrapping */
-  flex: 0 0 auto; /* Don't allow shrinking */
-  justify-content: flex-end; /* Keep buttons aligned to the right */
-  min-width: fit-content; /* Ensure buttons get enough space */
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  min-width: fit-content;
 }
 
-/* Organization tree specific styles */
 .org-tree .q-tree__node-header {
   padding: 4px 8px;
 }
 
 .tree-icon {
-  flex-shrink: 0; /* Prevent icon from shrinking */
+  flex-shrink: 0;
 }
 
 .tree-label {
-  min-width: 0; /* Allow text to shrink */
+  min-width: 0;
 }
 
 .node-label {
-  /* Remove truncation styles so full name is shown */
   overflow: visible;
   text-overflow: unset;
   white-space: normal;
@@ -562,7 +661,7 @@ onMounted(async () => {
 }
 
 .employee-info {
-  min-width: 0; /* Allow content to shrink */
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -570,5 +669,40 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Office select autogrow styles */
+.office-select {
+  min-height: 40px;
+}
+
+.office-select :deep(.q-field__control) {
+  min-height: 40px;
+  height: auto !important;
+}
+
+.office-select :deep(.q-field__control-container) {
+  padding-top: 14px;
+  padding-bottom: 6px;
+}
+
+.office-select :deep(.q-field__native) {
+  min-height: 24px;
+  padding: 0;
+}
+
+.selected-office-name {
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.4;
+  padding: 2px 0;
+}
+
+.office-option-label {
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.4;
 }
 </style>

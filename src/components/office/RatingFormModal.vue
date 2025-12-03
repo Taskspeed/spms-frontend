@@ -20,7 +20,7 @@
           :color="step >= 1 ? 'blue-4' : 'grey-4'"
           :text-color="step >= 1 ? 'white' : 'grey-7'"
           icon="event"
-          size="sm"
+          size="md"
         >
           1. Select Date
         </q-chip>
@@ -28,7 +28,7 @@
           :color="step >= 2 ? 'blue-4' : 'grey-4'"
           :text-color="step >= 2 ? 'white' : 'grey-7'"
           icon="assignment"
-          size="sm"
+          size="md"
         >
           2. Rate Performance
         </q-chip>
@@ -36,7 +36,7 @@
           :color="step >= 3 ? 'blue-4' : 'grey-4'"
           :text-color="step >= 3 ? 'white' : 'grey-7'"
           icon="check_circle"
-          size="sm"
+          size="md"
         >
           3. Review
         </q-chip>
@@ -66,60 +66,6 @@
         <div v-else-if="step === 2">
           <div class="title">Rate Your Performance Standards</div>
 
-          <!-- Info Cards -->
-          <!-- <q-card flat bordered class="q-mb-md">
-            <q-card-section class="bg-grey-2 q-pa-sm">
-              <strong>Target Period Information</strong>
-            </q-card-section>
-            <q-card-section>
-              <div class="info-grid">
-                <div class="info-item">
-                  <small>Target Period</small>
-                  <span>{{ sampleData.targetPeriod }}</span>
-                </div>
-                <div class="info-item">
-                  <small>Status</small>
-                  <q-badge color="warning">{{ sampleData.status }}</q-badge>
-                </div>
-                <div class="info-item">
-                  <small>Selected Date</small>
-                  <span>{{ formattedSelectedDate }}</span>
-                </div>
-                <div class="info-item">
-                  <small>Rating ID</small>
-                  <span>#{{ sampleData.ratingId }}</span>
-                </div>
-              </div>
-            </q-card-section>
-          </q-card> -->
-
-          <!-- Employee Information -->
-          <!-- <q-card flat bordered class="q-mb-md">
-            <q-card-section class="bg-grey-2 q-pa-sm">
-              <strong>Employee Information</strong>
-            </q-card-section>
-            <q-card-section>
-              <div class="info-grid">
-                <div class="info-item">
-                  <small>Name</small>
-                  <span>{{ sampleData.employee.name }}</span>
-                </div>
-                <div class="info-item">
-                  <small>Position</small>
-                  <span>{{ sampleData.employee.position }}</span>
-                </div>
-                <div class="info-item">
-                  <small>Function</small>
-                  <span>{{ sampleData.employee.rank }}</span>
-                </div>
-                <div class="info-item">
-                  <small>Department</small>
-                  <span>{{ sampleData.employee.department }}</span>
-                </div>
-              </div>
-            </q-card-section>
-          </q-card> -->
-
           <!-- Performance Standards List -->
           <q-card
             v-for="(standard, index) in sampleData.performanceStandards"
@@ -141,7 +87,7 @@
             <q-slide-transition>
               <div v-show="standard.expanded" class="standard-body">
                 <!-- Standard Outcome Table -->
-                <div class="section-title">Standard Outcome Reference</div>
+                <!-- <div class="section-title">Standard Outcome Reference</div> -->
                 <q-table
                   :rows="standard.standardOutcomeRows"
                   :columns="columns"
@@ -155,7 +101,7 @@
                 />
 
                 <!-- Details Grid - MFO, Success Indicators, Competencies in same row -->
-                <div class="section-title">Details & Competencies</div>
+                <!-- <div class="section-title">Details & Competencies</div> -->
                 <div class="details-grid-three">
                   <!-- MFO Details -->
                   <q-card flat bordered>
@@ -311,7 +257,7 @@
                   </div>
                 </div>
                 <q-circular-progress
-                  :value="completionPercentage.toFixed(2)"
+                  :value="completionPercentage"
                   size="50px"
                   :thickness="0.2"
                   color="primary"
@@ -469,6 +415,53 @@
         />
         <q-btn v-else color="positive" label="Submit Rating" icon="send" @click="submitForm" />
       </q-card-actions>
+
+      <!-- Confirmation Dialog -->
+      <q-dialog v-model="showConfirmDialog" persistent>
+        <q-card style="min-width: 350px">
+          <q-card-section class="row items-center">
+            <q-icon name="warning" color="warning" size="md" class="q-mr-sm" />
+            <span class="text-h6">Confirm Close</span>
+          </q-card-section>
+
+          <q-card-section>
+            Are you sure you want to close? Any unsaved changes will be lost.
+          </q-card-section>
+
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+            <q-btn flat label="Close" color="negative" @click="forceClose" />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+
+      <!-- Submit Confirmation Dialog -->
+      <q-dialog v-model="showSubmitDialog" persistent>
+        <q-card style="min-width: 350px">
+          <q-card-section class="row items-center">
+            <q-icon
+              :name="allStandardsComplete ? 'check_circle' : 'warning'"
+              :color="allStandardsComplete ? 'positive' : 'warning'"
+              size="md"
+              class="q-mr-sm"
+            />
+            <span class="text-h6">Confirm Submission</span>
+          </q-card-section>
+
+          <q-card-section>
+            {{
+              allStandardsComplete
+                ? 'Are you sure you want to submit these performance ratings?'
+                : 'Some standards are incomplete. Do you still want to submit?'
+            }}
+          </q-card-section>
+
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+            <q-btn flat label="Submit" color="positive" @click="doSubmit" />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </q-card>
   </q-dialog>
 </template>
@@ -480,14 +473,18 @@ export default {
   name: 'DateWizardModal',
 
   props: {
-    value: { type: Boolean, default: false },
+    modelValue: { type: Boolean, default: false },
   },
+
+  emits: ['update:modelValue', 'submit'],
 
   data() {
     return {
-      isOpen: this.value,
+      isOpen: this.modelValue,
       step: 1,
       selectedDate: null,
+      showConfirmDialog: false,
+      showSubmitDialog: false,
       columns: [
         {
           name: 'rating',
@@ -714,14 +711,19 @@ export default {
     allStandardsComplete() {
       return this.completedStandards === this.sampleData.performanceStandards.length
     },
+    hasUnsavedData() {
+      return this.sampleData.performanceStandards.some(
+        (std) => std.inputs.quantity || std.inputs.effectiveness || std.inputs.timeliness,
+      )
+    },
   },
 
   watch: {
-    value(val) {
+    modelValue(val) {
       this.isOpen = val
     },
     isOpen(val) {
-      this.$emit('input', val)
+      this.$emit('update:modelValue', val)
       if (!val) {
         this.resetForm()
       }
@@ -736,30 +738,27 @@ export default {
         standard.inputs.timeliness
       )
     },
-    confirmClose() {
-      const hasData = this.sampleData.performanceStandards.some(
-        (std) => std.inputs.quantity || std.inputs.effectiveness || std.inputs.timeliness,
-      )
 
-      if (hasData || this.step > 1) {
-        this.$q
-          .dialog({
-            title: 'Confirm Close',
-            message: 'Are you sure you want to close?  Any unsaved changes will be lost.',
-            cancel: true,
-            persistent: true,
-          })
-          .onOk(() => {
-            this.isOpen = false
-          })
+    confirmClose() {
+      // Check if there's any unsaved data or user is past step 1
+      if (this.hasUnsavedData || this.step > 1) {
+        this.showConfirmDialog = true
       } else {
-        this.isOpen = false
+        this.forceClose()
       }
     },
+
+    forceClose() {
+      this.showConfirmDialog = false
+      this.isOpen = false
+    },
+
     resetForm() {
       setTimeout(() => {
         this.step = 1
         this.selectedDate = null
+        this.showConfirmDialog = false
+        this.showSubmitDialog = false
         this.sampleData.performanceStandards.forEach((std, index) => {
           std.inputs.quantity = ''
           std.inputs.effectiveness = ''
@@ -768,40 +767,41 @@ export default {
         })
       }, 300)
     },
+
     submitForm() {
-      this.$q
-        .dialog({
-          title: 'Confirm Submission',
-          message: this.allStandardsComplete
-            ? 'Are you sure you want to submit these performance ratings?'
-            : 'Some standards are incomplete. Do you still want to submit?',
-          cancel: true,
-          persistent: true,
+      this.showSubmitDialog = true
+    },
+
+    doSubmit() {
+      const formData = {
+        date: this.selectedDate,
+        employee: this.sampleData.employee,
+        performanceStandards: this.sampleData.performanceStandards.map((std) => ({
+          category: std.category,
+          mfo: std.mfo,
+          output: std.output,
+          inputs: { ...std.inputs },
+        })),
+      }
+
+      console.log('Submitted Data:', formData)
+      this.$emit('submit', formData)
+
+      this.showSubmitDialog = false
+
+      // Show success notification if Quasar Notify plugin is available
+      if (this.$q && this.$q.notify) {
+        this.$q.notify({
+          color: 'positive',
+          message: 'Performance ratings submitted successfully!',
+          icon: 'check_circle',
+          position: 'top',
         })
-        .onOk(() => {
-          const formData = {
-            date: this.selectedDate,
-            employee: this.sampleData.employee,
-            performanceStandards: this.sampleData.performanceStandards.map((std) => ({
-              category: std.category,
-              mfo: std.mfo,
-              output: std.output,
-              inputs: { ...std.inputs },
-            })),
-          }
+      } else {
+        alert('Performance ratings submitted successfully!')
+      }
 
-          console.log('Submitted Data:', formData)
-          this.$emit('submit', formData)
-
-          this.$q.notify({
-            color: 'positive',
-            message: 'Performance ratings submitted successfully!',
-            icon: 'check_circle',
-            position: 'top',
-          })
-
-          this.isOpen = false
-        })
+      this.isOpen = false
     },
   },
 }
@@ -1003,13 +1003,12 @@ export default {
 
   small {
     color: #757575;
-    font-size: 0.75rem;
+    font-size: 0 75rem;
     font-weight: 500;
   }
 
   span {
     font-weight: 500;
-
     word-break: break-word;
   }
 }

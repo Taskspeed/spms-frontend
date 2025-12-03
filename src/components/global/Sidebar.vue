@@ -133,29 +133,29 @@ export default {
         // Office Admin
         1: [
           { label: 'Dashboard', icon: 'dashboard', route: '/office/dashboard' },
-          { label: 'SPMS', icon: 'fact_check', route: '/office/spms' },
+          { label: 'SPMS', icon: 'inventory_2', route: '/office/spms' },
           {
             label: 'Library',
-            icon: 'fact_check',
+            icon: 'library_books',
             children: [
               { label: 'Employee', icon: 'people', route: '/office/employee' },
               { label: 'MFO', icon: 'assignment', route: '/office/library' },
             ],
           },
           { label: 'Account', icon: 'person', route: '/office/profile' },
-          { label: 'Rating', icon: 'person', route: '/office/rating' },
+          { label: 'Rating', icon: 'rate_review', route: '/office/rating' },
         ],
         // Planning Admin
         2: [
           { label: 'Dashboard', icon: 'dashboard', route: '/planning/dashboard' },
-          { label: 'SPMS', icon: 'event_note', route: '/planning/spms' },
+          { label: 'SPMS', icon: 'inventory_2', route: '/planning/spms' },
           { label: 'Account', icon: 'person', route: '/planning/account' },
         ],
         // HR Admin
         3: [
           { label: 'Dashboard', icon: 'dashboard', route: '/hr/dashboard' },
-          { label: 'SPMS', icon: 'event_note', route: '/hr/spms' },
-          { label: 'Library', icon: 'fact_check', route: '/hr/library' },
+          { label: 'SPMS', icon: 'inventory_2', route: '/hr/spms' },
+          { label: 'Library', icon: 'library_books', route: '/hr/library' },
           {
             label: 'Account',
             icon: 'person',
@@ -381,7 +381,7 @@ export default {
 }
 
 .bg-planning-admin {
-  background-color: #f7899c;
+  background-color: #e98193;
 }
 
 .bg-hr-admin {

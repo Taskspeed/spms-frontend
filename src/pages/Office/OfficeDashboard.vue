@@ -15,28 +15,25 @@
     <div class="flex justify-center">
       <div class="row q-col-gutter-md q-mb-lg" style="max-width: 1200px; width: 100%">
         <!-- Employee Card -->
-        <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
           <q-card
             class="bg-white shadow-3 full-height clickable-card"
             @click="$router.push('/office/employee')"
           >
             <q-card-section class="q-pa-md">
               <div class="row items-center q-mb-md">
-                <q-icon name="people" color="primary" size="md" class="q-mr-sm" />
+                <q-icon name="people" color="green-9" size="md" class="q-mr-sm" />
                 <div>
                   <div class="text-subtitle2 text-grey-7">Total Employees</div>
                   <div class="text-h6 text-weight-bold">435</div>
                 </div>
               </div>
-              <div>
-                <div class="row justify-between q-mb-sm">
-                  <span class="text-caption">Division: <strong>12</strong></span>
-                </div>
-                <div class="row justify-between q-mb-sm">
-                  <span class="text-caption">Section: <strong>10</strong></span>
-                </div>
-                <div class="row justify-between">
-                  <span class="text-caption">Unit: <strong>15</strong></span>
+              <q-separator></q-separator>
+              <div class="row items-center q-mt-md">
+                <q-icon name="assessment" color="green-9" size="md" class="q-mr-sm" />
+                <div>
+                  <div class="text-subtitle2 text-grey-7">OPCR</div>
+                  <div class="text-h6 text-weight-bold text-grey-7">Pending</div>
                 </div>
               </div>
             </q-card-section>
@@ -44,14 +41,14 @@
         </div>
 
         <!-- IPCR Card -->
-        <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
           <q-card
             class="bg-white shadow-3 full-height clickable-card"
             @click="$router.push('/office/ipcr')"
           >
             <q-card-section class="q-pa-md">
               <div class="row items-center q-mb-md">
-                <q-icon name="assignment_ind" color="primary" size="md" class="q-mr-sm" />
+                <q-icon name="assignment_ind" color="green-9" size="md" class="q-mr-sm" />
                 <div>
                   <div class="text-subtitle2 text-grey-7">IPCR Status</div>
                   <div class="text-h6 text-weight-bold">434</div>
@@ -80,14 +77,14 @@
         </div>
 
         <!-- Unit Work Plan Card -->
-        <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
           <q-card
             class="bg-white shadow-3 full-height clickable-card"
             @click="$router.push('/office/unit-work-plan')"
           >
             <q-card-section class="q-pa-md">
               <div class="row items-center q-mb-md">
-                <q-icon name="domain" color="primary" size="md" class="q-mr-sm" />
+                <q-icon name="domain" color="green-9" size="md" class="q-mr-sm" />
                 <div>
                   <div class="text-subtitle2 text-grey-7">Unit Work Plan</div>
                   <div class="text-h6 text-weight-bold text-grey-8">Pending</div>
@@ -98,19 +95,19 @@
                   <span class="text-caption">Divisions: <strong>8/12</strong></span>
                   <span class="text-caption text-positive">66%</span>
                 </div>
-                <q-linear-progress size="xs" :value="8 / 12" color="primary" class="q-mb-sm" />
+                <q-linear-progress size="xs" :value="8 / 12" color="green-9" class="q-mb-sm" />
 
                 <div class="row justify-between q-mb-xs">
                   <span class="text-caption">Sections: <strong>6/10</strong></span>
                   <span class="text-caption text-positive">60%</span>
                 </div>
-                <q-linear-progress size="xs" :value="6 / 10" color="primary" class="q-mb-sm" />
+                <q-linear-progress size="xs" :value="6 / 10" color="green-9" class="q-mb-sm" />
 
                 <div class="row justify-between q-mb-xs">
                   <span class="text-caption">Units: <strong>10/15</strong></span>
                   <span class="text-caption text-positive">66%</span>
                 </div>
-                <q-linear-progress size="xs" :value="10 / 15" color="primary" />
+                <q-linear-progress size="xs" :value="10 / 15" color="green-9" />
               </div>
             </q-card-section>
           </q-card>
@@ -136,7 +133,7 @@
     </q-card>
 
     <!-- Activity Logs Section -->
-    <q-card class="bg-white shadow-3">
+    <!-- <q-card class="bg-white shadow-3">
       <q-card-section class="q-pa-md">
         <div class="text-subtitle1">Activity Logs</div>
         <q-table
@@ -150,7 +147,7 @@
         >
         </q-table>
       </q-card-section>
-    </q-card>
+    </q-card> -->
   </q-page>
 </template>
 
@@ -227,50 +224,50 @@ const noIpcrColumns = [
 ]
 
 // Activity Logs Data
-const activityLogs = ref([
-  {
-    id: 1,
-    date: '2023-05-15 09:30',
-    action: 'OPCR Submission',
-    username: 'john.doe',
-  },
-  {
-    id: 2,
-    date: '2023-05-14 15:45',
-    action: 'IPCR Review',
-    username: 'maria.santos',
-  },
-  {
-    id: 3,
-    date: '2023-05-14 11:20',
-    action: 'Work Plan Update',
-    username: 'robert.cruz',
-  },
-  {
-    id: 4,
-    date: '2023-05-13 14:10',
-    action: 'Performance Rating',
-    username: 'susan.reyes',
-  },
-  {
-    id: 5,
-    date: '2023-05-12 09:15',
-    action: 'OPCR Draft Saved',
-    username: 'mark.johnson',
-  },
-  {
-    id: 6,
-    date: '2023-05-12 08:30',
-    action: 'IPCR Submission',
-    username: 'james.wilson',
-  },
-])
+// const activityLogs = ref([
+//   {
+//     id: 1,
+//     date: '2023-05-15 09:30',
+//     action: 'OPCR Submission',
+//     username: 'john.doe',
+//   },
+//   {
+//     id: 2,
+//     date: '2023-05-14 15:45',
+//     action: 'IPCR Review',
+//     username: 'maria.santos',
+//   },
+//   {
+//     id: 3,
+//     date: '2023-05-14 11:20',
+//     action: 'Work Plan Update',
+//     username: 'robert.cruz',
+//   },
+//   {
+//     id: 4,
+//     date: '2023-05-13 14:10',
+//     action: 'Performance Rating',
+//     username: 'susan.reyes',
+//   },
+//   {
+//     id: 5,
+//     date: '2023-05-12 09:15',
+//     action: 'OPCR Draft Saved',
+//     username: 'mark.johnson',
+//   },
+//   {
+//     id: 6,
+//     date: '2023-05-12 08:30',
+//     action: 'IPCR Submission',
+//     username: 'james.wilson',
+//   },
+// ])
 
-const activityColumns = [
-  { name: 'date', label: 'Date & Time', field: 'date', align: 'left', sortable: true },
-  { name: 'action', label: 'Action', field: 'action', align: 'left', sortable: true },
-  { name: 'username', label: 'Username', field: 'username', align: 'left', sortable: true },
-]
+// const activityColumns = [
+//   { name: 'date', label: 'Date & Time', field: 'date', align: 'left', sortable: true },
+//   { name: 'action', label: 'Action', field: 'action', align: 'left', sortable: true },
+//   { name: 'username', label: 'Username', field: 'username', align: 'left', sortable: true },
+// ]
 </script>
 
 <style scoped>

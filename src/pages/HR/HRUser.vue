@@ -67,16 +67,11 @@
             virtual-scroll
           >
             <template v-slot:body="props">
-              <!-- <q-tr :props="props" @click="selectedOffice = props.row">
-                <q-td key="name" :props="props">
-                  {{ props.row.name }}
-                </q-td>
-              </q-tr> -->
               <q-tr
                 :props="props"
-                @click="selectedOffice = props.row"
+                @click="selectOffice(props.row)"
                 class="office-row"
-                :class="{ selected: selectedOffice && selectedOffice.id === props.row.id }"
+                :class="{ selected: isOfficeSelected(props.row) }"
               >
                 <q-td key="name" :props="props">
                   {{ props.row.name }}
@@ -129,37 +124,19 @@
             </template>
           </q-input>
 
-          <!-- <q-table :rows="filteredEmployees" :columns="employeeColumns" row-key="id" :loading="loading" virtual-scroll>
-            <template v-slot:body="props">
-              <q-tr
-                :props="props"
-                @click="selectedEmployee = props.row"
-                class="employee-row"
-                :class="{ 'selected': selectedEmployee && selectedEmployee.id === props.row.id }"
-              >
-                <q-td key="name4" :props="props">
-                  {{ props.row.name4 }}
-                </q-td>
-                <q-td key="Designation" :props="props">
-                  {{ props.row.Designation }}
-                </q-td>
-              </q-tr>
-            </template>
-          </q-table> -->
           <q-table
             :rows="filteredEmployees"
             :columns="employeeColumns"
-            row-key="id"
+            row-key="ControlNo"
             :loading="loading"
             virtual-scroll
           >
             <template v-slot:body="props">
               <q-tr
                 :props="props"
-                @click="selectedEmployee = props.row"
+                @click="selectEmployee(props.row)"
                 class="employee-row"
-                :class="{ selected: selectedEmployee && selectedEmployee.id === props.row.id }"
-                :key="props.row.id"
+                :class="{ selected: isEmployeeSelected(props.row) }"
               >
                 <q-td key="name4" :props="props">
                   {{ props.row.name4 }}
@@ -224,52 +201,6 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-    <!-- Role Selection Modal -->
-
-    <q-dialog v-model="showRoleModal" persistent transition-show="scale" transition-hide="scale">
-      <q-card style="width: 100%; max-width: 50vw">
-        <q-card-section>
-          <div class="text-h6">Assign Role</div>
-          <div class="text-caption text-grey-7">Step 3 of 3</div>
-        </q-card-section>
-
-        <q-card-section>
-          <p class="text-grey-8 q-mb-md">Select the appropriate role for this user.</p>
-          <q-select
-            v-model="selectedRole"
-            :options="roles"
-            label="Role *"
-            option-label="label"
-            :rules="[(val) => !!val || 'Role is required']"
-            :loading="loading"
-          >
-            <template v-slot:prepend>
-              <q-icon name="security" />
-            </template>
-          </q-select>
-
-          <!-- Permissions Checklist -->
-          <!-- <div class="q-mt-lg">
-            <div class="text-subtitle2 q-mb-sm">Permissions</div>
-            <q-option-group v-model="selectedPermissions" :options="permissions" type="checkbox" color="primary" />
-          </div> -->
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Back" color="grey-7" @click="goBackToEmployeeModal" />
-          <q-btn
-            unelevated
-            label="Save"
-            color="primary"
-            @click="saveUser"
-            :disabled="!selectedRole"
-            :loading="saving"
-          >
-            <q-tooltip v-if="!selectedRole">Please select a role to continue</q-tooltip>
-          </q-btn>
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
 
     <!-- Confirmation Dialog -->
     <q-dialog v-model="showConfirmation" persistent transition-show="scale" transition-hide="scale">
@@ -305,7 +236,7 @@
       </q-card>
     </q-dialog>
 
-    <!-- Add new View User Modal -->
+    <!-- View User Modal -->
     <q-dialog v-model="showViewModal">
       <q-card style="width: 100%; max-width: 50vw">
         <q-card-section>
@@ -325,18 +256,6 @@
               <div class="text-weight-medium">Role:</div>
               <div>{{ getRoleName(selectedUser?.role_id) }}</div>
             </div>
-            <!-- <div class="col-12">
-              <div class="text-weight-medium">Permissions:</div>
-              <div>
-                <q-chip v-for="perm in selectedUser?.permissions"
-                       :key="perm"
-                       color="primary"
-                       text-color="white"
-                       small>
-                  {{ perm }}
-                </q-chip>
-              </div>
-            </div> -->
           </div>
         </q-card-section>
         <q-card-actions align="right">
@@ -345,7 +264,7 @@
       </q-card>
     </q-dialog>
 
-    <!-- Add Delete Confirmation Dialog -->
+    <!-- Delete Confirmation Dialog -->
     <q-dialog v-model="showDeleteDialog">
       <q-card>
         <q-card-section>
@@ -378,7 +297,6 @@ export default {
     const showDeleteDialog = ref(false)
     const selectedUser = ref(null)
 
-    // Add these refs that were missing
     const loading = ref(false)
     const saving = ref(false)
     const selectedOffice = ref(null)
@@ -460,6 +378,27 @@ export default {
       { label: 'Access Reports', value: 'access_reports' },
     ]
 
+    // Selection helper functions for Office
+    const selectOffice = (row) => {
+      selectedOffice.value = { ...row }
+    }
+
+    const isOfficeSelected = (row) => {
+      if (!selectedOffice.value || !row) return false
+      return selectedOffice.value.id === row.id
+    }
+
+    // Selection helper functions for Employee - using ControlNo as unique identifier
+    const selectEmployee = (row) => {
+      selectedEmployee.value = { ...row }
+    }
+
+    const isEmployeeSelected = (row) => {
+      if (!selectedEmployee.value || !row) return false
+      // Use ControlNo as the unique identifier since employees don't have 'id' field
+      return selectedEmployee.value.ControlNo === row.ControlNo
+    }
+
     const filterOffices = () => {
       const searchTerm = officeSearch.value?.toLowerCase().trim() || ''
       filteredOffices.value = store.offices.filter((office) =>
@@ -478,21 +417,13 @@ export default {
       )
     }
 
-    // const openEmployeeModal = () => {
-    //   if (selectedOffice.value) {
-    //     showOfficeModal.value = false
-    //     showEmployeeModal.value = true
-    //     search.value = ""
-    //     store.fetchEmployees(selectedOffice.value.name)
-    //   }
-    // }
     const openEmployeeModal = async () => {
       if (selectedOffice.value) {
         loading.value = true
         try {
           await store.fetchEmployees(selectedOffice.value.name)
           filteredEmployees.value = store.employees
-          selectedEmployee.value = null // Reset employee selection
+          selectedEmployee.value = null
           search.value = ''
           showOfficeModal.value = false
           showEmployeeModal.value = true
@@ -503,19 +434,15 @@ export default {
         }
       }
     }
-    // const goBackToOfficeModal = () => {
-    //   showEmployeeModal.value = false
-    //   showOfficeModal.value = true
-    //   officeSearch.value = ""
-    //   filteredOffices.value = store.offices
-    // }
+
     const goBackToOfficeModal = () => {
       showEmployeeModal.value = false
       showOfficeModal.value = true
-      selectedEmployee.value = null // Reset employee selection
+      selectedEmployee.value = null
       officeSearch.value = ''
       filteredOffices.value = store.offices
     }
+
     const goBackToEmployeeModal = () => {
       showRoleModal.value = false
       showEmployeeModal.value = true
@@ -536,11 +463,12 @@ export default {
       try {
         const userData = {
           name: selectedEmployee.value.name4,
-          password: `emp${selectedEmployee.value.id}`,
+          password: `emp${selectedEmployee.value.ControlNo}`,
           designation: selectedEmployee.value.Designation,
           office_id: selectedOffice.value.id,
           role_id: selectedRole.value.value,
           permissions: selectedPermissions.value,
+          control_no: selectedEmployee.value.ControlNo,
         }
 
         const success = await store.createUser(userData)
@@ -600,31 +528,28 @@ export default {
     onMounted(() => {
       store.fetchUserAccounts()
       store.fetchOffices()
-    }),
-      watch(showOfficeModal, (newValue) => {
-        if (newValue) {
-          // Reset office search and filter when modal opens
-          officeSearch.value = ''
-          selectedOffice.value = null
-          filterOffices()
-        }
-      })
+    })
 
-    // Watch for employee modal changes
+    watch(showOfficeModal, (newValue) => {
+      if (newValue) {
+        officeSearch.value = ''
+        selectedOffice.value = null
+        filterOffices()
+      }
+    })
+
     watch(showEmployeeModal, (newValue) => {
       if (newValue) {
-        // Reset employee search and selection when modal opens
         search.value = ''
         selectedEmployee.value = null
         filterEmployees()
       }
     })
 
-    // Watch for office selection changes
     watch(selectedOffice, async (newOffice) => {
       if (newOffice) {
         loading.value = true
-        selectedEmployee.value = null // Reset employee selection when office changes
+        selectedEmployee.value = null
         try {
           await store.fetchEmployees(newOffice.name)
           filteredEmployees.value = store.employees
@@ -637,6 +562,7 @@ export default {
         filteredEmployees.value = []
       }
     })
+
     return {
       store,
       showOfficeModal,
@@ -674,10 +600,15 @@ export default {
       openRoleModal,
       saveUser,
       confirmSave,
+      selectOffice,
+      isOfficeSelected,
+      selectEmployee,
+      isEmployeeSelected,
     }
   },
 }
 </script>
+
 <style scoped>
 /* Office styles */
 .office-row {
@@ -685,42 +616,33 @@ export default {
   transition: background-color 0.3s ease;
 }
 
-.office-row:hover {
+.office-row:hover:not(.selected) {
   background-color: #e5e5e6;
 }
 
 .office-row.selected {
-  background-color: #ce2f2f !important; /* Added !important to ensure override */
+  background-color: #ce2f2f !important;
 }
 
 .office-row.selected td {
   color: white !important;
 }
 
-/* Employee styles - Modified to fix selection issue */
+/* Employee styles */
 .employee-row {
   cursor: pointer;
-  transition: background-color 0.3s ease;
-  position: relative; /* Added for isolation */
+  transition: background-color 0 3s ease;
 }
 
-/* Only apply hover effect to non-selected rows */
-.employee-row:not(.selected):hover {
+.employee-row:hover:not(.selected) {
   background-color: #e5e5e6;
 }
 
-/* Modified selected state styles */
 .employee-row.selected {
-  background-color: #ce2f2f !important; /* Added !important to ensure override */
-  z-index: 1; /* Added to ensure selected row stays on top */
+  background-color: #ce2f2f !important;
 }
 
 .employee-row.selected td {
   color: white !important;
-}
-
-/* Reset hover effect when row is selected */
-.employee-row.selected:hover {
-  background-color: #ce2f2f !important;
 }
 </style>

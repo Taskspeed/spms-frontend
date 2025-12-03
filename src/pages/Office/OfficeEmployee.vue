@@ -162,6 +162,20 @@ export default {
               disable: (employee) => this.isHeadOptionDisabled(employee, 'Office-Head'),
             })
             break
+          case 'office2':
+            baseOptions.push({
+              value: 'Office2-Head',
+              label: 'Office2-Head',
+              disable: (employee) => this.isHeadOptionDisabled(employee, 'Office2-Head'),
+            })
+            break
+          case 'group':
+            baseOptions.push({
+              value: 'Group-Head',
+              label: 'Group-Head',
+              disable: (employee) => this.isHeadOptionDisabled(employee, 'Group-Head'),
+            })
+            break
           case 'division':
             baseOptions.push({
               value: 'Division-Head',
@@ -176,6 +190,13 @@ export default {
               disable: (employee) => this.isHeadOptionDisabled(employee, 'Section-Head'),
             })
             break
+          case 'unit':
+            baseOptions.push({
+              value: 'Unit-Head',
+              label: 'Unit-Head',
+              disable: (employee) => this.isHeadOptionDisabled(employee, 'Unit-Head'),
+            })
+            break
         }
       }
 
@@ -185,17 +206,57 @@ export default {
       if (!this.selectedNode) return []
 
       return this.employeeStore.assignedEmployees.filter((emp) => {
-        if (emp.section) {
-          return this.selectedNode.type === 'section' && emp.section === this.selectedNode.name
+        // Match by unit
+        if (emp.unit) {
+          return this.selectedNode.type === 'unit' && emp.unit === this.selectedNode.name
         }
+        // Match by section
+        if (emp.section) {
+          return (
+            this.selectedNode.type === 'section' &&
+            emp.section === this.selectedNode.name &&
+            !emp.unit
+          )
+        }
+        // Match by division
         if (emp.division) {
           return (
             this.selectedNode.type === 'division' &&
             emp.division === this.selectedNode.name &&
-            !emp.section
+            !emp.section &&
+            !emp.unit
           )
         }
-        return this.selectedNode.type === 'office' && !emp.division && !emp.section
+        // Match by group
+        if (emp.group) {
+          return (
+            this.selectedNode.type === 'group' &&
+            emp.group === this.selectedNode.name &&
+            !emp.division &&
+            !emp.section &&
+            !emp.unit
+          )
+        }
+        // Match by office2
+        if (emp.office2) {
+          return (
+            this.selectedNode.type === 'office2' &&
+            emp.office2 === this.selectedNode.name &&
+            !emp.group &&
+            !emp.division &&
+            !emp.section &&
+            !emp.unit
+          )
+        }
+        // Match by office (top level)
+        return (
+          this.selectedNode.type === 'office' &&
+          !emp.office2 &&
+          !emp.group &&
+          !emp.division &&
+          !emp.section &&
+          !emp.unit
+        )
       })
     },
     selectedNodeTitle() {
@@ -309,8 +370,15 @@ export default {
       }
     },
     processOrganizationData(officeData, counts) {
+      let nodeIdCounter = 1
+
+      const generateId = (prefix) => {
+        return `${prefix}-${nodeIdCounter++}`
+      }
+
+      // Main office node
       const officeNode = {
-        id: `office-${useUserStore().user?.office_id}`, // Prefix with 'office-'
+        id: generateId('office'),
         label: this.officeName,
         name: this.officeName,
         type: 'office',
@@ -319,60 +387,226 @@ export default {
         children: [],
       }
 
-      const divisions = officeData.divisions.map((div, divIndex) => {
-        const divisionCount = counts.divisions[div.division]?.count || 0
-        return {
-          id: `div-${divIndex + 1}`, // Prefix with 'div-'
-          label: div.division,
-          name: div.division,
-          type: 'division',
-          icon: 'apartment',
-          count: divisionCount,
-          children:
-            div.sections?.map((sec, secIndex) => ({
-              id: `sec-${(divIndex + 1) * 100 + secIndex + 1}`, // Prefix with 'sec-'
-              label: sec.section,
-              name: sec.section,
-              type: 'section',
-              icon: 'group',
-              count: counts.sections[sec.section]?.count || 0,
+      // Process office2 array
+      if (Array.isArray(officeData.office2) && officeData.office2.length > 0) {
+        officeData.office2.forEach((office2Data) => {
+          // Only create office2 node if office2 has a value
+          if (office2Data.office2) {
+            const office2Node = {
+              id: generateId('office2'),
+              label: office2Data.office2,
+              name: office2Data.office2,
+              type: 'office2',
+              icon: 'domain',
+              count: counts.office2?.[office2Data.office2]?.count || 0,
               children: [],
-            })) || [],
-        }
-      })
+            }
 
-      if (officeData.sections_without_division?.length) {
-        divisions.push({
-          id: 'div-9999', // Prefix with 'div-'
-          label: 'SECTIONS WITHOUT DIVISION',
-          name: 'Sections Without Division',
-          type: 'division',
-          icon: 'apartment',
-          count: 0,
-          children: officeData.sections_without_division.map((sec, secIndex) => ({
-            id: `sec-9999-${secIndex + 1}`, // Unique prefix
-            label: sec.section,
-            name: sec.section,
-            type: 'section',
-            icon: 'group',
-            count: counts.sections[sec.section]?.count || 0,
-            children: [],
-          })),
+            // Process groups
+            this.processGroups(office2Data.groups, office2Node, counts, generateId)
+            officeNode.children.push(office2Node)
+          } else {
+            // No office2, directly process groups under office
+            this.processGroups(office2Data.groups, officeNode, counts, generateId)
+          }
         })
       }
 
-      officeNode.children = divisions
       return officeNode
     },
+
+    processGroups(groupsData, parentNode, counts, generateId) {
+      if (Array.isArray(groupsData) && groupsData.length > 0) {
+        groupsData.forEach((groupData) => {
+          // Only create group node if group has a value
+          if (groupData.group) {
+            const groupNode = {
+              id: generateId('group'),
+              label: groupData.group,
+              name: groupData.group,
+              type: 'group',
+              icon: 'workspaces',
+              count: counts.groups?.[groupData.group]?.count || 0,
+              children: [],
+            }
+
+            // Process divisions
+            this.processDivisions(groupData, groupNode, counts, generateId)
+
+            // Process sections without division
+            this.processSectionsWithoutDivision(
+              groupData.sections_without_division,
+              groupNode,
+              counts,
+              generateId,
+            )
+
+            // Process units without division
+            this.processUnitsWithoutDivision(
+              groupData.units_without_division,
+              groupNode,
+              counts,
+              generateId,
+            )
+
+            parentNode.children.push(groupNode)
+          } else {
+            // No group, directly process divisions under parent
+            this.processDivisions(groupData, parentNode, counts, generateId)
+            this.processSectionsWithoutDivision(
+              groupData.sections_without_division,
+              parentNode,
+              counts,
+              generateId,
+            )
+            this.processUnitsWithoutDivision(
+              groupData.units_without_division,
+              parentNode,
+              counts,
+              generateId,
+            )
+          }
+        })
+      }
+    },
+
+    processDivisions(groupData, parentNode, counts, generateId) {
+      if (Array.isArray(groupData.divisions) && groupData.divisions.length > 0) {
+        groupData.divisions.forEach((divData) => {
+          const divisionNode = {
+            id: generateId('div'),
+            label: divData.division,
+            name: divData.division,
+            type: 'division',
+            icon: 'apartment',
+            count: counts.divisions?.[divData.division]?.count || 0,
+            children: [],
+          }
+
+          // Process sections within division
+          this.processSections(divData.sections, divisionNode, counts, generateId)
+
+          // Process units without section
+          this.processUnitsWithoutSection(
+            divData.units_without_section,
+            divisionNode,
+            counts,
+            generateId,
+          )
+
+          parentNode.children.push(divisionNode)
+        })
+      }
+    },
+
+    processSections(sectionsData, parentNode, counts, generateId) {
+      if (Array.isArray(sectionsData) && sectionsData.length > 0) {
+        sectionsData.forEach((secData) => {
+          const sectionNode = {
+            id: generateId('sec'),
+            label: secData.section,
+            name: secData.section,
+            type: 'section',
+            icon: 'group',
+            count: counts.sections?.[secData.section]?.count || 0,
+            children: [],
+          }
+
+          // Process units within section
+          this.processUnits(secData.units, sectionNode, counts, generateId)
+
+          parentNode.children.push(sectionNode)
+        })
+      }
+    },
+
+    processSectionsWithoutDivision(sectionsData, parentNode, counts, generateId) {
+      if (Array.isArray(sectionsData) && sectionsData.length > 0) {
+        sectionsData.forEach((secData) => {
+          const sectionNode = {
+            id: generateId('sec'),
+            label: secData.section,
+            name: secData.section,
+            type: 'section',
+            icon: 'group',
+            count: counts.sections?.[secData.section]?.count || 0,
+            children: [],
+          }
+
+          // Process units within section
+          this.processUnits(secData.units, sectionNode, counts, generateId)
+
+          parentNode.children.push(sectionNode)
+        })
+      }
+    },
+
+    processUnits(unitsData, parentNode, counts, generateId) {
+      if (Array.isArray(unitsData) && unitsData.length > 0) {
+        unitsData.forEach((unitName) => {
+          const unitNode = {
+            id: generateId('unit'),
+            label: unitName,
+            name: unitName,
+            type: 'unit',
+            icon: 'people',
+            count: counts.units?.[unitName]?.count || 0,
+            children: [],
+          }
+          parentNode.children.push(unitNode)
+        })
+      }
+    },
+
+    processUnitsWithoutSection(unitsData, parentNode, counts, generateId) {
+      if (Array.isArray(unitsData) && unitsData.length > 0) {
+        unitsData.forEach((unitName) => {
+          const unitNode = {
+            id: generateId('unit'),
+            label: unitName,
+            name: unitName,
+            type: 'unit',
+            icon: 'people',
+            count: counts.units?.[unitName]?.count || 0,
+            children: [],
+          }
+          parentNode.children.push(unitNode)
+        })
+      }
+    },
+
+    processUnitsWithoutDivision(unitsData, parentNode, counts, generateId) {
+      if (Array.isArray(unitsData) && unitsData.length > 0) {
+        unitsData.forEach((unitName) => {
+          const unitNode = {
+            id: generateId('unit'),
+            label: unitName,
+            name: unitName,
+            type: 'unit',
+            icon: 'people',
+            count: counts.units?.[unitName]?.count || 0,
+            children: [],
+          }
+          parentNode.children.push(unitNode)
+        })
+      }
+    },
+
     updateTreeCounts() {
       this.employeeStore.fetchEmployeeCounts(useUserStore().user?.office_id).then((counts) => {
         const updateNodeCounts = (node) => {
           if (node.type === 'office') {
             node.count = counts.office || 0
+          } else if (node.type === 'office2') {
+            node.count = counts.office2?.[node.name]?.count || 0
+          } else if (node.type === 'group') {
+            node.count = counts.groups?.[node.name]?.count || 0
           } else if (node.type === 'division') {
-            node.count = counts.divisions[node.name]?.count || 0
+            node.count = counts.divisions?.[node.name]?.count || 0
           } else if (node.type === 'section') {
-            node.count = counts.sections[node.name]?.count || 0
+            node.count = counts.sections?.[node.name]?.count || 0
+          } else if (node.type === 'unit') {
+            node.count = counts.units?.[node.name]?.count || 0
           }
           if (node.children) {
             node.children.forEach((child) => updateNodeCounts(child))
@@ -381,6 +615,7 @@ export default {
         this.treeNodes.forEach((node) => updateNodeCounts(node))
       })
     },
+
     async handleAddEmployees(selectedEmployees) {
       try {
         const userStore = useUserStore()
@@ -390,7 +625,7 @@ export default {
         if (!officeId || !this.selectedNode) {
           throw new Error(
             !officeId
-              ? 'Unable to determine office. Please make sure you are properly authenticated.'
+              ? 'Unable to determine office.  Please make sure you are properly authenticated.'
               : 'Please select an office, division, or section before adding employees.',
           )
         }
@@ -400,8 +635,11 @@ export default {
           position: emp.position,
           office_id: officeId,
           office: officeName,
+          office2: this.getOffice2ForSelectedNode(),
+          group: this.getGroupForSelectedNode(),
           division: this.getDivisionForSelectedNode(),
           section: this.getSectionForSelectedNode(),
+          unit: this.getUnitForSelectedNode(),
         }))
 
         await this.employeeStore.addEmployees({ employees: employeesToAdd })
@@ -419,29 +657,60 @@ export default {
         this.showAddModal = false
       }
     },
-    getDivisionForSelectedNode() {
-      if (this.selectedNode.type === 'division') return this.selectedNode.name
-      if (this.selectedNode.type === 'section') {
-        const findDivision = (nodes) => {
-          for (const node of nodes) {
-            if (node.type === 'division') {
-              if (node.children.some((child) => child.id === this.selectedNode.id)) {
-                return node.name
-              }
-              const found = findDivision(node.children)
-              if (found) return found
-            }
-          }
-          return null
-        }
-        return findDivision(this.treeNodes)
+
+    getOffice2ForSelectedNode() {
+      if (this.selectedNode.type === 'office2') return this.selectedNode.name
+      if (['group', 'division', 'section', 'unit'].includes(this.selectedNode.type)) {
+        return this.findParentByType(this.treeNodes, this.selectedNode.id, 'office2')
       }
       return null
     },
-    getSectionForSelectedNode() {
-      if (this.selectedNode.type === 'section') return this.selectedNode.name
+
+    getGroupForSelectedNode() {
+      if (this.selectedNode.type === 'group') return this.selectedNode.name
+      if (['division', 'section', 'unit'].includes(this.selectedNode.type)) {
+        return this.findParentByType(this.treeNodes, this.selectedNode.id, 'group')
+      }
       return null
     },
+
+    getDivisionForSelectedNode() {
+      if (this.selectedNode.type === 'division') return this.selectedNode.name
+      if (['section', 'unit'].includes(this.selectedNode.type)) {
+        return this.findParentByType(this.treeNodes, this.selectedNode.id, 'division')
+      }
+      return null
+    },
+
+    getSectionForSelectedNode() {
+      if (this.selectedNode.type === 'section') return this.selectedNode.name
+      if (this.selectedNode.type === 'unit') {
+        return this.findParentByType(this.treeNodes, this.selectedNode.id, 'section')
+      }
+      return null
+    },
+
+    getUnitForSelectedNode() {
+      if (this.selectedNode.type === 'unit') return this.selectedNode.name
+      return null
+    },
+
+    findParentByType(nodes, childId, parentType) {
+      for (const node of nodes) {
+        if (node.children) {
+          // Check if any direct child matches
+          const directChild = node.children.find((child) => child.id === childId)
+          if (directChild && node.type === parentType) {
+            return node.name
+          }
+          // Recursively search in children
+          const found = this.findParentByType(node.children, childId, parentType)
+          if (found) return found
+        }
+      }
+      return null
+    },
+
     async updateEmployeeRank(employee, newRank) {
       const originalRank = employee.rank
 
@@ -454,7 +723,16 @@ export default {
         })
         .onOk(async () => {
           try {
-            if (['Office-Head', 'Division-Head', 'Section-Head'].includes(newRank)) {
+            if (
+              [
+                'Office-Head',
+                'Office2-Head',
+                'Group-Head',
+                'Division-Head',
+                'Section-Head',
+                'Unit-Head',
+              ].includes(newRank)
+            ) {
               const currentHead = this.filteredEmployees.find(
                 (emp) =>
                   emp.id !== employee.id &&
@@ -506,6 +784,7 @@ export default {
           employee.rank = originalRank
         })
     },
+
     async saveRankChange(employee, newRank) {
       await this.employeeStore.updateEmployeeRank(employee.id, newRank)
       employee.rank = newRank
@@ -514,28 +793,80 @@ export default {
         message: `${employee.name}'s rank updated to ${newRank}`,
       })
     },
+
     isSameOrganizationalUnit(emp1, emp2) {
-      if (this.selectedNode?.type === 'office') {
+      // Check unit level
+      if (this.selectedNode?.type === 'unit') {
+        return emp1.unit === emp2.unit && emp1.unit === this.selectedNode.name
+      }
+
+      // Check section level
+      if (this.selectedNode?.type === 'section') {
         return (
-          emp1.office_id === emp2.office_id &&
-          !emp1.division &&
-          !emp1.section &&
-          !emp2.division &&
-          !emp2.section
+          emp1.section === emp2.section &&
+          emp1.section === this.selectedNode.name &&
+          !emp1.unit &&
+          !emp2.unit
         )
       }
 
+      // Check division level
       if (this.selectedNode?.type === 'division') {
         return (
           emp1.division === emp2.division &&
           emp1.division === this.selectedNode.name &&
           !emp1.section &&
-          !emp2.section
+          !emp2.section &&
+          !emp1.unit &&
+          !emp2.unit
         )
       }
 
-      if (this.selectedNode?.type === 'section') {
-        return emp1.section === emp2.section && emp1.section === this.selectedNode.name
+      // Check group level
+      if (this.selectedNode?.type === 'group') {
+        return (
+          emp1.group === emp2.group &&
+          emp1.group === this.selectedNode.name &&
+          !emp1.division &&
+          !emp2.division &&
+          !emp1.section &&
+          !emp2.section &&
+          !emp1.unit &&
+          !emp2.unit
+        )
+      }
+
+      // Check office2 level
+      if (this.selectedNode?.type === 'office2') {
+        return (
+          emp1.office2 === emp2.office2 &&
+          emp1.office2 === this.selectedNode.name &&
+          !emp1.group &&
+          !emp2.group &&
+          !emp1.division &&
+          !emp2.division &&
+          !emp1.section &&
+          !emp2.section &&
+          !emp1.unit &&
+          !emp2.unit
+        )
+      }
+
+      // Check office level (top)
+      if (this.selectedNode?.type === 'office') {
+        return (
+          emp1.office_id === emp2.office_id &&
+          !emp1.office2 &&
+          !emp2.office2 &&
+          !emp1.group &&
+          !emp2.group &&
+          !emp1.division &&
+          !emp2.division &&
+          !emp1.section &&
+          !emp2.section &&
+          !emp1.unit &&
+          !emp2.unit
+        )
       }
 
       return false

@@ -278,15 +278,13 @@
 <script>
 import { date } from 'quasar'
 import IpcrReport from 'src/components/ipcr_Report.vue'
-import DateWizardModal from 'src/components/office/DatePickerModal.vue'
-import PerformanceDisplay from 'src/components/office/RatingForm.vue'
+import DateWizardModal from 'src/components/office/RatingFormModal.vue'
 
 export default {
   name: 'IPCRTable',
   components: {
     'ipcr-report': IpcrReport,
     'date-wizard-modal': DateWizardModal,
-    'performance-display': PerformanceDisplay,
   },
   data() {
     const currentDate = '2025-06-18'

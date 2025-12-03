@@ -1,14 +1,15 @@
 <template>
   <q-page class="q-pa-md">
     <!-- Top Header Row -->
-    <div class="row items-center justify-between q-mb-md">
-      <!-- Back Button -->
-      <q-btn flat dense icon="arrow_back" label="Back" color="grey-8" @click="onBack" />
-
+    <div class="row items-center justify-between q-mb-md q-pl-lg q-pr-lg">
       <!-- Title and Subtitle -->
-      <div class="column items-end">
+      <div class="column items-start">
         <h1 class="text-h6 q-mb-none">Unit Work Plan</h1>
-        <p class="text-grey-7 q-mt-xs">Add targets for employee indicator</p>
+        <p class="text-grey-7 q-mt-xs">Add targets for employee performance indicator</p>
+      </div>
+      <!-- Back Button -->
+      <div class="column items-end">
+        <q-btn flat dense icon="arrow_back" label="Back" color="grey-8" @click="onBack" />
       </div>
     </div>
 

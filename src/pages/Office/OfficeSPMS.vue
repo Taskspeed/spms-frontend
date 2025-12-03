@@ -77,6 +77,7 @@
                       icon="person_add"
                       label="Create UWP"
                       @click="createUnitWorkPlan"
+                      v-if="canCreateUWP"
                     >
                       <q-tooltip>Create Unit Work Plan</q-tooltip>
                     </q-btn>
@@ -89,6 +90,7 @@
                       label="Preview UWP"
                       icon="print"
                       @click="showUnitWorkPlanModal"
+                      v-if="canCreateUWP"
                     />
                   </div>
                 </div>
@@ -160,17 +162,6 @@
                           >
                             <q-tooltip>IPCR</q-tooltip>
                           </q-btn>
-                          <!-- <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="green"
-                            icon="article"
-                            size="md"
-                            @click="unitWorkPlanEmployee(props.row)"
-                          >
-                            <q-tooltip>Unit Work Plan</q-tooltip>
-                          </q-btn> -->
                           <q-btn
                             class="neu-button"
                             flat
@@ -224,7 +215,7 @@
     <q-card>
       <q-card-section class="row items-center">
         <q-avatar icon="warning" color="warning" text-color="white" />
-        <span class="q-ml-sm">Are you sure you want to delete {{ employeeToDelete?.label }}?</span>
+        <span class="q-ml-sm">Are you sure you want to delete {{ employeeToDelete?.label }}? </span>
       </q-card-section>
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
@@ -249,26 +240,33 @@ import unitWorkplan_report from 'src/components/unitworkplant_Report.vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import ipcr_Report from 'src/components/ipcr_Report.vue'
+
 const $q = useQuasar(),
   orgStore = useOrganizationStore(),
   userStore = useUserStore(),
   router = useRouter()
+
 const selectedEmployee = ref(null),
   selectedNodeId = ref(null),
   loading = ref(false),
   treeFilter = ref(''),
   employeeFilter = ref('')
+
 const confirmDeleteDialog = ref(false),
   employeeToDelete = ref(null),
   showUnitWorkPlanModalOpen = ref(false),
   filteredRows = ref([])
+
 const show_ipcr_ModalOpen = ref(false)
+const targetPeriod = ref(null)
+
 const columns = ref([
   { name: 'name', align: 'left', label: 'Name', field: 'label', sortable: true },
   { name: 'rank', align: 'left', label: 'Rank', field: 'rank', sortable: true },
   { name: 'ipcr_status', align: 'left', label: 'Status', field: 'ipcrStatus', sortable: true },
   { name: 'actions', align: 'center', label: 'Actions', field: 'actions' },
 ])
+
 const organizationTree = computed(() => orgStore.structure)
 
 const selectedNode = computed(() => {
@@ -278,13 +276,39 @@ const selectedNode = computed(() => {
   return selectedNodeId.value ? findNode(orgStore.structure) : null
 })
 
-const employees = computed(() =>
-  !selectedNode.value
-    ? []
-    : selectedNode.value.type === 'employee'
-      ? [selectedNode.value]
-      : selectedNode.value.children?.filter((child) => child.type === 'employee') || [],
-)
+// Helper function to recursively collect all employees
+const collectAllEmployees = (node) => {
+  if (!node) return []
+
+  let employees = []
+
+  // If this node is an employee, add it
+  if (node.type === 'employee') {
+    employees.push(node)
+  }
+
+  // Recursively collect from children
+  if (node.children && node.children.length > 0) {
+    node.children.forEach((child) => {
+      employees = employees.concat(collectAllEmployees(child))
+    })
+  }
+
+  return employees
+}
+
+const employees = computed(() => {
+  if (!selectedNode.value) return []
+
+  // For employee nodes, return just that employee
+  if (selectedNode.value.type === 'employee') {
+    return [selectedNode.value]
+  }
+
+  // For all other node types (office, office2, group, division, section, unit)
+  // Recursively collect all employees from the entire subtree
+  return collectAllEmployees(selectedNode.value)
+})
 
 const filteredEmployees = computed(() => {
   if (!employeeFilter.value) return employees.value
@@ -297,14 +321,31 @@ const filteredEmployees = computed(() => {
   )
 })
 
-const headRanks = ['office-head', 'division-head', 'section-head', 'unit-head']
+// Computed property to check if UWP buttons should be shown
+const canCreateUWP = computed(() => {
+  if (!selectedNode.value) return false
+  return ['office', 'office2', 'group', 'division', 'section', 'unit'].includes(
+    selectedNode.value.type,
+  )
+})
+
+const headRanks = [
+  'office-head',
+  'division-head',
+  'section-head',
+  'unit-head',
+  'group-head',
+  'office2-head',
+]
 
 const isHeadRank = (rank) => !!rank && headRanks.some((h) => rank.toLowerCase().includes(h))
+
 const getNodeColor = (node) => {
-  // Always return the color based on node type, ignoring head status
   return (
     {
       office: 'green',
+      office2: 'teal',
+      group: 'purple',
       division: 'red',
       section: 'blue',
       unit: 'indigo',
@@ -313,7 +354,6 @@ const getNodeColor = (node) => {
   )
 }
 
-// 2. Make sure getNodeIcon is consistent with our color scheme
 const getNodeIcon = (node) => {
   if (node.type === 'employee') {
     return isHeadRank(node.rank) ? 'supervisor_account' : 'person'
@@ -322,6 +362,8 @@ const getNodeIcon = (node) => {
   return (
     {
       office: 'account_balance',
+      office2: 'business',
+      group: 'group_work',
       division: 'corporate_fare',
       section: 'view_quilt',
       unit: 'widgets',
@@ -329,9 +371,6 @@ const getNodeIcon = (node) => {
   )
 }
 
-// 3. Keep the other color helper functions the same
-
-// 4. Keep the status color logic the same
 const getStatusColor = (row) => {
   const s = row.ipcrStatus?.toLowerCase() || ''
   if (s.includes('approved')) return 'positive'
@@ -361,7 +400,7 @@ const onNodeSelect = (nodeId) => {
 const showUnitWorkPlanModal = () => {
   if (!selectedNode.value)
     return $q.notify({
-      message: 'Please select a division, section, or unit first',
+      message: 'Please select a node first',
       color: 'negative',
     })
   filteredRows.value = employees.value
@@ -380,30 +419,24 @@ const close_ipcr_Modal = () => (show_ipcr_ModalOpen.value = false)
 const createUnitWorkPlan = () => {
   if (!selectedNode.value)
     return $q.notify({
-      message: 'Please select a division, section, unit, or office first',
+      message: 'Please select a node first',
       color: 'negative',
     })
 
-  const type = ['office', 'division', 'section', 'unit'].includes(selectedNode.value.type)
+  const type = ['office', 'office2', 'group', 'division', 'section', 'unit'].includes(
+    selectedNode.value.type,
+  )
     ? selectedNode.value.type
     : null
   if (!type)
     return $q.notify({
-      message: 'Please select a division, section, unit, or office',
+      message:
+        'Please select a valid organizational unit (office, office2, group, division, section, or unit)',
       color: 'negative',
     })
   router.push({ name: 'unitworkplan', query: { type, id: selectedNode.value.id } })
 }
 
-// const unitWorkPlanEmployee = (employee) =>
-//   router.push({
-//     name: 'unitworkplan',
-//     query: {
-//       type: 'employee',
-//       id: employee.employeeData?.id || employee.id.replace('emp_', ''),
-//       name: employee.label,
-//     },
-//   })
 const editEmployee = (employee) =>
   router.push({
     name: 'employee-edit',
@@ -459,6 +492,7 @@ watch(
     if (id) await refreshData()
   },
 )
+
 onMounted(async () => {
   await userStore.loadUserData()
   await refreshData()
@@ -495,11 +529,10 @@ onMounted(async () => {
 .neu-button:active {
   box-shadow:
     inset 2px 2px 4px rgba(0, 0, 0, 0.2),
-    inset -2px -2px 4px rgba(255, 255, 255, 0.9);
+    inset -2px -2px 4px rgba(255, 255, 255, 0 9);
   transform: translateY(2px);
 }
 
-/* New rectangular neumorphic button style */
 .neu-button-rect {
   border-radius: 8px;
   box-shadow:
@@ -513,48 +546,45 @@ onMounted(async () => {
 .neu-button-rect:hover {
   box-shadow:
     2px 2px 4px rgba(0, 0, 0, 0.2),
-    -2px -2px 4px rgba(255, 255, 255, 0.9);
+    -2px -2px 4px rgba(255, 255, 255, 0 9);
   transform: translateY(1px);
 }
 
 .neu-button-rect:active {
   box-shadow:
-    inset 2px 2px 4px rgba(0, 0, 0, 0.2),
+    inset 2px 2px 4px rgba(0, 0, 0, 0 2),
     inset -2px -2px 4px rgba(255, 255, 255, 0.9);
   transform: translateY(2px);
 }
 
-/* New styles for the office title and button container */
 .office-title {
-  font-size: 12pt; /* Reduced from text-h6 default size */
-  max-width: 50%; /* Limit width of the title */
+  font-size: 12pt;
+  max-width: 50%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .button-container {
-  flex-wrap: nowrap; /* Prevent buttons from wrapping */
-  flex: 0 0 auto; /* Don't allow shrinking */
-  justify-content: flex-end; /* Keep buttons aligned to the right */
-  min-width: fit-content; /* Ensure buttons get enough space */
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  min-width: fit-content;
 }
 
-/* Organization tree specific styles */
 .org-tree .q-tree__node-header {
   padding: 4px 8px;
 }
 
 .tree-icon {
-  flex-shrink: 0; /* Prevent icon from shrinking */
+  flex-shrink: 0;
 }
 
 .tree-label {
-  min-width: 0; /* Allow text to shrink */
+  min-width: 0;
 }
 
 .node-label {
-  /* Remove truncation styles so full name is shown */
   overflow: visible;
   text-overflow: unset;
   white-space: normal;
@@ -562,7 +592,7 @@ onMounted(async () => {
 }
 
 .employee-info {
-  min-width: 0; /* Allow content to shrink */
+  min-width: 0;
   overflow: hidden;
 }
 

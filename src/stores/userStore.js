@@ -8,7 +8,6 @@ export const useUserStore = defineStore('user', () => {
   const mfos = ref([])
   const categories = ref([])
   const officeId = ref(null)
-  // Add support for outputs if needed
   const outputs = ref([])
 
   // --- Getters (computed) ---
@@ -43,6 +42,8 @@ export const useUserStore = defineStore('user', () => {
       router.push('/login')
     }
   }
+
+  // --- Actions ---
   async function loadUserData(router = null) {
     const token = localStorage.getItem('token')
     if (!token) {
@@ -60,53 +61,72 @@ export const useUserStore = defineStore('user', () => {
 
       const data = response.data
 
-      // Check for unauthenticated message
-      if (data.message === 'Unauthenticated.') {
+      // Debug: inspect the raw response to understand shape when something goes wrong
+      console.debug('user_data response:', data)
+
+      // Unauthenticated handling (API may return this sentinel)
+      if (data?.message === 'Unauthenticated.' || data?.data?.message === 'Unauthenticated.') {
         console.log('User is unauthenticated, redirecting to login')
         handleUnauthenticated(router)
         return
       }
 
-      user.value = data.user
-      officeId.value = data.user.office_id
+      // Support both top-level and nested `data` shapes
+      const payloadUser = data?.user ?? data?.data?.user ?? null
+      const payloadMfos = Array.isArray(data?.mfos)
+        ? data.mfos
+        : Array.isArray(data?.data?.mfos)
+          ? data.data.mfos
+          : []
 
-      // Flatten all MFOs across categories
-      let allMfos = []
-      let allOutputs = []
-      let allCategories = []
+      user.value = payloadUser
+      officeId.value = payloadUser?.office_id ?? null
 
-      // Extract categories from mfos
+      // Normalize and flatten MFOs, outputs and categories
+      const allMfos = []
+      const allOutputs = []
       const categoryMap = new Map()
 
-      for (const mfo of data.mfos) {
-        const category = mfo.category
-        if (category) {
-          // Ensure each category is only added once
-          if (!categoryMap.has(category.id)) {
-            categoryMap.set(category.id, { id: category.id, name: category.name })
+      if (Array.isArray(payloadMfos)) {
+        for (const mfo of payloadMfos) {
+          if (!mfo || typeof mfo !== 'object') continue
+
+          // Category may be missing or null
+          const category = mfo.category ?? null
+          const categoryId = category?.id ?? null
+          const categoryName = category?.name ?? null
+
+          if (categoryId != null && !categoryMap.has(categoryId)) {
+            categoryMap.set(categoryId, { id: categoryId, name: categoryName })
           }
 
           allMfos.push({
             ...mfo,
-            f_category_id: category.id,
-            category: { id: category.id, name: category.name },
+            f_category_id: categoryId,
+            category: categoryId != null ? { id: categoryId, name: categoryName } : null,
           })
 
-          // Each output gets its category, mfo_id, etc.
-          if (Array.isArray(mfo.outpots)) {
-            for (const output of mfo.outpots) {
+          // Accept both correct 'outputs' and common typo 'outpots'
+          const outputsArr = Array.isArray(mfo.outputs)
+            ? mfo.outputs
+            : Array.isArray(mfo.outpots)
+              ? mfo.outpots
+              : []
+
+          if (Array.isArray(outputsArr)) {
+            for (const output of outputsArr) {
+              if (!output || typeof output !== 'object') continue
               allOutputs.push({
                 ...output,
-                mfo_id: mfo.id,
-                f_category_id: category.id,
+                mfo_id: mfo.id ?? null,
+                f_category_id: categoryId,
               })
             }
           }
         }
       }
 
-      // Add all categories to the list (unique ones only)
-      allCategories = Array.from(categoryMap.values())
+      const allCategories = Array.from(categoryMap.values())
 
       // Populate the store
       mfos.value = allMfos
@@ -115,7 +135,7 @@ export const useUserStore = defineStore('user', () => {
     } catch (error) {
       console.error('Failed to load user data:', error)
 
-      // Check if the error response contains the unauthenticated message
+      // If unauthorized, redirect to login
       if (error.response?.data?.message === 'Unauthenticated.' || error.response?.status === 401) {
         console.log('Authentication error, redirecting to login')
         handleUnauthenticated(router)
@@ -126,17 +146,26 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  async function updateUserCredentials(updatedData, router = null) {
+  /**
+   * Update user credentials.
+   * If updatedData contains an `id` property, it will be used in the URL:
+   *   POST /user/update/credentials/:id
+   * Otherwise it will post to /user/update/credentials
+   */
+  async function updateUserCredentials(updatedData = {}, router = null) {
     const token = localStorage.getItem('token')
     if (!token) return
 
     try {
-      const response = await api.post(`/user/update/credentials/{id}`, updatedData, {
+      const idSegment = updatedData?.id ? `/${updatedData.id}` : ''
+      const response = await api.post(`/user/update/credentials${idSegment}`, updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      // Check for unauthenticated message
-      if (response.data.message === 'Unauthenticated.') {
+      if (
+        response.data?.message === 'Unauthenticated.' ||
+        response.data?.data?.message === 'Unauthenticated.'
+      ) {
         handleUnauthenticated(router)
         return
       }
@@ -144,13 +173,10 @@ export const useUserStore = defineStore('user', () => {
       return response.data
     } catch (error) {
       console.error('Failed to update user credentials:', error)
-
-      // Check if the error response contains the unauthenticated message
       if (error.response?.data?.message === 'Unauthenticated.' || error.response?.status === 401) {
         handleUnauthenticated(router)
         return
       }
-
       throw error
     }
   }
@@ -161,18 +187,21 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       await api.post('/user_logout', {}, { headers: { Authorization: `Bearer ${token}` } })
-      clearUser()
-      router.push('/login')
     } catch (error) {
-      console.error('Logout failed:', error)
+      console.error('Logout failed (continuing to clear local state):', error)
+    } finally {
       clearUser()
-      router.push('/login')
+      if (router) router.push('/login')
     }
   }
 
   function setUser(newUser) {
     user.value = newUser
-    localStorage.setItem('user', JSON.stringify(newUser))
+    try {
+      localStorage.setItem('user', JSON.stringify(newUser))
+    } catch {
+      // ignore storage errors
+    }
   }
 
   function clearUser() {
@@ -181,8 +210,12 @@ export const useUserStore = defineStore('user', () => {
     categories.value = []
     outputs.value = []
     officeId.value = null
-    localStorage.removeItem('user')
-    localStorage.removeItem('token')
+    try {
+      localStorage.removeItem('user')
+      localStorage.removeItem('token')
+    } catch {
+      // ignore storage errors
+    }
   }
 
   // Return state, getters, actions for the store

@@ -1,102 +1,263 @@
 <template>
   <q-page padding>
-    <div class="row justify-between items-center q-mb-md">
-      <div class="col-auto">
-        <div class="text-h6 text-grey-7">Library</div>
-      </div>
+    <!-- Tab Navigation -->
+    <q-tabs
+      v-model="activeTab"
+      dense
+      class="text-grey-7 q-mb-md"
+      active-color="green-9"
+      indicator-color="green-9"
+      align="left"
+    >
+      <q-tab name="verbs" label="Verbs Library" icon="description" />
+      <q-tab name="ranks" label="Ranks Library" icon="military_tech" />
+    </q-tabs>
 
-      <div class="col-auto row items-center q-col-gutter-sm">
-        <div>
-          <q-input
-            dense
-            outlined
-            color="green"
-            v-model="newVerb"
-            label="Add verb (e.g. facilitate)"
-            @keyup.enter="addVerb"
-            clearable
-          />
-        </div>
+    <q-separator class="q-mb-md" />
 
-        <div class="col-auto">
-          <q-btn color="green-9" label="Add" @click="addVerb" :loading="loading" />
-        </div>
-      </div>
-    </div>
-    <q-card flat bordered class="q-pa-md">
-      <div class="row items-center q-col-gutter-sm">
-        <div class="col-12 col-md-4">
-          <q-input
-            dense
-            outlined
-            color="green"
-            v-model="search"
-            placeholder="Search verbs..."
-            clearable
-            class="q-pr-md"
-            debounce="150"
-            @input="onSearch"
-          />
-        </div>
+    <!-- Tab Panels -->
+    <q-tab-panels v-model="activeTab" animated>
+      <!-- ========== VERBS TAB ========== -->
+      <q-tab-panel name="verbs">
+        <div class="row justify-between items-center q-mb-md">
+          <div class="col-auto">
+            <div class="text-h6 text-grey-7">Verbs for Performance Indicators</div>
+            <div class="text-caption text-grey-6">
+              Add action verbs to use in performance indicators
+            </div>
+          </div>
 
-        <div class="col" />
-
-        <div class="col-auto">
-          <q-btn
-            flat
-            color="negative"
-            :disabled="!selectedIds.length"
-            label="Delete selected"
-            icon="delete"
-            @click="confirmDeleteSelected"
-          />
-        </div>
-      </div>
-
-      <div class="q-mt-xl">
-        <!-- 4-column q-list layout using filteredVerbs -->
-        <q-list class="verbs-grid">
-          <q-item v-for="verb in filteredVerbs" :key="verb.id" class="verb-item q-pa-sm" clickable>
-            <q-item-section side class="col-auto">
-              <q-checkbox
+          <div class="col-auto row items-center q-col-gutter-sm">
+            <div>
+              <q-input
                 dense
-                v-model="selectedIds"
-                :val="verb.id"
-                :true-value="verb.id"
-                :false-value="null"
-                color="primary"
+                outlined
+                color="green"
+                v-model="newVerb"
+                label="Add verb (e.g., facilitate)"
+                @keyup.enter="addVerb"
+                clearable
               />
-            </q-item-section>
+            </div>
 
-            <q-item-section class="q-pl-sm">
-              <q-item-label class="text-body1 ellipsis">
-                {{ verb.verb }}
-              </q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-
-        <div v-if="!filteredVerbs.length" class="text-center q-pa-md">
-          No verbs found. Add one above or adjust your search.
+            <div class="col-auto">
+              <q-btn color="green-9" label="Add" @click="addVerb" :loading="libraryStore.loading" />
+            </div>
+          </div>
         </div>
-      </div>
-    </q-card>
 
-    <!-- Confirm dialog for deleting selected items -->
-    <q-dialog v-model="dialogConfirm">
-      <q-card>
+        <q-card flat bordered class="q-pa-md">
+          <div class="row items-center q-col-gutter-sm">
+            <div class="col-12 col-md-4">
+              <q-input
+                dense
+                outlined
+                color="green"
+                v-model="verbSearch"
+                placeholder="Search verbs..."
+                clearable
+                class="q-pr-md"
+                debounce="150"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="search" />
+                </template>
+              </q-input>
+            </div>
+
+            <div class="col" />
+
+            <div class="col-auto">
+              <q-btn
+                flat
+                color="negative"
+                :disabled="!selectedVerbIds.length"
+                :label="`Delete selected (${selectedVerbIds.length})`"
+                icon="delete"
+                @click="confirmDeleteSelected('verbs')"
+              />
+            </div>
+          </div>
+
+          <div class="q-mt-xl">
+            <q-list class="verbs-grid">
+              <q-item
+                v-for="verb in filteredVerbs"
+                :key="verb.id"
+                class="item-card verb-card q-pa-sm"
+                clickable
+              >
+                <q-item-section side class="col-auto">
+                  <q-checkbox dense v-model="selectedVerbIds" :val="verb.id" color="primary" />
+                </q-item-section>
+
+                <q-item-section class="q-pl-sm">
+                  <q-item-label class="text-body1 ellipsis">
+                    {{ verb.indicator_name }}
+                  </q-item-label>
+                </q-item-section>
+
+                <q-item-section side>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="delete"
+                    color="negative"
+                    size="sm"
+                    @click.
+                    stop="confirmDelete('verbs', [verb.id])"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <div v-if="!filteredVerbs.length" class="text-center q-pa-md text-grey-6">
+              <q-icon name="search_off" size="48px" class="q-mb-sm" />
+              <div>No verbs found. Add one above or adjust your search.</div>
+            </div>
+          </div>
+        </q-card>
+      </q-tab-panel>
+
+      <!-- ========== RANKS TAB ========== -->
+      <q-tab-panel name="ranks">
+        <div class="row justify-between items-center q-mb-md">
+          <div class="col-auto">
+            <div class="text-h6 text-grey-7">Employee Ranks</div>
+            <div class="text-caption text-grey-6">Manage organizational rank classifications</div>
+          </div>
+
+          <div class="col-auto row items-center q-col-gutter-sm">
+            <div>
+              <q-input
+                dense
+                outlined
+                color="green"
+                v-model="newRank"
+                label="Add rank (e.g., Office Head)"
+                @keyup.enter="addRank"
+                clearable
+              />
+            </div>
+
+            <div class="col-auto">
+              <q-btn color="green-9" label="Add" @click="addRank" :loading="libraryStore.loading" />
+            </div>
+          </div>
+        </div>
+
+        <q-card flat bordered class="q-pa-md">
+          <div class="row items-center q-col-gutter-sm">
+            <div class="col-12 col-md-4">
+              <q-input
+                dense
+                outlined
+                color="green"
+                v-model="rankSearch"
+                placeholder="Search ranks..."
+                clearable
+                class="q-pr-md"
+                debounce="150"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="search" />
+                </template>
+              </q-input>
+            </div>
+
+            <div class="col" />
+
+            <div class="col-auto">
+              <q-btn
+                flat
+                color="negative"
+                :disabled="!selectedRankIds.length"
+                :label="`Delete selected (${selectedRankIds.length})`"
+                icon="delete"
+                @click="confirmDeleteSelected('ranks')"
+              />
+            </div>
+          </div>
+
+          <div class="q-mt-xl">
+            <q-list class="ranks-grid">
+              <q-item
+                v-for="rank in filteredRanks"
+                :key="rank.id"
+                class="item-card rank-card q-pa-sm"
+                clickable
+              >
+                <q-item-section side class="col-auto">
+                  <q-checkbox dense v-model="selectedRankIds" :val="rank.id" color="primary" />
+                </q-item-section>
+
+                <q-item-section class="q-pl-sm">
+                  <q-item-label class="text-body1 ellipsis">
+                    {{ rank.rank_name }}
+                  </q-item-label>
+                </q-item-section>
+
+                <q-item-section side>
+                  <div class="row q-gutter-xs">
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="edit"
+                      color="primary"
+                      size="sm"
+                      @click.stop="editRank(rank)"
+                    />
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click.stop="confirmDelete('ranks', [rank.id])"
+                    />
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <div v-if="!filteredRanks.length" class="text-center q-pa-md text-grey-6">
+              <q-icon name="search_off" size="48px" class="q-mb-sm" />
+              <div>No ranks found. Add one above or adjust your search.</div>
+            </div>
+          </div>
+        </q-card>
+      </q-tab-panel>
+    </q-tab-panels>
+
+    <!-- ========== EDIT RANK DIALOG ========== -->
+    <q-dialog v-model="dialogEditRank">
+      <q-card style="min-width: 400px">
         <q-card-section>
-          <div class="text-h6">Confirm delete</div>
+          <div class="text-h6">Edit Rank</div>
         </q-card-section>
 
         <q-card-section class="q-pt-none">
-          Are you sure you want to permanently delete
-          <strong>{{ idsToDelete.length }}</strong> item(s)?
+          <q-input
+            dense
+            outlined
+            color="green"
+            v-model="editingRank.rank_name"
+            label="Rank Name"
+            autofocus
+          />
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup @click="dialogConfirm = false" />
-          <q-btn color="negative" label="Delete" @click="deleteSelected" />
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="green-9"
+            label="Save"
+            @click="saveRankEdit"
+            :loading="libraryStore.loading"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -104,121 +265,167 @@
 </template>
 
 <script>
+import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
+import { useQuasar } from 'quasar'
+
 export default {
   name: 'LibraryPage',
+  setup() {
+    const libraryStore = useLibraryStore()
+    const $q = useQuasar()
+    return { libraryStore, $q }
+  },
   data() {
     return {
-      verbs: [],
-      selectedIds: [],
+      activeTab: 'verbs',
+      selectedVerbIds: [],
       newVerb: '',
-      search: '',
-      loading: false,
-      dialogConfirm: false,
-      idsToDelete: [],
+      verbSearch: '',
+      selectedRankIds: [],
+      newRank: '',
+      rankSearch: '',
+      dialogEditRank: false,
+      editingRank: {
+        id: null,
+        rank_name: '',
+      },
     }
   },
-  created() {
-    this.fetchVerbs()
+  async created() {
+    await this.loadData()
   },
   computed: {
-    searchLower() {
-      return (this.search || '').toLowerCase().trim()
-    },
     filteredVerbs() {
-      if (!this.searchLower) return this.verbs
-      return this.verbs.filter((v) => (v.verb || '').toLowerCase().includes(this.searchLower))
+      const search = (this.verbSearch || '').toLowerCase().trim()
+      const verbs = this.libraryStore.sortedVerbs
+      if (!search) return verbs
+      return verbs.filter((v) => (v.indicator_name || '').toLowerCase().includes(search))
+    },
+    filteredRanks() {
+      const search = (this.rankSearch || '').toLowerCase().trim()
+      const ranks = this.libraryStore.sortedRanks
+      if (!search) return ranks
+      return ranks.filter((r) => (r.rank_name || '').toLowerCase().includes(search))
     },
   },
   methods: {
-    onSearch() {
-      // keep placeholder for any future debounce/server search
-    },
-
-    async fetchVerbs() {
-      this.loading = true
+    async loadData() {
       try {
-        // Replace with your API call if available:
-        // const res = await axios.get('/api/verbs')
-        // this.verbs = res.data
-
-        // demo/local fallback seed
-        if (!this.verbs.length) {
-          this.verbs = [
-            { id: 1, verb: 'facilitate' },
-            { id: 2, verb: 'review' },
-            { id: 3, verb: 'observe' },
-            { id: 4, verb: 'create' },
-            { id: 5, verb: 'analyze' },
-            { id: 6, verb: 'design' },
-          ]
-        }
-      } catch (err) {
-        console.error('Failed to fetch verbs', err)
-        this.$q.notify({ type: 'negative', message: 'Failed to load verbs.' })
-      } finally {
-        this.loading = false
+        await Promise.all([this.libraryStore.fetchVerbs(), this.libraryStore.fetchRanks()])
+      } catch {
+        this.$q.notify({
+          type: 'negative',
+          message: 'Failed to load library data',
+          position: 'top',
+        })
       }
     },
 
-    addVerb() {
+    async addVerb() {
       const text = (this.newVerb || '').trim()
       if (!text) {
         this.$q.notify({ type: 'warning', message: 'Please enter a verb.' })
         return
       }
 
-      this.loading = true
+      if (this.libraryStore.verbExists(text)) {
+        this.$q.notify({ type: 'warning', message: 'This verb already exists.' })
+        return
+      }
+
       try {
-        // Uncomment / adapt to call a backend:
-        // const res = await axios.post('/api/verbs', { verb: text })
-        // this.verbs.unshift(res.data)
-
-        const nextId = this.verbs.length ? Math.max(...this.verbs.map((v) => v.id)) + 1 : 1
-        this.verbs.unshift({ id: nextId, verb: text })
-
+        await this.libraryStore.addVerb(text)
         this.newVerb = ''
-        this.$q.notify({ type: 'positive', message: 'Verb added.' })
-      } catch (err) {
-        console.error('Add verb failed', err)
-        this.$q.notify({ type: 'negative', message: 'Failed to add verb.' })
-      } finally {
-        this.loading = false
+        this.$q.notify({ type: 'positive', message: 'Verb added successfully.' })
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || 'Failed to add verb.',
+        })
       }
     },
 
-    confirmDeleteSelected() {
-      if (!this.selectedIds.length) return
-      this.idsToDelete = [...this.selectedIds]
-      this.dialogConfirm = true
-    },
+    async addRank() {
+      const text = (this.newRank || '').trim()
+      if (!text) {
+        this.$q.notify({ type: 'warning', message: 'Please enter a rank name.' })
+        return
+      }
 
-    confirmDelete(ids) {
-      this.idsToDelete = ids
-      this.dialogConfirm = true
-    },
+      if (this.libraryStore.rankExists(text)) {
+        this.$q.notify({ type: 'warning', message: 'This rank already exists.' })
+        return
+      }
 
-    async deleteSelected() {
-      this.dialogConfirm = false
-      if (!this.idsToDelete.length) return
-
-      this.loading = true
       try {
-        // Example API batch delete (uncomment and adapt)
-        // await axios.delete('/api/verbs', { data: { ids: this.idsToDelete } })
+        await this.libraryStore.addRank(text)
+        this.newRank = ''
+        this.$q.notify({ type: 'positive', message: 'Rank added successfully.' })
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || 'Failed to add rank.',
+        })
+      }
+    },
 
-        const idSet = new Set(this.idsToDelete)
-        this.verbs = this.verbs.filter((v) => !idSet.has(v.id))
+    editRank(rank) {
+      this.editingRank = { ...rank }
+      this.dialogEditRank = true
+    },
 
-        // clear selection
-        this.selectedIds = this.selectedIds.filter((id) => !idSet.has(id))
+    async saveRankEdit() {
+      if (!this.editingRank.rank_name.trim()) {
+        this.$q.notify({ type: 'warning', message: 'Rank name cannot be empty.' })
+        return
+      }
 
-        this.idsToDelete = []
-        this.$q.notify({ type: 'positive', message: 'Deleted.' })
-      } catch (err) {
-        console.error('Delete failed', err)
-        this.$q.notify({ type: 'negative', message: 'Failed to delete.' })
-      } finally {
-        this.loading = false
+      try {
+        await this.libraryStore.updateRank(this.editingRank.id, this.editingRank.rank_name)
+        this.dialogEditRank = false
+        this.$q.notify({ type: 'positive', message: 'Rank updated successfully.' })
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || 'Failed to update rank.',
+        })
+      }
+    },
+
+    confirmDeleteSelected(type) {
+      const ids = type === 'verbs' ? this.selectedVerbIds : this.selectedRankIds
+      if (!ids.length) return
+      this.confirmDelete(type, ids)
+    },
+
+    confirmDelete(type, ids) {
+      this.$q
+        .dialog({
+          title: 'Confirm Delete',
+          message: `Are you sure you want to delete ${ids.length} ${type}?`,
+          cancel: true,
+          persistent: true,
+        })
+        .onOk(async () => {
+          await this.executeDelete(type, ids)
+        })
+    },
+
+    async executeDelete(type, ids) {
+      try {
+        if (type === 'verbs') {
+          await this.libraryStore.deleteVerbs(ids)
+          this.selectedVerbIds = []
+        } else {
+          await this.libraryStore.deleteRanks(ids)
+          this.selectedRankIds = []
+        }
+        this.$q.notify({ type: 'positive', message: 'Deleted successfully.' })
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || 'Failed to delete items.',
+        })
       }
     },
   },
@@ -226,82 +433,121 @@ export default {
 </script>
 
 <style scoped>
+/* VERBS GRID - 4 columns */
 .verbs-grid {
   display: grid;
-
   grid-template-columns: repeat(4, 1fr);
-  gap: 5px;
+  gap: 8px;
   align-items: start;
 }
 
-/* Make each verb look like a simple card inside the grid */
-.verb-item {
-  border: 1px solid transparent;
+/* RANKS GRID - 2 columns */
+.ranks-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.item-card {
+  border: 1px solid var(--q-color-grey-3);
   border-radius: 6px;
-  min-height: 48px;
+  min-height: 56px;
   align-items: center;
-  padding-left: 12px;
-  padding-right: 12px;
   display: flex;
   background: white;
+  transition: all 0.2s ease;
 }
 
-/* Vertical outline between columns:
-   Add left border on every item except the first item in each row.
-   Adjust nth-child selectors for responsive column counts. */
-.verb-item {
+.item-card:hover {
+  background: var(--q-color-grey-1);
+  border-color: var(--q-color-green-5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ========== VERTICAL LINE SEPARATORS ========== */
+
+/* VERBS - 4 columns: Add left border except first column */
+.verb-card {
+  border-left: 2px solid var(--q-color-grey-4);
+}
+
+.verb-card:nth-child(4n + 1) {
   border-left: 1px solid var(--q-color-grey-3);
 }
-/* 4 columns: remove left border on first col items */
-.verb-item:nth-child(4n + 1) {
-  border-left: none;
+
+/* RANKS - 2 columns: Add left border except first column */
+.rank-card {
+  border-left: 2px solid var(--q-color-grey-4);
 }
 
-/* Responsive adjustments - 3 columns */
+.rank-card:nth-child(2n + 1) {
+  border-left: 1px solid var(--q-color-grey-3);
+}
+
+/* ========== RESPONSIVE GRID FOR VERBS ========== */
 @media (max-width: 1024px) {
   .verbs-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-  .verb-item {
+
+  .verb-card {
+    border-left: 2px solid var(--q-color-grey-4);
+  }
+
+  .verb-card:nth-child(3n + 1) {
     border-left: 1px solid var(--q-color-grey-3);
   }
-  .verb-item:nth-child(3n + 1) {
-    border-left: none;
+
+  .verb-card:nth-child(4n + 1) {
+    border-left: 2px solid var(--q-color-grey-4);
   }
 }
 
-/* 2 columns */
 @media (max-width: 720px) {
   .verbs-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .verb-item {
+
+  .verb-card {
+    border-left: 2px solid var(--q-color-grey-4);
+  }
+
+  .verb-card:nth-child(2n + 1) {
     border-left: 1px solid var(--q-color-grey-3);
   }
-  .verb-item:nth-child(2n + 1) {
-    border-left: none;
+
+  .verb-card:nth-child(3n + 1),
+  .verb-card:nth-child(4n + 1) {
+    border-left: 2px solid var(--q-color-grey-4);
   }
 }
 
-/* 1 column - no vertical outlines needed */
 @media (max-width: 420px) {
   .verbs-grid {
     grid-template-columns: repeat(1, 1fr);
   }
-  .verb-item {
-    border-left: none;
+
+  .verb-card {
+    border-left: 1px solid var(--q-color-grey-3);
   }
 }
 
-/* hover/focus states */
-.verb-item:hover,
-.verb-item:focus {
-  background: var(--q-color-grey-1);
-  cursor: pointer;
+/* ========== RESPONSIVE GRID FOR RANKS ========== */
+@media (max-width: 720px) {
+  .ranks-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .rank-card {
+    border-left: 1px solid var(--q-color-grey-3);
+  }
 }
 
-/* minor spacing / text */
-.q-item-label {
-  margin: 0;
+.q-item-label .ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
