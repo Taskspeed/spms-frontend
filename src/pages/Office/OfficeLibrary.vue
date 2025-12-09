@@ -74,12 +74,13 @@
                       round
                       dense
                       color="grey-7"
-                      @click.stop="toggleMfoExpansion(mfo.id)"
+                      @click.
+                      stop="toggleMfoExpansion(mfo.id)"
                       :icon="expandedMfos.includes(mfo.id) ? 'expand_less' : 'expand_more'"
                       class="q-mr-xs"
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
-                      <div class="mfo-number">{{ `MFO ${index + 1}.` }}</div>
+                      <div class="mfo-number">{{ `MFO ${index + 1}. ` }}</div>
                       <span class="mfo-name">{{ mfo.name }}</span>
                     </div>
                     <div class="mfo-actions">
@@ -107,13 +108,13 @@
                     <div v-show="expandedMfos.includes(mfo.id)">
                       <ul class="output-list">
                         <li
-                          v-for="(output, outputIndex) in getOutputsForMfo(mfo.id)"
+                          v-for="(output, outputIndex) in mfoStore.getOutputsForMfo(mfo.id)"
                           :key="output.id"
                           class="output-item"
                         >
                           <div class="output-content">
                             <div class="output-number">{{ `OUTPUT ${outputIndex + 1}.` }}</div>
-                            <strong class="output-name">{{ output.name }}</strong>
+                            <span class="output-name">{{ output.name }}</span>
                             <div class="output-actions">
                               <q-btn
                                 icon="edit"
@@ -173,7 +174,7 @@
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
                       <div class="mfo-number">{{ `MFO ${index + 1}.` }}</div>
-                      <strong class="mfo-name">{{ mfo.name }}</strong>
+                      <span class="mfo-name">{{ mfo.name }}</span>
                     </div>
                     <div class="mfo-actions">
                       <q-btn
@@ -200,13 +201,13 @@
                     <div v-show="expandedMfos.includes(mfo.id)">
                       <ul class="output-list">
                         <li
-                          v-for="(output, outputIndex) in getOutputsForMfo(mfo.id)"
+                          v-for="(output, outputIndex) in mfoStore.getOutputsForMfo(mfo.id)"
                           :key="output.id"
                           class="output-item"
                         >
                           <div class="output-content">
                             <div class="output-number">{{ `OUTPUT ${outputIndex + 1}.` }}</div>
-                            <strong class="output-name">{{ output.name }}</strong>
+                            <span class="output-name">{{ output.name }}</span>
                             <div class="output-actions">
                               <q-btn
                                 icon="edit"
@@ -256,7 +257,7 @@
                   <div class="mfo-content">
                     <div class="mfo-title">
                       <div class="output-number">{{ `OUTPUT ${index + 1}.` }}</div>
-                      <strong class="output-name">{{ output.name }}</strong>
+                      <span class="output-name">{{ output.name }}</span>
                     </div>
                     <div class="mfo-actions">
                       <q-btn
@@ -464,8 +465,8 @@
 </template>
 
 <script>
-import { api } from 'src/boot/axios'
 import { useUserStore } from 'src/stores/userStore'
+import { useMfoStore } from 'src/stores/office/officeLibrary'
 import { mapState } from 'pinia'
 import Swal from 'sweetalert2'
 
@@ -474,9 +475,6 @@ export default {
   data() {
     return {
       loading: true,
-      mfos: [],
-      outputs: [],
-      categories: [],
       expandedMfos: [],
       errors: {},
       firstInvalidFieldFocused: false,
@@ -501,55 +499,23 @@ export default {
   },
   computed: {
     ...mapState(useUserStore, ['user']),
-    categoryOptions() {
-      const standardCategories = [
-        { id: 1, name: 'A. STRATEGIC FUNCTION', type: 'strategic' },
-        { id: 2, name: 'B. CORE FUNCTION', type: 'core' },
-        { id: 3, name: 'C. SUPPORT FUNCTION', type: 'support' },
-      ]
-
-      if (this.categories && this.categories.length > 0) {
-        const existingCategoryNames = this.categories.map((c) => c.name)
-        const missingCategories = standardCategories.filter(
-          (sc) => !existingCategoryNames.some((name) => name.includes(sc.name.split(' ')[0])),
-        )
-        return [...this.categories, ...missingCategories]
-      }
-      return standardCategories
-    },
+    ...mapState(useMfoStore, {
+      strategicMfos: 'strategicMfos',
+      coreMfos: 'coreMfos',
+      supportOutputs: 'supportOutputs',
+      categoryOptions: 'categoryOptions',
+    }),
     isSupportCategory() {
       return (
         this.form.category &&
         (this.form.category.name.includes('SUPPORT') || this.form.category.name.includes('C.'))
       )
     },
-    supportCategory() {
-      return this.categoryOptions.find(
-        (cat) => cat.name.includes('SUPPORT') || cat.name.includes('C.'),
-      )
-    },
-    strategicMfos() {
-      return this.mfos.filter(
-        (mfo) =>
-          mfo.category &&
-          (mfo.category.name?.includes('STRATEGIC') || mfo.category.name?.includes('A.')),
-      )
-    },
-    coreMfos() {
-      return this.mfos.filter(
-        (mfo) =>
-          mfo.category &&
-          (mfo.category.name?.includes('CORE') || mfo.category.name?.includes('B.')),
-      )
-    },
-    supportOutputs() {
-      if (!this.supportCategory) return []
-      return this.outputs.filter(
-        (output) =>
-          output.f_category_id === this.supportCategory.id &&
-          (!output.mfo_id || output.mfo_id === null),
-      )
-    },
+  },
+  setup() {
+    return {
+      mfoStore: useMfoStore(),
+    }
   },
   created() {
     this.fetchData()
@@ -607,7 +573,6 @@ export default {
         return
       }
 
-      // Temporarily close the modal while showing SweetAlert
       const modalWasOpen = this.modal.show
       this.modal.show = false
 
@@ -617,18 +582,18 @@ export default {
           text: 'Do you want to save these changes?',
           icon: 'question',
           showCancelButton: true,
-          confirmButtonColor: '#00703C', // Your app's primary color
+          confirmButtonColor: '#00703C',
           cancelButtonColor: '#d33',
           confirmButtonText: 'Yes, save it!',
-          allowOutsideClick: false, // Prevent closing by clicking outside
-          backdrop: 'rgba(0,0,0,0.5)', // Semi-transparent backdrop
-          focusConfirm: false, // Don't auto-focus the confirm button
+          allowOutsideClick: false,
+          backdrop: 'rgba(0,0,0,0.5)',
+          focusConfirm: false,
         })
 
         if (result.isConfirmed) {
           await this.proceedWithSave()
         } else if (modalWasOpen) {
-          this.modal.show = true // Reopen modal if canceled
+          this.modal.show = true
         }
       } catch (error) {
         console.error('Confirmation error:', error)
@@ -640,7 +605,6 @@ export default {
       try {
         this.modal.loading = true
 
-        // Save logic based on form type
         if (this.form.isOutput) {
           await this.saveOutputs()
         } else if (!this.isSupportCategory) {
@@ -650,13 +614,12 @@ export default {
           return
         }
 
-        // Show success message
         await Swal.fire({
-          title: 'Success!',
+          title: 'Success! ',
           text: this.getSuccessMessage(),
           icon: 'success',
           confirmButtonColor: '#00703C',
-          timer: 2000, // Auto-close after 2 seconds
+          timer: 2000,
           timerProgressBar: true,
           showConfirmButton: false,
         })
@@ -666,15 +629,13 @@ export default {
       } catch (error) {
         console.error('Save error:', error)
 
-        // Show error message
         await Swal.fire({
-          title: 'Error!',
+          title: 'Error! ',
           text: error.response?.data?.message || 'Failed to save entries',
           icon: 'error',
           confirmButtonColor: '#d33',
         })
 
-        // Reopen modal on error
         this.modal.show = true
       } finally {
         this.modal.loading = false
@@ -775,37 +736,22 @@ export default {
       try {
         const userStore = useUserStore()
         await userStore.loadUserData()
-        this.mfos = userStore.mfos
 
-        const categoriesResponse = await api.get('/fetch_f_category')
-        this.categories = categoriesResponse.data
+        // Set MFOs from user store
+        this.mfoStore.setMfos(userStore.mfos)
 
-        const outputsResponse = await api.get('/allOutputs', {
-          params: {
-            office_id: this.user.office_id,
-          },
-        })
-
-        this.outputs = outputsResponse.data.map((output) => {
-          return {
-            ...output,
-            category: this.categories.find((c) => c.id === output.f_category_id),
-            mfo: this.mfos.find((m) => m.id === output.mfo_id),
-          }
-        })
+        // Fetch categories and outputs
+        await this.mfoStore.fetchAllData(this.user.office_id)
       } catch (error) {
         console.error('Error fetching data:', error)
         this.$q.notify({
           type: 'negative',
-          message: 'Failed to load data. Please try again.',
+          message: 'Failed to load data.  Please try again.',
           position: 'top',
         })
       } finally {
         this.loading = false
       }
-    },
-    getOutputsForMfo(mfoId) {
-      return this.outputs.filter((output) => output.mfo_id === mfoId)
     },
     getInputLabel(index) {
       if (this.form.isOutput) {
@@ -855,7 +801,7 @@ export default {
         context: { categoryType },
       }
 
-      const categoryForType = this.findCategoryByType(categoryType)
+      const categoryForType = this.mfoStore.findCategoryByType(categoryType)
       if (!categoryForType) {
         console.error('Could not find appropriate category for type:', categoryType)
         this.$q.notify({
@@ -881,7 +827,7 @@ export default {
         context: { mfo, categoryType },
       }
 
-      this.form.category = this.findCategoryByType(categoryType)
+      this.form.category = this.mfoStore.findCategoryByType(categoryType)
       this.form.parentMfo = mfo
       this.form.isOutput = true
     },
@@ -898,7 +844,7 @@ export default {
         },
       }
 
-      this.form.category = mfo.category || this.findCategoryByType(categoryType)
+      this.form.category = mfo.category || this.mfoStore.findCategoryByType(categoryType)
       this.form.items = [{ name: mfo.name }]
       this.form.isOutput = false
     },
@@ -912,7 +858,7 @@ export default {
         context: { output, mfo, categoryType },
       }
 
-      this.form.category = mfo.category || this.findCategoryByType(categoryType)
+      this.form.category = mfo.category || this.mfoStore.findCategoryByType(categoryType)
       this.form.parentMfo = mfo
       this.form.items = [{ name: output.name }]
       this.form.isOutput = true
@@ -927,20 +873,9 @@ export default {
         context: { mfo },
       }
 
-      this.form.category = this.findCategoryByType('support')
+      this.form.category = this.mfoStore.findCategoryByType('support')
       this.form.items = [{ name: mfo.name }]
       this.form.isOutput = true
-    },
-    findCategoryByType(categoryType) {
-      return this.categoryOptions.find((cat) => {
-        if (categoryType === 'strategic') {
-          return cat.name.includes('STRATEGIC') || cat.name.includes('A.')
-        } else if (categoryType === 'core') {
-          return cat.name.includes('CORE') || cat.name.includes('B.')
-        } else {
-          return cat.name.includes('SUPPORT') || cat.name.includes('C.')
-        }
-      })
     },
     getCategoryName(categoryType) {
       switch (categoryType) {
@@ -954,31 +889,28 @@ export default {
           return 'MFO/Output'
       }
     },
-    async saveEntry() {
-      // This is now handled by confirmSave and proceedWithSave
-    },
     async saveMfos() {
       try {
         if (this.modal.mode === 'add') {
-          const promises = this.form.items.map((item) => {
-            return api.post('/add_mfo', {
-              office_id: this.user.office_id,
-              name: item.name,
-              f_category_id: this.form.category.id,
-            })
-          })
-          await Promise.all(promises)
+          const mfosData = this.form.items.map((item) => ({
+            name: item.name,
+            categoryId: this.form.category.id,
+          }))
+          await this.mfoStore.addMultipleMfos(mfosData, this.user.office_id)
         } else {
           const mfoId = this.modal.context?.mfo?.id
           if (!mfoId) {
             throw new Error('MFO ID is missing')
           }
 
-          await api.post(`/mfos/${mfoId}`, {
-            office_id: this.user.office_id,
-            name: this.form.items[0].name,
-            f_category_id: this.form.category.id,
-          })
+          await this.mfoStore.updateMfo(
+            mfoId,
+            {
+              name: this.form.items[0].name,
+              categoryId: this.form.category.id,
+            },
+            this.user.office_id,
+          )
         }
       } catch (error) {
         console.error('Error saving MFO:', error)
@@ -988,38 +920,27 @@ export default {
     async saveOutputs() {
       try {
         if (this.modal.mode === 'add') {
-          const promises = this.form.items.map((item) => {
-            const payload = {
-              name: item.name,
-              f_category_id: this.form.category.id,
-              office_id: this.user.office_id,
-            }
-
-            if (!this.isSupportCategory && this.form.parentMfo) {
-              payload.mfo_id = this.form.parentMfo.id
-            }
-
-            return api.post('/add_output', payload)
-          })
-
-          await Promise.all(promises)
+          const outputsData = this.form.items.map((item) => ({
+            name: item.name,
+            categoryId: this.form.category.id,
+            mfoId: !this.isSupportCategory && this.form.parentMfo ? this.form.parentMfo.id : null,
+          }))
+          await this.mfoStore.addMultipleOutputs(outputsData, this.user.office_id)
         } else {
           const outputId = this.modal.context?.output?.id || this.modal.context?.mfo?.id
           if (!outputId) {
             throw new Error('Output ID is missing')
           }
 
-          const payload = {
-            name: this.form.items[0].name,
-            f_category_id: this.form.category.id,
-            office_id: this.user.office_id,
-          }
-
-          if (!this.isSupportCategory && this.form.parentMfo) {
-            payload.mfo_id = this.form.parentMfo.id
-          }
-
-          await api.post(`/outputs/${outputId}`, payload)
+          await this.mfoStore.updateOutput(
+            outputId,
+            {
+              name: this.form.items[0].name,
+              categoryId: this.form.category.id,
+              mfoId: !this.isSupportCategory && this.form.parentMfo ? this.form.parentMfo.id : null,
+            },
+            this.user.office_id,
+          )
         }
       } catch (error) {
         console.error('Error saving outputs:', error)
@@ -1033,8 +954,8 @@ export default {
 
       try {
         const result = await Swal.fire({
-          title: 'Delete MFO?',
-          text: "You won't be able to revert this!",
+          title: 'Delete MFO? ',
+          text: "You won't be able to revert this! ",
           icon: 'warning',
           showCancelButton: true,
           confirmButtonColor: '#d33',
@@ -1047,7 +968,7 @@ export default {
         if (result.isConfirmed) {
           await this.deleteMfo(mfo)
           await Swal.fire({
-            title: 'Deleted!',
+            title: 'Deleted! ',
             text: 'MFO has been deleted.',
             icon: 'success',
             confirmButtonColor: '#00703C',
@@ -1094,7 +1015,7 @@ export default {
     },
     async deleteMfo(mfo) {
       try {
-        await api.delete(`/mfos/${mfo.id}`)
+        await this.mfoStore.deleteMfo(mfo.id)
         this.$q.notify({
           type: 'positive',
           message: 'MFO deleted successfully',
@@ -1112,7 +1033,7 @@ export default {
     },
     async deleteOutput(output) {
       try {
-        await api.delete(`/outputs/${output.id}`)
+        await this.mfoStore.deleteOutput(output.id)
         this.$q.notify({
           type: 'positive',
           message: 'Output deleted successfully',
@@ -1232,7 +1153,6 @@ export default {
 }
 
 .output-name {
-  font-weight: bold;
   word-break: break-word;
   flex-grow: 1;
 }

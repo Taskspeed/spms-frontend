@@ -206,11 +206,11 @@ export default {
       if (!this.selectedNode) return []
 
       return this.employeeStore.assignedEmployees.filter((emp) => {
-        // Match by unit
+        // Match by unit (most specific)
         if (emp.unit) {
           return this.selectedNode.type === 'unit' && emp.unit === this.selectedNode.name
         }
-        // Match by section
+        // Match by section (no unit)
         if (emp.section) {
           return (
             this.selectedNode.type === 'section' &&
@@ -218,7 +218,7 @@ export default {
             !emp.unit
           )
         }
-        // Match by division
+        // Match by division (no section/unit)
         if (emp.division) {
           return (
             this.selectedNode.type === 'division' &&
@@ -227,7 +227,7 @@ export default {
             !emp.unit
           )
         }
-        // Match by group
+        // Match by group (no division/section/unit)
         if (emp.group) {
           return (
             this.selectedNode.type === 'group' &&
@@ -237,7 +237,7 @@ export default {
             !emp.unit
           )
         }
-        // Match by office2
+        // Match by office2 (no group/division/section/unit)
         if (emp.office2) {
           return (
             this.selectedNode.type === 'office2' &&
@@ -248,7 +248,7 @@ export default {
             !emp.unit
           )
         }
-        // Match by office (top level)
+        // Match by office (no office2/group/division/section/unit)
         return (
           this.selectedNode.type === 'office' &&
           !emp.office2 &&
@@ -369,6 +369,7 @@ export default {
         this.loading = false
       }
     },
+
     processOrganizationData(officeData, counts) {
       let nodeIdCounter = 1
 
@@ -387,209 +388,248 @@ export default {
         children: [],
       }
 
-      // Process office2 array
+      // Separate office2 with values and groups without office2
+      const office2WithValues = []
+      const groupsWithoutOffice2 = []
+
       if (Array.isArray(officeData.office2) && officeData.office2.length > 0) {
         officeData.office2.forEach((office2Data) => {
-          // Only create office2 node if office2 has a value
           if (office2Data.office2) {
-            const office2Node = {
-              id: generateId('office2'),
-              label: office2Data.office2,
-              name: office2Data.office2,
-              type: 'office2',
-              icon: 'domain',
-              count: counts.office2?.[office2Data.office2]?.count || 0,
-              children: [],
-            }
-
-            // Process groups
-            this.processGroups(office2Data.groups, office2Node, counts, generateId)
-            officeNode.children.push(office2Node)
+            // Has office2 value - add to office2 list
+            office2WithValues.push(office2Data)
           } else {
-            // No office2, directly process groups under office
-            this.processGroups(office2Data.groups, officeNode, counts, generateId)
+            // No office2 value - extract groups to add directly under office
+            if (Array.isArray(office2Data.group) && office2Data.group.length > 0) {
+              groupsWithoutOffice2.push(...office2Data.group)
+            }
           }
         })
       }
+
+      // Process office2 nodes (those with actual office2 values)
+      office2WithValues.forEach((office2Data) => {
+        const office2Node = {
+          id: generateId('office2'),
+          label: office2Data.office2,
+          name: office2Data.office2,
+          type: 'office2',
+          icon: 'domain',
+          count: counts.office2?.[office2Data.office2]?.count || 0,
+          children: [],
+        }
+
+        // Process groups under office2
+        this.processGroups(office2Data.group || [], office2Node, counts, generateId)
+        officeNode.children.push(office2Node)
+      })
+
+      // Process groups that don't have office2 (add directly under office)
+      this.processGroups(groupsWithoutOffice2, officeNode, counts, generateId)
 
       return officeNode
     },
 
     processGroups(groupsData, parentNode, counts, generateId) {
-      if (Array.isArray(groupsData) && groupsData.length > 0) {
-        groupsData.forEach((groupData) => {
-          // Only create group node if group has a value
-          if (groupData.group) {
-            const groupNode = {
-              id: generateId('group'),
-              label: groupData.group,
-              name: groupData.group,
-              type: 'group',
-              icon: 'workspaces',
-              count: counts.groups?.[groupData.group]?.count || 0,
-              children: [],
-            }
-
-            // Process divisions
-            this.processDivisions(groupData, groupNode, counts, generateId)
-
-            // Process sections without division
-            this.processSectionsWithoutDivision(
-              groupData.sections_without_division,
-              groupNode,
-              counts,
-              generateId,
-            )
-
-            // Process units without division
-            this.processUnitsWithoutDivision(
-              groupData.units_without_division,
-              groupNode,
-              counts,
-              generateId,
-            )
-
-            parentNode.children.push(groupNode)
-          } else {
-            // No group, directly process divisions under parent
-            this.processDivisions(groupData, parentNode, counts, generateId)
-            this.processSectionsWithoutDivision(
-              groupData.sections_without_division,
-              parentNode,
-              counts,
-              generateId,
-            )
-            this.processUnitsWithoutDivision(
-              groupData.units_without_division,
-              parentNode,
-              counts,
-              generateId,
-            )
-          }
-        })
+      if (!Array.isArray(groupsData) || groupsData.length === 0) {
+        return
       }
-    },
 
-    processDivisions(groupData, parentNode, counts, generateId) {
-      if (Array.isArray(groupData.divisions) && groupData.divisions.length > 0) {
-        groupData.divisions.forEach((divData) => {
-          const divisionNode = {
-            id: generateId('div'),
-            label: divData.division,
-            name: divData.division,
-            type: 'division',
-            icon: 'apartment',
-            count: counts.divisions?.[divData.division]?.count || 0,
+      groupsData.forEach((groupData) => {
+        if (!groupData) return
+
+        if (groupData.group) {
+          // group has value - create group node
+          const groupNode = {
+            id: generateId('group'),
+            label: groupData.group,
+            name: groupData.group,
+            type: 'group',
+            icon: 'workspaces',
+            count: counts.groups?.[groupData.group]?.count || 0,
             children: [],
           }
 
-          // Process sections within division
-          this.processSections(divData.sections, divisionNode, counts, generateId)
-
-          // Process units without section
-          this.processUnitsWithoutSection(
-            divData.units_without_section,
-            divisionNode,
+          // Process divisions under group
+          this.processDivisions(groupData.divisions || [], groupNode, counts, generateId)
+          // Process sections without division under group
+          this.processSectionsWithoutDivision(
+            groupData.sections_without_division || [],
+            groupNode,
+            counts,
+            generateId,
+          )
+          // Process units without division under group
+          this.processUnitsWithoutDivision(
+            groupData.units_without_division || [],
+            groupNode,
             counts,
             generateId,
           )
 
-          parentNode.children.push(divisionNode)
-        })
+          parentNode.children.push(groupNode)
+        } else {
+          // group is null - cascade to divisions, sections, and units
+          this.processDivisions(groupData.divisions || [], parentNode, counts, generateId)
+          this.processSectionsWithoutDivision(
+            groupData.sections_without_division || [],
+            parentNode,
+            counts,
+            generateId,
+          )
+          this.processUnitsWithoutDivision(
+            groupData.units_without_division || [],
+            parentNode,
+            counts,
+            generateId,
+          )
+        }
+      })
+    },
+
+    processDivisions(divisionsData, parentNode, counts, generateId) {
+      if (!Array.isArray(divisionsData) || divisionsData.length === 0) {
+        return
       }
+
+      divisionsData.forEach((divData) => {
+        if (!divData) return
+
+        const divisionNode = {
+          id: generateId('div'),
+          label: divData.division,
+          name: divData.division,
+          type: 'division',
+          icon: 'apartment',
+          count: counts.divisions?.[divData.division]?.count || 0,
+          children: [],
+        }
+
+        // Process sections within division
+        this.processSections(divData.sections || [], divisionNode, counts, generateId)
+
+        // Process units without section under division
+        this.processUnitsWithoutSection(
+          divData.units_without_section || [],
+          divisionNode,
+          counts,
+          generateId,
+        )
+
+        parentNode.children.push(divisionNode)
+      })
     },
 
     processSections(sectionsData, parentNode, counts, generateId) {
-      if (Array.isArray(sectionsData) && sectionsData.length > 0) {
-        sectionsData.forEach((secData) => {
-          const sectionNode = {
-            id: generateId('sec'),
-            label: secData.section,
-            name: secData.section,
-            type: 'section',
-            icon: 'group',
-            count: counts.sections?.[secData.section]?.count || 0,
-            children: [],
-          }
-
-          // Process units within section
-          this.processUnits(secData.units, sectionNode, counts, generateId)
-
-          parentNode.children.push(sectionNode)
-        })
+      if (!Array.isArray(sectionsData) || sectionsData.length === 0) {
+        return
       }
+
+      sectionsData.forEach((secData) => {
+        if (!secData) return
+
+        const sectionNode = {
+          id: generateId('sec'),
+          label: secData.section,
+          name: secData.section,
+          type: 'section',
+          icon: 'group',
+          count: counts.sections?.[secData.section]?.count || 0,
+          children: [],
+        }
+
+        // Process units within section
+        this.processUnits(secData.units || [], sectionNode, counts, generateId)
+
+        parentNode.children.push(sectionNode)
+      })
     },
 
     processSectionsWithoutDivision(sectionsData, parentNode, counts, generateId) {
-      if (Array.isArray(sectionsData) && sectionsData.length > 0) {
-        sectionsData.forEach((secData) => {
-          const sectionNode = {
-            id: generateId('sec'),
-            label: secData.section,
-            name: secData.section,
-            type: 'section',
-            icon: 'group',
-            count: counts.sections?.[secData.section]?.count || 0,
-            children: [],
-          }
-
-          // Process units within section
-          this.processUnits(secData.units, sectionNode, counts, generateId)
-
-          parentNode.children.push(sectionNode)
-        })
+      if (!Array.isArray(sectionsData) || sectionsData.length === 0) {
+        return
       }
+
+      sectionsData.forEach((secData) => {
+        if (!secData) return
+
+        const sectionNode = {
+          id: generateId('sec'),
+          label: secData.section,
+          name: secData.section,
+          type: 'section',
+          icon: 'group',
+          count: counts.sections?.[secData.section]?.count || 0,
+          children: [],
+        }
+
+        // Process units within section
+        this.processUnits(secData.units || [], sectionNode, counts, generateId)
+
+        parentNode.children.push(sectionNode)
+      })
     },
 
     processUnits(unitsData, parentNode, counts, generateId) {
-      if (Array.isArray(unitsData) && unitsData.length > 0) {
-        unitsData.forEach((unitName) => {
-          const unitNode = {
-            id: generateId('unit'),
-            label: unitName,
-            name: unitName,
-            type: 'unit',
-            icon: 'people',
-            count: counts.units?.[unitName]?.count || 0,
-            children: [],
-          }
-          parentNode.children.push(unitNode)
-        })
+      if (!Array.isArray(unitsData) || unitsData.length === 0) {
+        return
       }
+
+      unitsData.forEach((unitName) => {
+        if (!unitName) return
+
+        const unitNode = {
+          id: generateId('unit'),
+          label: unitName,
+          name: unitName,
+          type: 'unit',
+          icon: 'people',
+          count: counts.units?.[unitName]?.count || 0,
+          children: [],
+        }
+        parentNode.children.push(unitNode)
+      })
     },
 
     processUnitsWithoutSection(unitsData, parentNode, counts, generateId) {
-      if (Array.isArray(unitsData) && unitsData.length > 0) {
-        unitsData.forEach((unitName) => {
-          const unitNode = {
-            id: generateId('unit'),
-            label: unitName,
-            name: unitName,
-            type: 'unit',
-            icon: 'people',
-            count: counts.units?.[unitName]?.count || 0,
-            children: [],
-          }
-          parentNode.children.push(unitNode)
-        })
+      if (!Array.isArray(unitsData) || unitsData.length === 0) {
+        return
       }
+
+      unitsData.forEach((unitName) => {
+        if (!unitName) return
+
+        const unitNode = {
+          id: generateId('unit'),
+          label: unitName,
+          name: unitName,
+          type: 'unit',
+          icon: 'people',
+          count: counts.units?.[unitName]?.count || 0,
+          children: [],
+        }
+        parentNode.children.push(unitNode)
+      })
     },
 
     processUnitsWithoutDivision(unitsData, parentNode, counts, generateId) {
-      if (Array.isArray(unitsData) && unitsData.length > 0) {
-        unitsData.forEach((unitName) => {
-          const unitNode = {
-            id: generateId('unit'),
-            label: unitName,
-            name: unitName,
-            type: 'unit',
-            icon: 'people',
-            count: counts.units?.[unitName]?.count || 0,
-            children: [],
-          }
-          parentNode.children.push(unitNode)
-        })
+      if (!Array.isArray(unitsData) || unitsData.length === 0) {
+        return
       }
+
+      unitsData.forEach((unitName) => {
+        if (!unitName) return
+
+        const unitNode = {
+          id: generateId('unit'),
+          label: unitName,
+          name: unitName,
+          type: 'unit',
+          icon: 'people',
+          count: counts.units?.[unitName]?.count || 0,
+          children: [],
+        }
+        parentNode.children.push(unitNode)
+      })
     },
 
     updateTreeCounts() {
@@ -631,6 +671,7 @@ export default {
         }
 
         const employeesToAdd = selectedEmployees.map((emp) => ({
+          ControlNo: emp.ControlNo,
           name: emp.name,
           position: emp.position,
           office_id: officeId,
@@ -744,7 +785,7 @@ export default {
                 this.$q
                   .dialog({
                     title: 'Current Head Exists',
-                    message: `There is already a ${newRank} (${currentHead.name}) in this unit. Do you want to demote them to Employee?`,
+                    message: `There is already a ${newRank} (${currentHead.name}) in this unit.  Do you want to demote them to Employee? `,
                     cancel: true,
                     persistent: true,
                   })

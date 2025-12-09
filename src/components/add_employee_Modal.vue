@@ -201,13 +201,23 @@ function closeModal() {
 }
 
 async function addEmployee() {
-  const selectedEmployees = (isSearching.value ? employeeStore.searchedEmployees : employees.value)
+  // Get the correct employee list based on whether we're searching
+  const sourceList = isSearching.value ? employeeStore.searchedEmployees : employees.value
+
+  // Filter selected employees and pass the FULL employee object
+  const selectedEmployees = sourceList
     .filter((emp) => emp.selected)
-    .map(({ id, name, position }) => ({
-      id,
-      name,
-      position,
+    .map((emp) => ({
+      id: emp.id,
+      ControlNo: emp.ControlNo, // ← ADD THIS
+      name: emp.name,
+      position: emp.position,
+      office: emp.office,
+      office_id: emp.office_id,
+      position_id: emp.position_id,
     }))
+
+  console.log('Selected employees to emit:', selectedEmployees) // Debug log
 
   emit('add', selectedEmployees)
   closeModal()

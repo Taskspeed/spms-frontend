@@ -80,10 +80,8 @@ export const useEmployeeStore = defineStore('employee', {
         if (response.data.success) {
           const data = response.data.data
 
-          // Parse office count (convert string to number if needed)
           const officeCount = parseInt(data.office) || 0
 
-          // Parse office2 counts
           const office2Counts = {}
           if (data.office2 && typeof data.office2 === 'object') {
             Object.keys(data.office2).forEach((key) => {
@@ -94,7 +92,6 @@ export const useEmployeeStore = defineStore('employee', {
             })
           }
 
-          // Parse group counts
           const groupCounts = {}
           if (data.groups && typeof data.groups === 'object') {
             Object.keys(data.groups).forEach((key) => {
@@ -105,7 +102,6 @@ export const useEmployeeStore = defineStore('employee', {
             })
           }
 
-          // Parse division counts
           const divisionCounts = {}
           if (data.divisions && typeof data.divisions === 'object') {
             Object.keys(data.divisions).forEach((key) => {
@@ -116,7 +112,6 @@ export const useEmployeeStore = defineStore('employee', {
             })
           }
 
-          // Parse section counts
           const sectionCounts = {}
           if (data.sections && typeof data.sections === 'object') {
             Object.keys(data.sections).forEach((key) => {
@@ -127,7 +122,6 @@ export const useEmployeeStore = defineStore('employee', {
             })
           }
 
-          // Parse unit counts
           const unitCounts = {}
           if (data.units && typeof data.units === 'object' && !Array.isArray(data.units)) {
             Object.keys(data.units).forEach((key) => {
@@ -138,7 +132,6 @@ export const useEmployeeStore = defineStore('employee', {
             })
           }
 
-          // Set the parsed counts
           this.employeeCounts = {
             office: officeCount,
             office2: office2Counts,
@@ -200,6 +193,7 @@ export const useEmployeeStore = defineStore('employee', {
         if (response.data.success) {
           this.assignedEmployees = response.data.data.map((emp) => ({
             id: emp.id,
+            ControlNo: emp.ControlNo || null,
             name: emp.name,
             position_id: emp.position_id,
             position: emp.position,
@@ -242,6 +236,8 @@ export const useEmployeeStore = defineStore('employee', {
 
       try {
         const token = localStorage.getItem('token')
+        const userStore = useUserStore()
+
         const response = await api.get('/employees-by-office', {
           headers: { Authorization: `Bearer ${token}` },
           params,
@@ -250,11 +246,12 @@ export const useEmployeeStore = defineStore('employee', {
         if (response.data.success) {
           const employees = response.data.data.map((emp) => ({
             id: emp.id || null,
+            ControlNo: emp.ControlNo || null,
             name: emp.name,
             position: emp.position,
-            position_id: emp.position_id,
+            position_id: emp.position_id || null,
             office: emp.office,
-            office_id: emp.office_id,
+            office_id: emp.office_id || userStore.user?.office_id,
             office2: emp.office2 || null,
             group: emp.group || null,
             division: emp.division || null,
@@ -302,6 +299,7 @@ export const useEmployeeStore = defineStore('employee', {
             throw new Error(`Position "${emp.position}" not found`)
           }
           return {
+            ControlNo: emp.ControlNo || null,
             name: emp.name,
             position: emp.position,
             position_id: position.id,
@@ -315,6 +313,8 @@ export const useEmployeeStore = defineStore('employee', {
             rank: emp.rank || 'Employee',
           }
         })
+
+        console.log('Validated Employees Payload:', validatedEmployees)
 
         const response = await api.post(
           '/add/employee',
@@ -405,6 +405,8 @@ export const useEmployeeStore = defineStore('employee', {
 
       try {
         const token = localStorage.getItem('token')
+        const userStore = useUserStore()
+
         const response = await api.get('/search-employees', {
           headers: { Authorization: `Bearer ${token}` },
           params: { search: searchTerm, unassigned_only: true },
@@ -413,11 +415,12 @@ export const useEmployeeStore = defineStore('employee', {
         if (response.data.success) {
           this.searchedEmployees = response.data.data.map((emp) => ({
             id: emp.id,
+            ControlNo: emp.ControlNo || null,
             name: emp.name,
             position: emp.position,
-            position_id: emp.position_id,
+            position_id: emp.position_id || null,
             office: emp.office,
-            office_id: emp.office_id,
+            office_id: emp.office_id || userStore.user?.office_id,
             office2: emp.office2 || null,
             group: emp.group || null,
             division: emp.division || null,
