@@ -5,47 +5,88 @@ import { useUserStore } from 'src/stores/userStore'
 
 export const useOrganizationStore = defineStore('organization', {
   state: () => ({
-    spms: ref([]),
     structure: ref([]),
     loading: ref(false),
     error: ref(null),
     officeName: '',
+    targetPeriods: ref([]),
+    selectedSemester: ref(null),
+    selectedYear: ref(null),
+    completionMap: ref({}),
+    leafNodeTypes: ref([]),
   }),
 
   getters: {
-    /**
-     * Get SPMS count/completion for a specific node
-     * @param {string} nodeId - The node ID
-     * @returns {Object} - { completed: number, total: number, isCompleted: boolean, ratio: string }
-     */
-    getNodeCompletion: (state) => (nodeId) => {
-      if (state.spms && state.spms[nodeId]) {
-        const completion = state.spms[nodeId]
-        let parts = []
-
-        // Handle different formats:  "1/5" or { completed: 1, total: 5 }
-        if (typeof completion === 'string') {
-          parts = completion.split('/').map(Number)
-        } else if (typeof completion === 'object' && completion.completed !== undefined) {
-          parts = [completion.completed, completion.total]
-        }
-
-        if (parts.length === 2) {
-          const [completed, total] = parts
-          return {
-            completed,
-            total,
-            isCompleted: completed === total && total > 0,
-            ratio: `${completed}/${total}`,
-          }
-        }
+    getLatestPeriod: (state) => {
+      if (!state.targetPeriods || state.targetPeriods.length === 0) {
+        return null
       }
-      return { completed: 0, total: 0, isCompleted: false, ratio: '0/0' }
+
+      const semesterOrder = {
+        'July-December': 2,
+        'july-december': 2,
+        'Jan-June': 1,
+        'jan-june': 1,
+      }
+
+      return state.targetPeriods.sort((a, b) => {
+        const yearDiff = parseInt(b.year) - parseInt(a.year)
+        if (yearDiff !== 0) return yearDiff
+
+        const semesterAPriority = semesterOrder[a.semester] || 0
+        const semesterBPriority = semesterOrder[b.semester] || 0
+        return semesterBPriority - semesterAPriority
+      })[0]
     },
 
-    /**
-     * Get incomplete subordinate levels for validation messages
-     */
+    getAvailableYears: (state) => {
+      const years = new Set()
+      state.targetPeriods.forEach((period) => {
+        years.add(period.year)
+      })
+      return Array.from(years).sort().reverse()
+    },
+
+    getAvailableSemesters: (state) => {
+      if (!state.selectedYear) return []
+      return state.targetPeriods
+        .filter((period) => period.year === state.selectedYear)
+        .map((period) => period.semester)
+        .filter((sem, idx, arr) => arr.indexOf(sem) === idx)
+    },
+
+    getCurrentTargetPeriod: (state) => {
+      if (!state.selectedSemester || !state.selectedYear) {
+        return null
+      }
+      return {
+        semester: state.selectedSemester,
+        year: state.selectedYear,
+      }
+    },
+
+    getNodeCompletion: (state) => (nodeId) => {
+      const completion = state.completionMap[nodeId]
+
+      if (!completion) {
+        return {
+          completed: 0,
+          total: 0,
+          isCompleted: false,
+          ratio: '0/0',
+          isLeafNode: false,
+        }
+      }
+
+      return {
+        completed: completion.completed,
+        total: completion.total,
+        isCompleted: completion.completed === completion.total && completion.total > 0,
+        ratio: `${completion.completed}/${completion.total}`,
+        isLeafNode: completion.isLeafNode || false,
+      }
+    },
+
     getIncompleteSubordinates: (state) => (nodeId) => {
       const findNode = (nodes, id) => {
         if (!nodes) return null
@@ -68,25 +109,15 @@ export const useOrganizationStore = defineStore('organization', {
         for (const child of currentNode.children) {
           const childLevel = hierarchyLevels.indexOf(child.type)
           if (childLevel < minLevel && child.type !== 'employee') {
-            const completion = state.spms?.[child.id]
-            if (completion) {
-              let parts = []
-              if (typeof completion === 'string') {
-                parts = completion.split('/').map(Number)
-              } else if (typeof completion === 'object') {
-                parts = [completion.completed, completion.total]
-              }
-
-              if (parts.length === 2) {
-                const [c, t] = parts
-                if (c !== t && t > 0) {
-                  incomplete.push({
-                    id: child.id,
-                    label: child.label,
-                    type: child.type,
-                    completion: typeof completion === 'string' ? completion : `${c}/${t}`,
-                  })
-                }
+            const completion = state.completionMap[child.id]
+            if (completion && completion.total > 0) {
+              if (completion.completed !== completion.total) {
+                incomplete.push({
+                  id: child.id,
+                  label: child.label,
+                  type: child.type,
+                  completion: `${completion.completed}/${completion.total}`,
+                })
               }
             }
             checkSubordinates(child, minLevel)
@@ -100,18 +131,153 @@ export const useOrganizationStore = defineStore('organization', {
   },
 
   actions: {
-    async fetchSPMSCount() {
+    async fetchListTargetPeriod() {
       this.loading = true
       try {
-        const response = await api.get('/spms/count')
-        this.spms = response.data
+        const response = await api.get('/spms/target_periods/semester-year')
+
+        this.targetPeriods = response.data || []
+
+        const latestPeriod = this.getLatestPeriod
+        if (latestPeriod) {
+          this.selectedSemester = latestPeriod.semester
+          this.selectedYear = latestPeriod.year
+        }
+
         this.error = null
-      } catch (err) {
-        this.error = 'Failed to fetch spms count'
-        console.error(err)
+      } catch {
+        this.error = 'Failed to fetch target periods'
+        this.targetPeriods = []
       } finally {
         this.loading = false
       }
+    },
+
+    async setTargetPeriod(semester, year) {
+      this.selectedSemester = semester
+      this.selectedYear = year
+      await this.fetchStructure()
+    },
+
+    detectLeafNodeTypes(nodes) {
+      const leafTypes = new Set()
+
+      const traverse = (currentNodes) => {
+        if (!currentNodes || currentNodes.length === 0) return
+
+        currentNodes.forEach((node) => {
+          if (node.type === 'employee') return
+
+          const hasNonEmployeeChildren = node.children?.some((child) => child.type !== 'employee')
+
+          if (!hasNonEmployeeChildren) {
+            leafTypes.add(node.type)
+          }
+
+          if (node.children) {
+            traverse(node.children)
+          }
+        })
+      }
+
+      traverse(nodes)
+      this.leafNodeTypes = Array.from(leafTypes)
+    },
+
+    calculateCompletionMap(nodes, employees) {
+      const map = {}
+      this.detectLeafNodeTypes(nodes)
+
+      const hierarchyLevels = ['office', 'office2', 'group', 'division', 'section', 'unit']
+
+      const getChildrenOfType = (node, targetType) => {
+        if (!node.children) return []
+        return node.children.filter((child) => child.type === targetType)
+      }
+
+      const isLeafNode = (nodeType) => {
+        return this.leafNodeTypes.includes(nodeType)
+      }
+
+      const getNextLevelDown = (currentType) => {
+        const currentIndex = hierarchyLevels.indexOf(currentType)
+        if (currentIndex === -1) return null
+
+        for (let i = currentIndex + 1; i < hierarchyLevels.length; i++) {
+          if (this.leafNodeTypes.includes(hierarchyLevels[i])) {
+            return hierarchyLevels[i]
+          }
+        }
+
+        return null
+      }
+
+      const processNode = (node) => {
+        if (!node.children || node.children.length === 0) return
+
+        node.children.forEach((child) => {
+          if (child.type !== 'employee') {
+            processNode(child)
+          }
+        })
+
+        if (isLeafNode(node.type)) {
+          // Leaf node:  count employees with has_target_period
+          const nodeEmps = employees.filter((emp) => {
+            if (node.type === 'unit') return emp.unit === node.label
+            if (node.type === 'section') return emp.section === node.label
+            if (node.type === 'division') return emp.division === node.label
+            if (node.type === 'group') return emp.group === node.label
+            if (node.type === 'office2') return emp.office2 === node.label
+            if (node.type === 'office') return emp.office === node.label
+            return false
+          })
+
+          const completed = nodeEmps.filter((emp) => emp.has_target_period === true).length
+          const total = nodeEmps.length
+
+          if (total > 0) {
+            map[node.id] = {
+              completed,
+              total,
+              isLeafNode: true,
+            }
+          }
+        } else {
+          // Non-leaf node: count completed child organizational units
+          const nextLevel = getNextLevelDown(node.type)
+
+          if (nextLevel) {
+            const childNodes = getChildrenOfType(node, nextLevel)
+            let completedChildren = 0
+
+            childNodes.forEach((child) => {
+              const childCompletion = map[child.id]
+              if (
+                childCompletion &&
+                childCompletion.completed === childCompletion.total &&
+                childCompletion.total > 0
+              ) {
+                completedChildren++
+              }
+            })
+
+            if (childNodes.length > 0) {
+              map[node.id] = {
+                completed: completedChildren,
+                total: childNodes.length,
+                isLeafNode: false,
+              }
+            }
+          }
+        }
+      }
+
+      nodes.forEach((node) => {
+        processNode(node)
+      })
+
+      this.completionMap = map
     },
 
     async fetchStructure() {
@@ -120,14 +286,23 @@ export const useOrganizationStore = defineStore('organization', {
         const userStore = useUserStore()
         const { officeId } = userStore
 
-        const { data: structureData } = await api.get('Spms/office/structure', {
+        const { data: structureData } = await api.get('spms/office/structure', {
           params: { office_id: officeId },
         })
 
         let employees = []
         try {
+          const employeeParams = {
+            office_id: officeId,
+          }
+
+          if (this.selectedSemester && this.selectedYear) {
+            employeeParams.semester = this.selectedSemester
+            employeeParams.year = this.selectedYear
+          }
+
           const employeeResponse = await api.get('spms/fetch_employees', {
-            params: { office_id: officeId },
+            params: employeeParams,
           })
 
           if (Array.isArray(employeeResponse.data)) {
@@ -140,25 +315,22 @@ export const useOrganizationStore = defineStore('organization', {
           ) {
             employees = employeeResponse.data.employees
           }
-        } catch (empErr) {
-          console.error('Error fetching employees:', empErr)
+        } catch {
           employees = []
         }
-
-        console.log('Structure Data:', structureData)
-        console.log('Employees Data:', employees)
 
         if (structureData?.length) {
           this.officeName = structureData[0].office
           this.structure = this.transformStructure(structureData[0], employees)
-          console.log('Transformed Structure:', this.structure)
+          this.calculateCompletionMap(this.structure, employees)
         } else {
           this.structure = []
         }
+
+        this.error = null
       } catch (err) {
         this.error = err.message
         this.structure = []
-        console.error('Error fetching structure:', err)
       } finally {
         this.loading = false
       }
@@ -178,7 +350,6 @@ export const useOrganizationStore = defineStore('organization', {
 
       const isHeadByRank = (rank) => rank && headRanks.some((h) => rank.toLowerCase().includes(h))
 
-      // Create employee node
       const createEmployeeNode = (emp) => ({
         id: 'emp_' + emp.id,
         label: emp.name,
@@ -187,17 +358,16 @@ export const useOrganizationStore = defineStore('organization', {
         ipcrStatus: emp.ipcr_status || 'pending',
         type: 'employee',
         isHead: isHeadByRank(emp.rank),
+        hasTargetPeriod: emp.has_target_period,
         employeeData: emp,
         children: [],
       })
 
-      // Group employees by their MOST SPECIFIC location (lowest hierarchy level they belong to)
       const employeesByLocation = new Map()
 
       employees.forEach((emp) => {
         let key = ''
 
-        // Determine the MOST SPECIFIC location (highest priority = most specific)
         if (emp.unit) {
           key = `unit_${this.slugify(emp.unit)}`
         } else if (emp.section) {
@@ -218,9 +388,6 @@ export const useOrganizationStore = defineStore('organization', {
         employeesByLocation.get(key).push(createEmployeeNode(emp))
       })
 
-      console.log('Employees by Location:', employeesByLocation)
-
-      // Build unit nodes
       const buildUnit = (unitName) => {
         const key = `unit_${this.slugify(unitName)}`
         const emps = employeesByLocation.get(key) || []
@@ -233,7 +400,6 @@ export const useOrganizationStore = defineStore('organization', {
         }
       }
 
-      // Build section nodes
       const buildSection = (sectionName, units) => {
         const key = `section_${this.slugify(sectionName)}`
         const emps = employeesByLocation.get(key) || []
@@ -248,20 +414,17 @@ export const useOrganizationStore = defineStore('organization', {
         }
       }
 
-      // Build division nodes
       const buildDivision = (divisionData) => {
         const key = `division_${this.slugify(divisionData.division)}`
         const emps = employeesByLocation.get(key) || []
         const children = [...emps]
 
-        // Add sections
         if (divisionData.sections && divisionData.sections.length > 0) {
           divisionData.sections.forEach((sec) => {
             children.push(buildSection(sec.section, sec.units || []))
           })
         }
 
-        // Add units without section
         if (divisionData.units_without_section && divisionData.units_without_section.length > 0) {
           divisionData.units_without_section.forEach((unit) => {
             children.push(buildUnit(unit))
@@ -277,9 +440,7 @@ export const useOrganizationStore = defineStore('organization', {
         }
       }
 
-      // Build group nodes
       const buildGroup = (groupData) => {
-        // If group is null, return children array to be spread into parent
         if (groupData.group === null) {
           const children = []
 
@@ -307,7 +468,6 @@ export const useOrganizationStore = defineStore('organization', {
           return children
         }
 
-        // For named groups
         const key = `group_${this.slugify(groupData.group)}`
         const emps = employeesByLocation.get(key) || []
         const children = [...emps]
@@ -339,9 +499,7 @@ export const useOrganizationStore = defineStore('organization', {
         }
       }
 
-      // Build office2 nodes
       const buildOffice2 = (office2Data) => {
-        // If office2 is null, return children array to be spread into parent
         if (office2Data.office2 === null) {
           const children = []
 
@@ -359,12 +517,10 @@ export const useOrganizationStore = defineStore('organization', {
           return children
         }
 
-        // Only create office2 node if office2 has a name
         const key = `office2_${this.slugify(office2Data.office2)}`
         const emps = employeesByLocation.get(key) || []
         const children = [...emps]
 
-        // Handle groups under office2
         if (office2Data.group && office2Data.group.length > 0) {
           office2Data.group.forEach((grp) => {
             const result = buildGroup(grp)
@@ -385,15 +541,10 @@ export const useOrganizationStore = defineStore('organization', {
         }
       }
 
-      // Build main office node
       const rootEmps = employeesByLocation.get('office_root') || []
       const children = [...rootEmps]
 
-      console.log('Root Employees:', rootEmps)
-
-      // FIXED: Process named office2 FIRST, then null office2 groups
       if (officeData.office2 && officeData.office2.length > 0) {
-        // First pass: Add named office2 entries
         officeData.office2.forEach((office2Data) => {
           if (office2Data.office2 !== null) {
             const result = buildOffice2(office2Data)
@@ -405,7 +556,6 @@ export const useOrganizationStore = defineStore('organization', {
           }
         })
 
-        // Second pass:  Spread groups from null office2 entries
         officeData.office2.forEach((office2Data) => {
           if (office2Data.office2 === null) {
             const result = buildOffice2(office2Data)
@@ -424,8 +574,6 @@ export const useOrganizationStore = defineStore('organization', {
         count: rootEmps.length,
       }
 
-      console.log('Final Office Node:', officeNode)
-
       return [officeNode]
     },
 
@@ -442,10 +590,6 @@ export const useOrganizationStore = defineStore('organization', {
       )
     },
 
-    /**
-     * Validate if a node can create Unit Work Plan
-     * Returns:  { canCreate: boolean, message: string, incompleteItems: Array }
-     */
     validateUWPCreation(nodeId) {
       const node = this._findNode(nodeId)
       if (!node) {
@@ -456,26 +600,28 @@ export const useOrganizationStore = defineStore('organization', {
         }
       }
 
-      // Check if current node is completed
       const nodeCompletion = this.getNodeCompletion(nodeId)
-      if (!nodeCompletion.isCompleted && nodeCompletion.total > 0) {
+
+      // Leaf nodes can ALWAYS create UWP
+      if (nodeCompletion.isLeafNode) {
         return {
-          canCreate: false,
-          message: `${node.label} is not completed. Current status: ${nodeCompletion.ratio}`,
+          canCreate: true,
+          message: 'Ready to create Unit Work Plan',
           incompleteItems: [],
         }
       }
 
-      // Check all subordinate levels
+      // For parent nodes, check if all subordinate child units are complete
       const incomplete = this.getIncompleteSubordinates(nodeId)
+
       if (incomplete.length > 0) {
         const levelMap = {
           unit: 'Unit',
           section: 'Section',
           division: 'Division',
           group: 'Group',
-          office2: 'Office',
-          office: 'Main Office',
+          office2: 'Office2',
+          office: 'Office',
         }
 
         const groupedByType = {}
@@ -488,7 +634,9 @@ export const useOrganizationStore = defineStore('organization', {
 
         const messages = Object.entries(groupedByType)
           .map(([type, items]) => {
-            return `${levelMap[type] || type} (${items.length}): ${items.map((i) => `${i.label} [${i.completion}]`).join(', ')}`
+            return `${levelMap[type] || type} (${items.length}): ${items
+              .map((i) => `${i.label} [${i.completion}]`)
+              .join(', ')}`
           })
           .join('\n')
 
