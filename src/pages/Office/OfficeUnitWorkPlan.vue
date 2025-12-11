@@ -39,6 +39,8 @@
                   label="Semester"
                   outlined
                   dense
+                  emit-value
+                  map-options
                 >
                   <template v-slot:prepend>
                     <q-icon name="calendar_view_month" size="xs" />
@@ -79,8 +81,16 @@
             <!-- Right Side:  Semester, Year -->
             <div class="col-12 col-md-6">
               <div class="column q-gutter-sm">
-                <q-select v-model="form.year" :options="yearOptions" label="Year" outlined dense>
-                  <template v-slot: prepend>
+                <q-select
+                  v-model="form.year"
+                  :options="yearOptions"
+                  label="Year"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                >
+                  <template v-slot:prepend>
                     <q-icon name="event" size="xs" />
                   </template>
                 </q-select>
@@ -1059,7 +1069,14 @@
 
     <div class="row justify-end q-mt-lg q-gutter-sm">
       <q-btn label="Cancel" color="grey" flat dense @click="onBack" />
-      <q-btn label="Submit" color="green-7" icon="save" @click="onSubmit" :disable="!isFormValid" />
+      <q-btn
+        label="Submit"
+        color="green-7"
+        icon="save"
+        @click="onSubmit"
+        :disable="!isFormValid || uwpStore.loading"
+        :loading="uwpStore.loading"
+      />
     </div>
   </q-page>
 </template>
@@ -1071,6 +1088,7 @@ import { useRouter } from 'vue-router'
 import { v4 as uuidv4 } from 'uuid'
 import { useMfoStore } from 'src/stores/office/officeLibrary'
 import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
+import { useUnitWorkPlanStore } from 'src/stores/office/unitWorkPlanStore'
 
 export default {
   setup() {
@@ -1078,16 +1096,17 @@ export default {
     const router = useRouter()
     const officeLibraryStore = useMfoStore()
     const officeLibraryIndicatorStore = useLibraryStore()
+    const uwpStore = useUnitWorkPlanStore()
 
-    // Add these reactive variables for filtered options
-    const filteredMfoOptions = ref({}) // Store filtered MFOs by performance standard index
-    const filteredOutputOptions = ref({}) // Store filtered outputs by performance standard index
-
+    // Refs
+    const filteredMfoOptions = ref({})
+    const filteredOutputOptions = ref({})
     const uwpData = ref({
       type: null,
       selectedNodeId: null,
       selectedNodeLabel: null,
       breadcrumb: [],
+      targetPeriod: { semester: null, year: null },
       hierarchy: {
         office: null,
         office2: null,
@@ -1102,141 +1121,11 @@ export default {
       timestamp: null,
     })
 
-    // Initialize UWP data from sessionStorage
-    const initializeUWPData = () => {
-      try {
-        const stored = sessionStorage.getItem('uwpData')
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          uwpData.value = parsed
-          console.log('✅ Retrieved UWP Data from sessionStorage:', uwpData.value)
-        } else {
-          console.warn('⚠️ No UWP data found in sessionStorage')
-        }
-      } catch (error) {
-        console.error('❌ Failed to parse UWP data:', error)
-      }
-    }
-
-    // Computed:  Get breadcrumb display string
-    const breadcrumbDisplay = computed(() => {
-      if (!uwpData.value.breadcrumb || uwpData.value.breadcrumb.length === 0) {
-        return 'Organization Structure'
-      }
-      return uwpData.value.breadcrumb.join(' / ')
-    })
-
-    // Computed: Get selected node label
-    const selectedNodeLabel = computed(() => {
-      return uwpData.value.selectedNodeLabel || 'Work Plan'
-    })
-
-    const onBack = () => {
-      router.back()
-    }
-
-    // Configuration for visible tabs
-    const maxVisibleTabs = ref(3)
-
-    // Form state tracking
     const formInteracted = ref(false)
     const shouldValidate = ref(false)
-
-    // Employee tabs management
+    const maxVisibleTabs = ref(3)
     const activeEmployeeTab = ref(null)
     const employeeTabs = ref([])
-
-    // Create default empty row structure
-    const createEmptyStandardRow = () => {
-      return {
-        rating: '',
-        quantity: '',
-        effectiveness: '',
-        timeliness: '',
-        timelinessRange: '',
-        timelinessText: '',
-        timelinessDeadline: '',
-        timelinessDate: '',
-      }
-    }
-
-    // Create default rows for a standard outcome table
-    const createDefaultStandardRows = () => {
-      return [
-        { ...createEmptyStandardRow(), rating: '5' },
-        { ...createEmptyStandardRow(), rating: '4' },
-        { ...createEmptyStandardRow(), rating: '3' },
-        { ...createEmptyStandardRow(), rating: '2' },
-        { ...createEmptyStandardRow(), rating: '1' },
-      ]
-    }
-
-    // Create default Performance Standard object
-    const createDefaultPerformanceStandard = () => {
-      return {
-        id: uuidv4(),
-        expanded: true,
-        outputName: '',
-        indicatorName: '',
-        successIndicator: '',
-        requiredOutput: '',
-        modeOfVerification: '',
-        rows: {
-          category: null,
-          mfo: null,
-          output: null,
-        },
-        quantityIndicatorType: 'numeric',
-        timelinessIndicatorType: 'beforeDeadline',
-        timelinessInputs: {
-          range: true,
-          date: false,
-          description: false,
-        },
-        activeTimelinessInputs: {
-          range: true,
-          date: false,
-          description: false,
-        },
-        standardOutcomeRows: createDefaultStandardRows(),
-      }
-    }
-    // Create default employee data
-    const createDefaultEmployeeData = () => {
-      const id = uuidv4()
-      return {
-        id,
-        name: '',
-        employeeId: null,
-        employeeData: null,
-        performanceStandards: [createDefaultPerformanceStandard()],
-      }
-    }
-
-    // Initialize employee tabs from UWP data
-    const initializeEmployeeTabs = () => {
-      // Check if availableEmployees exists and has data
-      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0) {
-        // No employees available, start with empty tab
-        const defaultEmp = createDefaultEmployeeData()
-        employeeTabs.value = [defaultEmp]
-        activeEmployeeTab.value = defaultEmp.id
-        console.log('✅ Initialized with empty employee tab (no available employees)')
-        return
-      }
-
-      // Optional: Start with one empty tab for user to add employees
-      const defaultEmp = createDefaultEmployeeData()
-      employeeTabs.value = [defaultEmp]
-      activeEmployeeTab.value = defaultEmp.id
-
-      console.log(
-        '✅ Initialized with empty tab.  Available employees: ',
-        uwpData.value.availableEmployees.length,
-      )
-    }
-
-    // Base form data
     const form = ref({
       unit: null,
       section: null,
@@ -1244,272 +1133,51 @@ export default {
       semester: null,
       year: new Date().getFullYear(),
     })
-
-    // Current active employee data
-    const currentEmployee = computed(() => {
-      const activeEmployee = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
-      return activeEmployee || employeeTabs.value[0] || createDefaultEmployeeData()
-    })
-
-    // ✅ Performance Indicators Filter
     const filteredVerbs = ref([])
-
-    // ✅ Just use this simple filter
-    const filterPerformanceIndicators = (val, update) => {
-      if (typeof update === 'function') {
-        update(() => {
-          const needle = (val || '').toLowerCase()
-
-          filteredVerbs.value = officeLibraryIndicatorStore.verbs
-            .map((verb) => ({
-              id: verb.id,
-              label: verb.indicator_name || verb.name,
-              value: verb.id,
-              name: verb.indicator_name || verb.name,
-              description: verb.description || '',
-            }))
-            .filter(
-              (verb) =>
-                verb.label.toLowerCase().includes(needle) ||
-                verb.description.toLowerCase().includes(needle),
-            )
-        })
-      } else {
-        // Initialize with all verbs on first load
-        filteredVerbs.value = officeLibraryIndicatorStore.verbs.map((verb) => ({
-          id: verb.id,
-          label: verb.indicator_name || verb.name,
-          value: verb.id,
-          name: verb.indicator_name || verb.name,
-          description: verb.description || '',
-        }))
-      }
-    }
-
-    // ✅ Performance Indicator Options
-    const performanceIndicatorOptions = computed(() => {
-      return officeLibraryIndicatorStore.verbs.map((verb) => ({
-        id: verb.id,
-        label: verb.indicator_name || verb.name, // ✅ Handle both formats
-        value: verb.id,
-        name: verb.indicator_name || verb.name,
-        description: verb.description || '',
-      }))
-    })
-
-    // MFO and Competencies related data
+    const filteredEmployees = ref([])
     const skipMfo = ref(false)
-
-    // ✅ Category Options from MFO Store
-    const categoryOptions = computed(() => {
-      return officeLibraryStore.categories.map((cat) => ({
-        id: cat.id,
-        label: cat.name,
-        value: cat.id,
-        name: cat.name,
-      }))
-    })
-
-    // ✅ Fixed: Check if category has MFOs
-    const hasMfosForCategory = (index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard || !standard.rows.category) {
-        return false
-      }
-
-      const categoryId = standard.rows.category
-
-      // Filter MFOs by category ID from the store
-      const mfosInCategory = officeLibraryStore.mfos.filter(
-        (mfo) => mfo.f_category_id === categoryId,
-      )
-
-      return mfosInCategory.length > 0
-    }
-
-    const getFilteredMfoOptions = (index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard || !standard.rows.category) {
-        return []
-      }
-
-      const categoryId = standard.rows.category
-
-      // Return filtered options if available, otherwise return all
-      if (filteredMfoOptions.value[index]) {
-        return filteredMfoOptions.value[index]
-      }
-
-      // Get all MFOs for this category
-      const allMfos = officeLibraryStore.mfos
-        .filter((mfo) => mfo.f_category_id === categoryId)
-        .map((mfo) => ({
-          id: mfo.id,
-          label: mfo.name,
-          value: mfo.id,
-          name: mfo.name,
-          code: mfo.code || '',
-          description: mfo.description || '',
-        }))
-
-      return allMfos
-    }
-
-    // Reset filtered options when category changes
-    const clearDependentFields = (standardIndex, fieldIndex) => {
-      const standard = currentEmployee.value.performanceStandards[standardIndex]
-      if (!standard) return
-
-      if (fieldIndex === 1) {
-        // If category changed, reset MFO and output
-        standard.rows.mfo = null
-        standard.rows.output = null
-        // Clear filtered options for this standard
-        filteredMfoOptions.value[standardIndex] = null
-        filteredOutputOptions.value[standardIndex] = null
-      } else if (fieldIndex === 2) {
-        // If MFO changed, reset output
-        standard.rows.output = null
-        filteredOutputOptions.value[standardIndex] = null
-      }
-    }
-
-    const getFilteredOutputOptions = (index) => {
-      // If we have filtered options stored, return those
-      if (filteredOutputOptions.value[index] && filteredOutputOptions.value[index].length > 0) {
-        return filteredOutputOptions.value[index]
-      }
-
-      // Otherwise, return all outputs for the current selection
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard || !standard.rows.category) {
-        return []
-      }
-
-      const categoryId = standard.rows.category
-      const mfoId = standard.rows.mfo
-
-      if (!officeLibraryStore.outputs || officeLibraryStore.outputs.length === 0) {
-        return []
-      }
-
-      // Filter outputs
-      const filteredOutputs = officeLibraryStore.outputs.filter((output) => {
-        if (output.f_category_id !== categoryId) return false
-
-        if (mfoId) {
-          return output.mfo_id === mfoId
-        }
-
-        return output.mfo_id === null
-      })
-
-      return filteredOutputs.map((output) => ({
-        id: output.id,
-        label: output.name,
-        value: output.id,
-        name: output.name,
-        code: output.code || '',
-        description: output.description || '',
-      }))
-    }
-
-    // MFO filtering method
-    const filterMfos = (val, update, index) => {
-      if (typeof update === 'function') {
-        update(() => {
-          const needle = (val || '').toLowerCase()
-
-          // Get all MFOs for the selected category first
-          const standard = currentEmployee.value.performanceStandards[index]
-          if (!standard || !standard.rows.category) {
-            filteredMfoOptions.value[index] = []
-            return
-          }
-
-          const categoryId = standard.rows.category
-          const allMfos = officeLibraryStore.mfos
-            .filter((mfo) => mfo.f_category_id === categoryId)
-            .map((mfo) => ({
-              id: mfo.id,
-              label: mfo.name,
-              value: mfo.id,
-              name: mfo.name,
-              code: mfo.code || '',
-              description: mfo.description || '',
-            }))
-
-          // Filter by search term
-          filteredMfoOptions.value[index] = allMfos.filter(
-            (mfo) =>
-              mfo.label.toLowerCase().includes(needle) ||
-              (mfo.code && mfo.code.toLowerCase().includes(needle)) ||
-              (mfo.description && mfo.description.toLowerCase().includes(needle)),
-          )
-        })
-      }
-    }
-
-    // Output filtering method
-    const filterOutputs = (val, update, index) => {
-      if (typeof update === 'function') {
-        update(() => {
-          const needle = (val || '').toLowerCase()
-
-          const standard = currentEmployee.value.performanceStandards[index]
-          if (!standard || !standard.rows.category) {
-            filteredOutputOptions.value[index] = []
-            return
-          }
-
-          const categoryId = standard.rows.category
-          const mfoId = standard.rows.mfo
-
-          // Get ALL outputs for this category/MFO combination (not filtered)
-          const allOutputs = officeLibraryStore.outputs.filter((output) => {
-            if (output.f_category_id !== categoryId) return false
-            if (mfoId && output.mfo_id !== mfoId) return false
-            if (!mfoId && output.mfo_id !== null) return false
-            return true
-          })
-
-          // Convert to options format
-          const outputOptions = allOutputs.map((output) => ({
-            id: output.id,
-            label: output.name,
-            value: output.id,
-            name: output.name,
-            code: output.code || '',
-            description: output.description || '',
-          }))
-
-          // Filter by search term
-          filteredOutputOptions.value[index] = outputOptions.filter(
-            (output) =>
-              output.label.toLowerCase().includes(needle) ||
-              (output.code && output.code.toLowerCase().includes(needle)) ||
-              (output.description && output.description.toLowerCase().includes(needle)),
-          )
-        })
-      }
-    }
+    const currentStandardIndex = ref(0)
+    const showQuantityModal = ref(false)
+    const quantityValue = ref(null)
 
     // Competencies data
     const mergedCoreCompetency = ref({
       Communication: { code: 'C1', value: 'Advanced', legend: '4' },
       Teamwork: { code: 'C2', value: 'Proficient', legend: '3' },
     })
-
     const mergedTechnicalCompetency = ref({
       Programming: { code: 'T1', value: 'Advanced', legend: '4' },
       Database: { code: 'T2', value: 'Expert', legend: '5' },
     })
-
     const mergedLeadershipCompetency = ref({
       'Decision Making': { code: 'L1', value: 'Proficient', legend: '3' },
     })
 
-    // Standard Outcome table configuration
+    // Organization data
+    const units = ref([
+      { id: 1, name: 'Finance Department' },
+      { id: 2, name: 'Operations Department' },
+      { id: 3, name: 'IT Department' },
+    ])
+    const sections = ref([
+      { id: 1, name: 'Accounting', unitId: 1 },
+      { id: 2, name: 'Budget', unitId: 1 },
+      { id: 3, name: 'Production', unitId: 2 },
+      { id: 4, name: 'Logistics', unitId: 2 },
+      { id: 5, name: 'Development', unitId: 3 },
+      { id: 6, name: 'Infrastructure', unitId: 3 },
+    ])
+    const divisions = ref([
+      { id: 1, name: 'Accounts Payable', sectionId: 1 },
+      { id: 2, name: 'Accounts Receivable', sectionId: 1 },
+      { id: 3, name: 'Financial Planning', sectionId: 2 },
+      { id: 4, name: 'Manufacturing', sectionId: 3 },
+      { id: 5, name: 'Quality Control', sectionId: 3 },
+      { id: 6, name: 'Frontend', sectionId: 5 },
+      { id: 7, name: 'Backend', sectionId: 5 },
+    ])
+
+    // Columns
     const standardOutcomeColumns = [
       { name: 'rating', label: 'Rating', field: 'rating', align: 'center', width: '80px' },
       { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'center', width: '200px' },
@@ -1529,49 +1197,97 @@ export default {
       },
     ]
 
-    // Variables for the current standard in modal dialogs
-    const currentStandardIndex = ref(0)
-    const showQuantityModal = ref(false)
-    const quantityValue = ref(null)
-
-    // Quantity and Timeliness options
     const quantityIndicator = [
       { label: 'Quantity (A.  Custom Target)', value: 'numeric' },
       { label: 'Quantity (B. Can exceed 100%)', value: 'B' },
       { label: 'Quantity (C. Cannot exceed 100%)', value: 'C' },
     ]
 
-    // Organization data
-    const units = ref([
-      { id: 1, name: 'Finance Department' },
-      { id: 2, name: 'Operations Department' },
-      { id: 3, name: 'IT Department' },
-    ])
+    // Helper functions
+    const createEmptyStandardRow = () => ({
+      rating: '',
+      quantity: '',
+      effectiveness: '',
+      timeliness: '',
+      timelinessRange: '',
+      timelinessText: '',
+      timelinessDeadline: '',
+      timelinessDate: '',
+    })
 
-    const sections = ref([
-      { id: 1, name: 'Accounting', unitId: 1 },
-      { id: 2, name: 'Budget', unitId: 1 },
-      { id: 3, name: 'Production', unitId: 2 },
-      { id: 4, name: 'Logistics', unitId: 2 },
-      { id: 5, name: 'Development', unitId: 3 },
-      { id: 6, name: 'Infrastructure', unitId: 3 },
-    ])
+    const createDefaultStandardRows = () => [
+      { ...createEmptyStandardRow(), rating: '5' },
+      { ...createEmptyStandardRow(), rating: '4' },
+      { ...createEmptyStandardRow(), rating: '3' },
+      { ...createEmptyStandardRow(), rating: '2' },
+      { ...createEmptyStandardRow(), rating: '1' },
+    ]
 
-    const divisions = ref([
-      { id: 1, name: 'Accounts Payable', sectionId: 1 },
-      { id: 2, name: 'Accounts Receivable', sectionId: 1 },
-      { id: 3, name: 'Financial Planning', sectionId: 2 },
-      { id: 4, name: 'Manufacturing', sectionId: 3 },
-      { id: 5, name: 'Quality Control', sectionId: 3 },
-      { id: 6, name: 'Frontend', sectionId: 5 },
-      { id: 7, name: 'Backend', sectionId: 5 },
-    ])
+    const createDefaultPerformanceStandard = () => ({
+      id: uuidv4(),
+      expanded: true,
+      outputName: '',
+      indicatorName: '',
+      successIndicator: '',
+      requiredOutput: '',
+      modeOfVerification: '',
+      rows: { category: null, mfo: null, output: null },
+      quantityIndicatorType: 'numeric',
+      timelinessIndicatorType: 'beforeDeadline',
+      timelinessInputs: { range: true, date: false, description: false },
+      activeTimelinessInputs: { range: true, date: false, description: false },
+      standardOutcomeRows: createDefaultStandardRows(),
+    })
 
-    // Form options
-    const filteredEmployees = ref([])
-    const semesterOptions = ['January-June', 'July-December']
-    const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i)
-    const divisionOptions = divisions.value
+    const createDefaultEmployeeData = () => ({
+      id: uuidv4(),
+      name: '',
+      employeeId: null,
+      employeeData: null,
+      performanceStandards: [createDefaultPerformanceStandard()],
+    })
+
+    const initializeUWPData = () => {
+      try {
+        const stored = sessionStorage.getItem('uwpData')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          uwpData.value = parsed
+          console.log('✅ Retrieved UWP Data from sessionStorage:', uwpData.value)
+        }
+      } catch (error) {
+        console.error('❌ Failed to parse UWP data:', error)
+      }
+    }
+
+    const initializeEmployeeTabs = () => {
+      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0) {
+        const defaultEmp = createDefaultEmployeeData()
+        employeeTabs.value = [defaultEmp]
+        activeEmployeeTab.value = defaultEmp.id
+        return
+      }
+      const defaultEmp = createDefaultEmployeeData()
+      employeeTabs.value = [defaultEmp]
+      activeEmployeeTab.value = defaultEmp.id
+    }
+
+    // Computed
+    const semesterOptions = computed(() => uwpStore.getSemesterOptions)
+    const yearOptions = computed(() => uwpStore.getYearOptions)
+
+    const breadcrumbDisplay = computed(() => {
+      return !uwpData.value.breadcrumb || uwpData.value.breadcrumb.length === 0
+        ? 'Organization Structure'
+        : uwpData.value.breadcrumb.join(' / ')
+    })
+
+    const selectedNodeLabel = computed(() => uwpData.value.selectedNodeLabel || 'Work Plan')
+
+    const currentEmployee = computed(() => {
+      const activeEmployee = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
+      return activeEmployee || employeeTabs.value[0] || createDefaultEmployeeData()
+    })
 
     const hierarchyLabels = computed(() => ({
       office: uwpData.value.hierarchy.office?.label || '',
@@ -1582,36 +1298,18 @@ export default {
       unit: uwpData.value.hierarchy.unit?.label || '',
     }))
 
-    // Computed properties for tab management
-    const visibleEmployeeTabs = computed(() => {
-      return employeeTabs.value.slice(0, maxVisibleTabs.value)
-    })
+    const visibleEmployeeTabs = computed(() => employeeTabs.value.slice(0, maxVisibleTabs.value))
+    const overflowEmployeeTabs = computed(() => employeeTabs.value.slice(maxVisibleTabs.value))
+    const hasOverflowTabs = computed(() => employeeTabs.value.length > maxVisibleTabs.value)
 
-    const overflowEmployeeTabs = computed(() => {
-      return employeeTabs.value.slice(maxVisibleTabs.value)
-    })
+    const getEmployeeIndex = (id) => employeeTabs.value.findIndex((emp) => emp.id === id)
 
-    const hasOverflowTabs = computed(() => {
-      return employeeTabs.value.length > maxVisibleTabs.value
-    })
+    const getSelectedEmployeeIds = () =>
+      employeeTabs.value.filter((emp) => emp.employeeId !== null).map((emp) => emp.employeeId)
 
-    const getEmployeeIndex = (id) => {
-      return employeeTabs.value.findIndex((emp) => emp.id === id)
-    }
-
-    // Track selected employee IDs across all tabs
-    const getSelectedEmployeeIds = () => {
-      return employeeTabs.value
-        .filter((emp) => emp.employeeId !== null)
-        .map((emp) => emp.employeeId)
-    }
-
-    // Check if all available employees are selected
     const allEmployeesSelected = computed(() => {
-      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0) {
+      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0)
         return false
-      }
-
       const selectedIds = getSelectedEmployeeIds()
       return (
         uwpData.value.availableEmployees.length > 0 &&
@@ -1620,26 +1318,44 @@ export default {
       )
     })
 
-    // Filter employees for current tab
     const availableEmployeesForTab = computed(() => {
-      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0) {
+      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0)
         return []
-      }
-
       const selectedIds = getSelectedEmployeeIds()
       const currentTabId = activeEmployeeTab.value
       const currentTabEmployeeId = employeeTabs.value.find(
         (emp) => emp.id === currentTabId,
       )?.employeeId
-
       return uwpData.value.availableEmployees.filter(
         (emp) => !selectedIds.includes(emp.id) || emp.id === currentTabEmployeeId,
       )
     })
 
-    const hasOrganizationalSelection = computed(() => {
-      return form.value.division !== null || form.value.section !== null || form.value.unit !== null
-    })
+    const selectedEmployee = computed(
+      () =>
+        uwpData.value.availableEmployees.find(
+          (emp) => emp.id === currentEmployee.value.employeeId,
+        ) || { rank: '', position: '' },
+    )
+
+    const categoryOptions = computed(() =>
+      officeLibraryStore.categories.map((cat) => ({
+        id: cat.id,
+        label: cat.name,
+        value: cat.id,
+        name: cat.name,
+      })),
+    )
+
+    const performanceIndicatorOptions = computed(() =>
+      officeLibraryIndicatorStore.verbs.map((verb) => ({
+        id: verb.id,
+        label: verb.indicator_name || verb.name,
+        value: verb.id,
+        name: verb.indicator_name || verb.name,
+        description: verb.description || '',
+      })),
+    )
 
     const filteredSections = computed(() => {
       if (!form.value.division) return []
@@ -1653,61 +1369,201 @@ export default {
       return units.value.filter((unit) => unit.id === section?.unitId)
     })
 
-    const selectedEmployee = computed(() => {
-      // Use availableEmployees
-      return (
-        uwpData.value.availableEmployees.find(
-          (emp) => emp.id === currentEmployee.value.employeeId,
-        ) || {
-          rank: '',
-          position: '',
-        }
-      )
-    })
-
-    // Check minimum effectiveness values
     const hasMinimumEffectivenessValues = (index) => {
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return false
-
       const filledValues = standard.standardOutcomeRows.filter(
         (row) => row.effectiveness && row.effectiveness.trim().length > 0,
       ).length
       return filledValues >= 2
     }
 
-    // Get effectiveness error count
     const getEffectivenessErrorCount = (index) => {
       const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard) return 5
-
-      return standard.standardOutcomeRows.filter(
-        (row) => !row.effectiveness || row.effectiveness.trim().length === 0,
-      ).length
+      return !standard
+        ? 5
+        : standard.standardOutcomeRows.filter(
+            (row) => !row.effectiveness || row.effectiveness.trim().length === 0,
+          ).length
     }
 
-    // Form validity check
     const isFormValid = computed(() => {
       if (employeeTabs.value.length === 0) return false
-
       const basicRequirements = form.value.year && form.value.semester
-
       const allEmployeesValid = employeeTabs.value.every((emp) => {
         if (!emp.employeeId) return false
-
         return emp.performanceStandards.every((_, index) => {
           if (emp.id === activeEmployeeTab.value) {
             return hasMinimumEffectivenessValues(index)
-          } else {
-            return true
           }
+          return true
         })
       })
-
       return basicRequirements && allEmployeesValid
     })
 
-    // Add employee tab
+    const hasMfosForCategory = (index) => {
+      const standard = currentEmployee.value.performanceStandards[index]
+      if (!standard || !standard.rows.category) return false
+      const categoryId = standard.rows.category
+      const mfosInCategory = officeLibraryStore.mfos.filter(
+        (mfo) => mfo.f_category_id === categoryId,
+      )
+      return mfosInCategory.length > 0
+    }
+
+    // Methods
+    const onBack = () => router.back()
+
+    const filterPerformanceIndicators = (val, update) => {
+      if (typeof update === 'function') {
+        update(() => {
+          const needle = (val || '').toLowerCase()
+          filteredVerbs.value = officeLibraryIndicatorStore.verbs
+            .map((verb) => ({
+              id: verb.id,
+              label: verb.indicator_name || verb.name,
+              value: verb.id,
+              name: verb.indicator_name || verb.name,
+              description: verb.description || '',
+            }))
+            .filter(
+              (verb) =>
+                verb.label.toLowerCase().includes(needle) ||
+                verb.description.toLowerCase().includes(needle),
+            )
+        })
+      } else {
+        filteredVerbs.value = officeLibraryIndicatorStore.verbs.map((verb) => ({
+          id: verb.id,
+          label: verb.indicator_name || verb.name,
+          value: verb.id,
+          name: verb.indicator_name || verb.name,
+          description: verb.description || '',
+        }))
+      }
+    }
+
+    const getFilteredMfoOptions = (index) => {
+      const standard = currentEmployee.value.performanceStandards[index]
+      if (!standard || !standard.rows.category) return []
+      const categoryId = standard.rows.category
+      if (filteredMfoOptions.value[index]) return filteredMfoOptions.value[index]
+      const allMfos = officeLibraryStore.mfos
+        .filter((mfo) => mfo.f_category_id === categoryId)
+        .map((mfo) => ({
+          id: mfo.id,
+          label: mfo.name,
+          value: mfo.id,
+          name: mfo.name,
+          code: mfo.code || '',
+          description: mfo.description || '',
+        }))
+      return allMfos
+    }
+
+    const getFilteredOutputOptions = (index) => {
+      if (filteredOutputOptions.value[index] && filteredOutputOptions.value[index].length > 0)
+        return filteredOutputOptions.value[index]
+      const standard = currentEmployee.value.performanceStandards[index]
+      if (!standard || !standard.rows.category) return []
+      const categoryId = standard.rows.category
+      const mfoId = standard.rows.mfo
+      if (!officeLibraryStore.outputs || officeLibraryStore.outputs.length === 0) return []
+      const filteredOutputs = officeLibraryStore.outputs.filter((output) => {
+        if (output.f_category_id !== categoryId) return false
+        if (mfoId) return output.mfo_id === mfoId
+        return output.mfo_id === null
+      })
+      return filteredOutputs.map((output) => ({
+        id: output.id,
+        label: output.name,
+        value: output.id,
+        name: output.name,
+        code: output.code || '',
+        description: output.description || '',
+      }))
+    }
+
+    const clearDependentFields = (standardIndex, fieldIndex) => {
+      const standard = currentEmployee.value.performanceStandards[standardIndex]
+      if (!standard) return
+      if (fieldIndex === 1) {
+        standard.rows.mfo = null
+        standard.rows.output = null
+        filteredMfoOptions.value[standardIndex] = null
+        filteredOutputOptions.value[standardIndex] = null
+      } else if (fieldIndex === 2) {
+        standard.rows.output = null
+        filteredOutputOptions.value[standardIndex] = null
+      }
+    }
+
+    const filterMfos = (val, update, index) => {
+      if (typeof update === 'function') {
+        update(() => {
+          const needle = (val || '').toLowerCase()
+          const standard = currentEmployee.value.performanceStandards[index]
+          if (!standard || !standard.rows.category) {
+            filteredMfoOptions.value[index] = []
+            return
+          }
+          const categoryId = standard.rows.category
+          const allMfos = officeLibraryStore.mfos
+            .filter((mfo) => mfo.f_category_id === categoryId)
+            .map((mfo) => ({
+              id: mfo.id,
+              label: mfo.name,
+              value: mfo.id,
+              name: mfo.name,
+              code: mfo.code || '',
+              description: mfo.description || '',
+            }))
+          filteredMfoOptions.value[index] = allMfos.filter(
+            (mfo) =>
+              mfo.label.toLowerCase().includes(needle) ||
+              (mfo.code && mfo.code.toLowerCase().includes(needle)) ||
+              (mfo.description && mfo.description.toLowerCase().includes(needle)),
+          )
+        })
+      }
+    }
+
+    const filterOutputs = (val, update, index) => {
+      if (typeof update === 'function') {
+        update(() => {
+          const needle = (val || '').toLowerCase()
+          const standard = currentEmployee.value.performanceStandards[index]
+          if (!standard || !standard.rows.category) {
+            filteredOutputOptions.value[index] = []
+            return
+          }
+          const categoryId = standard.rows.category
+          const mfoId = standard.rows.mfo
+          const allOutputs = officeLibraryStore.outputs.filter((output) => {
+            if (output.f_category_id !== categoryId) return false
+            if (mfoId && output.mfo_id !== mfoId) return false
+            if (!mfoId && output.mfo_id !== null) return false
+            return true
+          })
+          const outputOptions = allOutputs.map((output) => ({
+            id: output.id,
+            label: output.name,
+            value: output.id,
+            name: output.name,
+            code: output.code || '',
+            description: output.description || '',
+          }))
+          filteredOutputOptions.value[index] = outputOptions.filter(
+            (output) =>
+              output.label.toLowerCase().includes(needle) ||
+              (output.code && output.code.toLowerCase().includes(needle)) ||
+              (output.description && output.description.toLowerCase().includes(needle)),
+          )
+        })
+      }
+    }
+
     const addEmployeeTab = () => {
       if (allEmployeesSelected.value) {
         $q.notify({
@@ -1717,19 +1573,12 @@ export default {
         })
         return
       }
-
       const newEmployee = createDefaultEmployeeData()
       employeeTabs.value.push(newEmployee)
       activeEmployeeTab.value = newEmployee.id
-
-      $q.notify({
-        message: 'Added new employee tab',
-        color: 'positive',
-        position: 'top',
-      })
+      $q.notify({ message: 'Added new employee tab', color: 'positive', position: 'top' })
     }
 
-    // Remove employee tab
     const removeEmployeeTab = (tabId) => {
       if (employeeTabs.value.length <= 1) {
         $q.notify({
@@ -1739,7 +1588,6 @@ export default {
         })
         return
       }
-
       $q.dialog({
         title: 'Confirm Removal',
         message: 'Remove this employee from the plan?',
@@ -1749,32 +1597,21 @@ export default {
         const index = employeeTabs.value.findIndex((emp) => emp.id === tabId)
         if (index !== -1) {
           employeeTabs.value.splice(index, 1)
-
           if (tabId === activeEmployeeTab.value) {
             activeEmployeeTab.value = employeeTabs.value[0]?.id
           }
-
-          $q.notify({
-            message: 'Employee removed',
-            color: 'positive',
-            position: 'top',
-          })
+          $q.notify({ message: 'Employee removed', color: 'positive', position: 'top' })
         }
       })
     }
 
-    // Switch to employee tab
     const switchToEmployee = (tabId) => {
       activeEmployeeTab.value = tabId
     }
 
-    // Employee selection handler
     const onEmployeeSelected = (employeeId) => {
       if (employeeId === null) return
-
-      // Get from availableEmployees
       const selectedEmp = uwpData.value.availableEmployees.find((emp) => emp.id === employeeId)
-
       if (selectedEmp && activeEmployeeTab.value) {
         const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
         if (tabIndex !== -1) {
@@ -1785,7 +1622,6 @@ export default {
       }
     }
 
-    // Filter employees
     const filterEmployees = (val, update) => {
       if (typeof update === 'function') {
         update(() => {
@@ -1799,11 +1635,9 @@ export default {
       }
     }
 
-    // Get quantity component for success indicator
     const getQuantityComponent = (index) => {
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return ''
-
       if (standard.quantityIndicatorType === 'numeric') {
         const rating5Row = standard.standardOutcomeRows.find((row) => row.rating === '5')
         return rating5Row?.quantity || ''
@@ -1815,52 +1649,38 @@ export default {
       return ''
     }
 
-    // Get timeliness component for success indicator
     const getTimelinessComponent = (index) => {
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return ''
-
       const highestRating = standard.standardOutcomeRows[0]
       const midRating = standard.standardOutcomeRows[2]
       let result = []
-
       if (standard.timelinessIndicatorType === 'beforeDeadline') {
-        if (standard.activeTimelinessInputs.range && midRating.timelinessRange) {
+        if (standard.activeTimelinessInputs.range && midRating.timelinessRange)
           result.push(midRating.timelinessRange)
-        }
-        if (standard.activeTimelinessInputs.date && midRating.timelinessDate) {
+        if (standard.activeTimelinessInputs.date && midRating.timelinessDate)
           result.push(`by ${midRating.timelinessDate}`)
-        }
-        if (standard.activeTimelinessInputs.description && midRating.timelinessText) {
+        if (standard.activeTimelinessInputs.description && midRating.timelinessText)
           result.push(midRating.timelinessText)
-        }
       } else if (standard.timelinessIndicatorType === 'onDeadline') {
-        if (standard.activeTimelinessInputs.range && highestRating.timelinessRange) {
+        if (standard.activeTimelinessInputs.range && highestRating.timelinessRange)
           result.push(highestRating.timelinessRange)
-        }
-        if (standard.activeTimelinessInputs.date && highestRating.timelinessDate) {
+        if (standard.activeTimelinessInputs.date && highestRating.timelinessDate)
           result.push(`by ${highestRating.timelinessDate}`)
-        }
-        if (standard.activeTimelinessInputs.description && highestRating.timelinessText) {
+        if (standard.activeTimelinessInputs.description && highestRating.timelinessText)
           result.push(highestRating.timelinessText)
-        }
       }
-
       return result.join(' ')
     }
 
-    // Get effectiveness component for success indicator
     const getEffectivenessComponent = (index) => {
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return ''
-
       const rating5Row = standard.standardOutcomeRows.find((row) => row.rating === '5')
       return rating5Row?.effectiveness || ''
     }
 
-    // Auto-generate success indicator
     const generateSuccessIndicator = (index) => {
-      // If no index provided, regenerate all
       if (index === undefined || index === null) {
         if (currentEmployee.value.performanceStandards.length > 0) {
           currentEmployee.value.performanceStandards.forEach((_, i) => {
@@ -1869,96 +1689,61 @@ export default {
         }
         return
       }
-
-      // Validate index
-      if (index < 0 || index >= currentEmployee.value.performanceStandards.length) {
-        return
-      }
-
+      if (index < 0 || index >= currentEmployee.value.performanceStandards.length) return
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
-
       const quantityPart = getQuantityComponent(index)
       const outputNamePart = standard.outputName ? standard.outputName.trim() : ''
-
-      // ✅ Get indicator name - find from filteredVerbs if it's an ID
       let indicatorNamePart = ''
       if (standard.indicatorName) {
         if (typeof standard.indicatorName === 'number' || !isNaN(standard.indicatorName)) {
-          // It's an ID, find the name from filteredVerbs
           const foundVerb = officeLibraryIndicatorStore.verbs.find(
             (v) => v.id === standard.indicatorName,
           )
           indicatorNamePart = foundVerb?.indicator_name || foundVerb?.name || ''
         } else {
-          // It's already a name
           indicatorNamePart = standard.indicatorName.trim()
         }
       }
-
       const effectivenessPart = getEffectivenessComponent(index)
       const timelinessPart = getTimelinessComponent(index)
-
       let parts = []
-
       if (quantityPart) parts.push(quantityPart)
       if (outputNamePart) parts.push(outputNamePart)
       if (indicatorNamePart) parts.push(indicatorNamePart)
       if (effectivenessPart) parts.push(effectivenessPart)
       if (timelinessPart) parts.push(timelinessPart)
-
       standard.successIndicator = parts.filter((p) => p).join(' ')
-
-      console.log(
-        `✅ Success Indicator updated for Standard ${index + 1}:  `,
-        standard.successIndicator,
-      )
     }
 
-    // Watch for changes - Deep watch all performance standard properties
-    watch(
-      () => {
-        return currentEmployee.value.performanceStandards.map((s) => ({
-          outputName: s.outputName,
-          indicatorName: s.indicatorName,
-          quantityType: s.quantityIndicatorType,
-          timelinessType: s.timelinessIndicatorType,
-          standardOutcomeRows: s.standardOutcomeRows,
-          activeTimelinessInputs: s.activeTimelinessInputs,
-        }))
-      },
-      () => {
-        currentEmployee.value.performanceStandards.forEach((_, index) => {
-          generateSuccessIndicator(index)
-        })
-      },
-      { deep: true },
-    )
+    const sanitizeNumericInput = (row, field) => {
+      if (!row[field]) return
+      row[field] = row[field].replace(/[^0-9-]/g, '')
+      const hyphens = row[field].split('-').length - 1
+      if (hyphens > 1) {
+        row[field] = row[field].substring(0, row[field].lastIndexOf('-'))
+      }
+    }
 
-    // Handle updates to quantity
     const onQuantityUpdate = (row, field, index) => {
       sanitizeNumericInput(row, field)
       generateSuccessIndicator(index)
     }
 
-    // Handle updates to timeliness
     const onTimelinessUpdate = (row, field, index) => {
       sanitizeNumericInput(row, field)
       generateSuccessIndicator(index)
     }
 
-    // Handle updates to effectiveness
     const onEffectivenessUpdate = (row, index) => {
-      checkEffectivenessValidity(index)
+      formInteracted.value = true
       generateSuccessIndicator(index)
     }
 
-    // Watch for organizational selection changes
-    watch([() => form.value.division, () => form.value.section, () => form.value.unit], () => {
-      filterEmployees()
-    })
+    const onEffectivenessFieldFocus = () => {
+      formInteracted.value = true
+    }
 
-    // Change handlers
     const onDivisionChange = () => {
       form.value.section = null
       form.value.unit = null
@@ -1968,92 +1753,18 @@ export default {
       form.value.unit = null
     }
 
-    // Effectiveness validation
-    const checkEffectivenessValidity = () => {
-      formInteracted.value = true
-    }
-
-    const onEffectivenessFieldFocus = () => {
-      formInteracted.value = true
-    }
-
-    // Input validation helpers
-    const blockInvalidChars = (e) => {
-      const allowedKeys = [
-        '0',
-        '1',
-        '2',
-        '3',
-        '4',
-        '5',
-        '6',
-        '7',
-        '8',
-        '9',
-        '-',
-        'Backspace',
-        'Delete',
-        'Tab',
-        'ArrowLeft',
-        'ArrowRight',
-      ]
-
-      if (!allowedKeys.includes(e.key) && !e.ctrlKey) {
-        e.preventDefault()
-      }
-    }
-
-    const sanitizeNumericInput = (row, field) => {
-      if (!row[field]) return
-      row[field] = row[field].replace(/[^0-9-]/g, '')
-
-      const hyphens = row[field].split('-').length - 1
-      if (hyphens > 1) {
-        row[field] = row[field].substring(0, row[field].lastIndexOf('-'))
-      }
-    }
-
-    const validateStrictNumeric = (val) => {
-      if (!val) return 'Value required'
-
-      if (!val.includes('-')) {
-        return !isNaN(val) || 'Must be a number'
-      }
-
-      const parts = val.split('-')
-      if (parts.length !== 2 || parts.some((p) => !p)) return 'Use format:  min-max'
-
-      const min = Number(parts[0])
-      const max = Number(parts[1])
-
-      if (isNaN(min) || isNaN(max)) return 'Both must be numbers'
-      if (min >= max) return 'Min must be less than max'
-
-      return true
-    }
-
-    // Timeliness and Quantity option handling
     const onTimelinessTypeSelect = (value, index) => {
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
-
       standard.timelinessIndicatorType = value
-
-      Object.assign(standard.timelinessInputs, {
-        range: true,
-        date: false,
-        description: false,
-      })
-
+      Object.assign(standard.timelinessInputs, { range: true, date: false, description: false })
       generateSuccessIndicator(index)
     }
 
     const applyTimelinessInputs = (type, index) => {
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
-
       Object.assign(standard.activeTimelinessInputs, standard.timelinessInputs)
-
       if (
         !standard.activeTimelinessInputs.range &&
         !standard.activeTimelinessInputs.date &&
@@ -2062,29 +1773,24 @@ export default {
         standard.activeTimelinessInputs.range = true
         standard.timelinessInputs.range = true
       }
-
       standard.standardOutcomeRows.forEach((row) => {
         if (!standard.activeTimelinessInputs.range) row.timelinessRange = ''
         if (!standard.activeTimelinessInputs.date) row.timelinessDate = ''
         if (!standard.activeTimelinessInputs.description) row.timelinessText = ''
       })
-
       $q.notify({
         message: `Applied ${type === 'beforeDeadline' ? 'Before Deadline' : 'On Deadline'} input types`,
         color: 'positive',
         position: 'top',
       })
-
       generateSuccessIndicator(index)
     }
 
     const onQuantityOptionSelect = (value, index) => {
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
-
       standard.quantityIndicatorType = value
       currentStandardIndex.value = index
-
       if (value === 'B') {
         quantityValue.value = null
         showQuantityModal.value = true
@@ -2102,23 +1808,16 @@ export default {
       const index = currentStandardIndex.value
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard) return
-
       if (
         standard.quantityIndicatorType === 'B' &&
         (!quantityValue.value || isNaN(quantityValue.value))
       ) {
-        $q.notify({
-          message: 'Please enter a valid number',
-          color: 'negative',
-          position: 'top',
-        })
+        $q.notify({ message: 'Please enter a valid number', color: 'negative', position: 'top' })
         return
       }
-
       standard.standardOutcomeRows.forEach((row) => {
         row.quantity = ''
       })
-
       if (standard.quantityIndicatorType === 'B') {
         const base = Number(quantityValue.value)
         standard.standardOutcomeRows[0].quantity = `${Math.ceil(base * 1.3)} and above`
@@ -2126,7 +1825,6 @@ export default {
         standard.standardOutcomeRows[2].quantity = `${base}-${Math.floor(base * 1.15) - 1}`
         standard.standardOutcomeRows[3].quantity = `${Math.ceil(base * 0.51)}-${Math.floor(base * 0.99)}`
         standard.standardOutcomeRows[4].quantity = `${Math.floor(base * 0.5)} and below`
-
         $q.notify({
           message: 'Quantities calculated successfully',
           color: 'positive',
@@ -2140,7 +1838,6 @@ export default {
         standard.standardOutcomeRows[4].quantity = '37% and below'
       }
       showQuantityModal.value = false
-
       generateSuccessIndicator(index)
     }
 
@@ -2153,10 +1850,8 @@ export default {
       showQuantityModal.value = false
     }
 
-    // Performance standards management
     const addPerformanceStandard = () => {
       currentEmployee.value.performanceStandards.push(createDefaultPerformanceStandard())
-
       $q.notify({
         message: `Added new performance standard ${currentEmployee.value.performanceStandards.length}`,
         color: 'positive',
@@ -2173,7 +1868,6 @@ export default {
         })
         return
       }
-
       $q.dialog({
         title: 'Confirm Deletion',
         message: `Are you sure you want to remove Performance Standard ${index + 1}?`,
@@ -2181,16 +1875,11 @@ export default {
         persistent: true,
       }).onOk(() => {
         currentEmployee.value.performanceStandards.splice(index, 1)
-
-        $q.notify({
-          message: 'Performance standard removed',
-          color: 'positive',
-          position: 'top',
-        })
+        $q.notify({ message: 'Performance standard removed', color: 'positive', position: 'top' })
       })
     }
 
-    const onSubmit = () => {
+    const onSubmit = async () => {
       shouldValidate.value = true
       formInteracted.value = true
 
@@ -2225,79 +1914,127 @@ export default {
         return
       }
 
-      // Prepare submission data
-      const submissionData = {
-        uwpData: uwpData.value,
-        form: form.value,
-        employees: employeeTabs.value,
-        timestamp: new Date().toISOString(),
-      }
-
-      console.log('📊 Submitting UWP Data:', submissionData)
-
-      $q.notify({
-        message: 'Unit Work Plan submitted successfully',
-        color: 'positive',
-        icon: 'check_circle',
-      })
-
-      // You can send this data to your API here
-      // Example: await api.post('/uwp/submit', submissionData)
-    }
-
-    // onMounted hook
-    onMounted(async () => {
-      console.log('🚀 UWP Page mounted, initializing. .')
-
-      initializeUWPData()
-      initializeEmployeeTabs()
-
-      // Get officeId from hierarchy
-      const officeId = uwpData.value.hierarchy.office?.id || 1
-
       try {
-        // ✅ Fetch MFO data
-        await officeLibraryStore.fetchAllData(officeId)
-        console.log('✅ MFO Data loaded from store')
-        console.log('Categories:', officeLibraryStore.categories)
-        console.log('MFOs:', officeLibraryStore.mfos)
-        console.log('Outputs:', officeLibraryStore.outputs)
+        // Set all data before submitting
+        uwpStore.setUWPData(uwpData.value)
+        uwpStore.setFormData(form.value)
+        uwpStore.setEmployeeData(employeeTabs.value)
 
-        // ✅ Fetch Performance Indicators/Verbs
-        await officeLibraryIndicatorStore.fetchVerbs()
-        console.log('✅ Performance Indicators loaded:', officeLibraryIndicatorStore.verbs)
-      } catch (error) {
-        console.error('❌ Error loading data:', error)
+        // Only pass employees with selected employeeId (skip empty tabs)
+        const validEmployees = employeeTabs.value
+          .filter((emp) => emp.employeeId !== null)
+          .map((emp) => ({
+            ...emp,
+            performanceStandards: emp.performanceStandards.map((standard) => {
+              // Get category, mfo, output names from options
+              const categoryOption = categoryOptions.value.find(
+                (c) => c.value === standard.rows.category,
+              )
+              const mfoOption = getFilteredMfoOptions(employeeTabs.value.indexOf(emp)).find(
+                (m) => m.value === standard.rows.mfo,
+              )
+              const outputOption = getFilteredOutputOptions(employeeTabs.value.indexOf(emp)).find(
+                (o) => o.value === standard.rows.output,
+              )
+
+              return {
+                ...standard,
+                categoryName: categoryOption?.label || '',
+                mfoName: mfoOption?.label || '',
+                outputName: outputOption?.label || '',
+              }
+            }),
+          }))
+
+        if (validEmployees.length === 0) {
+          $q.notify({
+            message: 'Please select at least one employee',
+            color: 'negative',
+            position: 'top',
+          })
+          return
+        }
+
+        const submissionData = {
+          uwpData: uwpData.value,
+          form: form.value,
+          employees: validEmployees,
+          timestamp: new Date().toISOString(),
+        }
+
+        console.log('📊 Submitting UWP Data:', submissionData)
+
+        await uwpStore.saveUWP(submissionData)
+
         $q.notify({
-          message: 'Failed to load data',
+          message: 'Unit Work Plan submitted successfully',
+          color: 'positive',
+          icon: 'check_circle',
+        })
+
+        router.push('/unit-work-plans')
+      } catch (error) {
+        $q.notify({
+          message: error.message || 'Failed to save Unit Work Plan',
           color: 'negative',
           position: 'top',
         })
+        console.error('❌ Submit error:', error)
+      }
+    }
+    watch(
+      () => {
+        return currentEmployee.value.performanceStandards.map((s) => ({
+          outputName: s.outputName,
+          indicatorName: s.indicatorName,
+          quantityType: s.quantityIndicatorType,
+          timelinessType: s.timelinessIndicatorType,
+          standardOutcomeRows: s.standardOutcomeRows,
+          activeTimelinessInputs: s.activeTimelinessInputs,
+        }))
+      },
+      () => {
+        currentEmployee.value.performanceStandards.forEach((_, index) => {
+          generateSuccessIndicator(index)
+        })
+      },
+      { deep: true },
+    )
+
+    watch([() => form.value.division, () => form.value.section, () => form.value.unit], () => {
+      filterEmployees()
+    })
+
+    onMounted(async () => {
+      initializeUWPData()
+      initializeEmployeeTabs()
+      const officeId = uwpData.value.hierarchy.office?.id || 1
+
+      try {
+        await officeLibraryStore.fetchAllData(officeId)
+        await officeLibraryIndicatorStore.fetchVerbs()
+        console.log('✅ Data loaded successfully')
+      } catch (error) {
+        console.error('❌ Error loading data:', error)
+        $q.notify({ message: 'Failed to load data', color: 'negative', position: 'top' })
       }
 
-      form.value.semester = semesterOptions[0]
-
-      console.log('✅ UWP Page initialization complete')
+      form.value.semester = semesterOptions.value[0]
     })
 
     return {
-      // UWP Data
       uwpData,
       breadcrumbDisplay,
       selectedNodeLabel,
       hierarchyLabels,
-
-      // Form data
-      form,
-      divisionOptions,
-      filteredSections,
-      filteredUnits,
       semesterOptions,
       yearOptions,
+      form,
+      filteredSections,
+      filteredUnits,
+      divisionOptions: divisions.value,
       filteredEmployees,
       selectedEmployee,
-
-      // Employee tabs
       employeeTabs,
       activeEmployeeTab,
       currentEmployee,
@@ -2310,21 +2047,18 @@ export default {
       overflowEmployeeTabs,
       hasOverflowTabs,
       getEmployeeIndex,
-
-      // Validation states
       formInteracted,
       shouldValidate,
       hasMinimumEffectivenessValues,
       getEffectivenessErrorCount,
       isFormValid,
-
-      // Computed helpers
-      hasOrganizationalSelection,
+      hasOrganizationalSelection: computed(
+        () =>
+          form.value.division !== null || form.value.section !== null || form.value.unit !== null,
+      ),
       allEmployeesSelected,
       availableEmployeesForTab,
       getSelectedEmployeeIds,
-
-      // MFO and Competencies data
       skipMfo,
       categoryOptions,
       getFilteredMfoOptions,
@@ -2333,56 +2067,38 @@ export default {
       mergedTechnicalCompetency,
       mergedLeadershipCompetency,
       hasMfosForCategory,
-      // Filtering methods
       filterMfos,
       filterOutputs,
-
-      // Filtered options
       filteredMfoOptions,
       filteredOutputOptions,
-
-      // ✅ Performance Indicators Data
       filterPerformanceIndicators,
       filteredVerbs,
       performanceIndicatorOptions,
-
-      // Standard Outcome data
       standardOutcomeColumns,
       showQuantityModal,
       quantityValue,
       currentStandardIndex,
       quantityIndicator,
-
-      // Performance Standards
       addPerformanceStandard,
       removePerformanceStandard,
-
-      // Auto-generation method
       generateSuccessIndicator,
-
-      // Methods
       filterEmployees,
       onDivisionChange,
       onSectionChange,
       clearDependentFields,
-      blockInvalidChars,
       sanitizeNumericInput,
-      validateStrictNumeric,
       computeQuantities,
       cancelQuantityInput,
-      checkEffectivenessValidity,
       onEffectivenessFieldFocus,
       onQuantityOptionSelect,
       onTimelinessTypeSelect,
       applyTimelinessInputs,
       onSubmit,
-
-      // Update handlers for auto-generation
       onQuantityUpdate,
       onTimelinessUpdate,
       onEffectivenessUpdate,
-
       onBack,
+      uwpStore,
     }
   },
 }

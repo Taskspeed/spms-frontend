@@ -125,6 +125,13 @@ const columns = [
     align: 'left',
     sortable: true,
   },
+  {
+    name: 'ControlNo',
+    label: 'ControlNo',
+    field: 'ControlNo',
+    align: 'left',
+    sortable: true,
+  },
 ]
 
 const employees = computed(() => employeeStore.unassignedEmployees)
@@ -204,12 +211,11 @@ async function addEmployee() {
   // Get the correct employee list based on whether we're searching
   const sourceList = isSearching.value ? employeeStore.searchedEmployees : employees.value
 
-  // Filter selected employees and pass the FULL employee object
   const selectedEmployees = sourceList
     .filter((emp) => emp.selected)
     .map((emp) => ({
       id: emp.id,
-      ControlNo: emp.ControlNo, // ← ADD THIS
+      ControlNo: emp.ControlNo,
       name: emp.name,
       position: emp.position,
       office: emp.office,
@@ -217,7 +223,7 @@ async function addEmployee() {
       position_id: emp.position_id,
     }))
 
-  console.log('Selected employees to emit:', selectedEmployees) // Debug log
+  console.log('Selected employees to emit:', selectedEmployees)
 
   emit('add', selectedEmployees)
   closeModal()

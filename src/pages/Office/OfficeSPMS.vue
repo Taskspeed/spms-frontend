@@ -1,4 +1,3 @@
-<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-page-container>
@@ -19,6 +18,7 @@
                       emit-value
                       map-options
                       @update:model-value="onSemesterChange"
+                      readonly
                       class="col"
                     >
                       <template v-slot:prepend>
@@ -36,6 +36,7 @@
                       map-options
                       @update:model-value="onYearChange"
                       class="col"
+                      readonly
                     >
                       <template v-slot:prepend>
                         <q-icon name="event" size="xs" />
@@ -51,9 +52,9 @@
                     placeholder="Search organization..."
                     class="full-width"
                   >
-                    <template v-slot: append>
+                    <!-- <template v-slot: append>
                       <q-icon name="search" />
-                    </template>
+                    </template> -->
                   </q-input>
                 </div>
                 <q-tree
@@ -71,7 +72,7 @@
                     <div class="row items-center no-wrap full-width">
                       <q-icon
                         :name="getNodeIcon(scope.node)"
-                        :color="getNodeColor(scope.node)"
+                        color="green"
                         size="sm"
                         class="q-mr-sm tree-icon"
                       />
@@ -81,25 +82,14 @@
                             {{ scope.node.label }}
                           </div>
 
-                          <!-- Green circle for leaf nodes (bottom level - always allowed) -->
-                          <q-icon
-                            v-if="isLeafNode(scope.node.id) && isAllComplete(scope.node.id)"
-                            name="check_circle"
-                            color="positive"
-                            size="sm"
-                            class="q-ml-sm"
-                            title="All employees have target period - UWP can start here"
-                          />
-
-                          <!-- Red/Warning circle for incomplete leaf nodes -->
-                          <q-icon
-                            v-else-if="isLeafNode(scope.node.id) && !isAllComplete(scope.node.id)"
-                            name="cancel"
-                            color="negative"
-                            size="sm"
-                            class="q-ml-sm"
-                            title="Not all employees have target period"
-                          />
+                          <!-- For bottom-level org nodes (leaf org nodes) show employee count instead of an X/check -->
+                          <q-badge
+                            v-if="isLeafNode(scope.node.id)"
+                            :color="getLeafBadgeColor(scope.node.id)"
+                            class="q-ml-xs"
+                          >
+                            {{ getNodeCount(scope.node.id) }}
+                          </q-badge>
 
                           <!-- Completion badge for parent nodes only (counts child units) -->
                           <q-badge
@@ -172,9 +162,9 @@
                     placeholder="Search employees..."
                     class="full-width"
                   >
-                    <template v-slot: append>
+                    <!-- <template v-slot: append>
                       <q-icon name="search" />
-                    </template>
+                    </template> -->
                   </q-input>
                 </div>
 
@@ -331,10 +321,6 @@
       <q-separator />
 
       <q-card-section class="q-pt-none">
-        <div class="text-body2 q-mb-md" style="white-space: pre-wrap; color: #666">
-          {{ uwpValidationMessage }}
-        </div>
-
         <div v-if="uwpIncompleteItems.length > 0" class="q-mt-md">
           <div class="text-subtitle2 q-mb-sm font-weight-bold">Incomplete Items:</div>
           <q-list bordered separator>
@@ -407,7 +393,7 @@ const columns = ref([
   {
     name: 'target_period',
     align: 'center',
-    label: 'Target Period',
+    label: 'Targets',
     field: 'hasTargetPeriod',
     sortable: false,
   },
@@ -658,11 +644,11 @@ const isLeafNode = (nodeId) => {
   return completion.isLeafNode === true
 }
 
-// Check if all employees in leaf node have target period
-const isAllComplete = (nodeId) => {
-  const completion = orgStore.getNodeCompletion(nodeId)
-  return completion.isLeafNode && completion.completed === completion.total && completion.total > 0
-}
+// // Check if all employees in leaf node have target period
+// const isAllComplete = (nodeId) => {
+//   const completion = orgStore.getNodeCompletion(nodeId)
+//   return completion.isLeafNode && completion.completed === completion.total && completion.total > 0
+// }
 
 // Get node completion ratio
 const getNodeCompletionRatio = (nodeId) => {
@@ -679,6 +665,27 @@ const getCompletionColor = (nodeId) => {
   if (completion.total === 0) {
     return 'grey-7'
   }
+  return 'warning'
+}
+
+// New: get the aggregated employee count for a node (prefer structure.count, fallback to completion total)
+const getNodeCount = (nodeId) => {
+  try {
+    const node = orgStore._findNode(nodeId) // store helper
+    if (node && typeof node.count === 'number') return node.count
+  } catch {
+    // ignore
+  }
+  const completion = orgStore.getNodeCompletion(nodeId)
+  return completion.total || 0
+}
+
+// New: color for leaf badge (employee count)
+const getLeafBadgeColor = (nodeId) => {
+  const completion = orgStore.getNodeCompletion(nodeId)
+  if (!completion) return 'grey-5'
+  if (completion.total === 0) return 'grey-5'
+  if (completion.completed === completion.total) return 'positive'
   return 'warning'
 }
 
@@ -953,7 +960,7 @@ onMounted(async () => {
 }
 
 .office-title {
-  font-size: 12pt;
+  font-size: 10pt;
   max-width: 50%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -976,6 +983,7 @@ onMounted(async () => {
 }
 
 .tree-label {
+  font-size: 10pt;
   min-width: 0;
 }
 

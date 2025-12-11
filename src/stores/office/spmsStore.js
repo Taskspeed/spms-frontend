@@ -13,7 +13,6 @@ export const useOrganizationStore = defineStore('organization', {
     selectedSemester: ref(null),
     selectedYear: ref(null),
     completionMap: ref({}),
-    leafNodeTypes: ref([]),
   }),
 
   getters: {
@@ -65,6 +64,7 @@ export const useOrganizationStore = defineStore('organization', {
       }
     },
 
+    // Completion summary for a nodeId
     getNodeCompletion: (state) => (nodeId) => {
       const completion = state.completionMap[nodeId]
 
@@ -85,48 +85,6 @@ export const useOrganizationStore = defineStore('organization', {
         ratio: `${completion.completed}/${completion.total}`,
         isLeafNode: completion.isLeafNode || false,
       }
-    },
-
-    getIncompleteSubordinates: (state) => (nodeId) => {
-      const findNode = (nodes, id) => {
-        if (!nodes) return null
-        return (
-          nodes.find((n) => n.id === id) ||
-          nodes.reduce((acc, n) => acc || findNode(n.children, id), null)
-        )
-      }
-
-      const node = findNode(state.structure, nodeId)
-      if (!node) return []
-
-      const hierarchyLevels = ['unit', 'section', 'division', 'group', 'office2', 'office']
-      const nodeLevel = hierarchyLevels.indexOf(node.type)
-      const incomplete = []
-
-      const checkSubordinates = (currentNode, minLevel) => {
-        if (!currentNode.children) return
-
-        for (const child of currentNode.children) {
-          const childLevel = hierarchyLevels.indexOf(child.type)
-          if (childLevel < minLevel && child.type !== 'employee') {
-            const completion = state.completionMap[child.id]
-            if (completion && completion.total > 0) {
-              if (completion.completed !== completion.total) {
-                incomplete.push({
-                  id: child.id,
-                  label: child.label,
-                  type: child.type,
-                  completion: `${completion.completed}/${completion.total}`,
-                })
-              }
-            }
-            checkSubordinates(child, minLevel)
-          }
-        }
-      }
-
-      checkSubordinates(node, nodeLevel)
-      return incomplete
     },
   },
 
@@ -157,127 +115,6 @@ export const useOrganizationStore = defineStore('organization', {
       this.selectedSemester = semester
       this.selectedYear = year
       await this.fetchStructure()
-    },
-
-    detectLeafNodeTypes(nodes) {
-      const leafTypes = new Set()
-
-      const traverse = (currentNodes) => {
-        if (!currentNodes || currentNodes.length === 0) return
-
-        currentNodes.forEach((node) => {
-          if (node.type === 'employee') return
-
-          const hasNonEmployeeChildren = node.children?.some((child) => child.type !== 'employee')
-
-          if (!hasNonEmployeeChildren) {
-            leafTypes.add(node.type)
-          }
-
-          if (node.children) {
-            traverse(node.children)
-          }
-        })
-      }
-
-      traverse(nodes)
-      this.leafNodeTypes = Array.from(leafTypes)
-    },
-
-    calculateCompletionMap(nodes, employees) {
-      const map = {}
-      this.detectLeafNodeTypes(nodes)
-
-      const hierarchyLevels = ['office', 'office2', 'group', 'division', 'section', 'unit']
-
-      const getChildrenOfType = (node, targetType) => {
-        if (!node.children) return []
-        return node.children.filter((child) => child.type === targetType)
-      }
-
-      const isLeafNode = (nodeType) => {
-        return this.leafNodeTypes.includes(nodeType)
-      }
-
-      const getNextLevelDown = (currentType) => {
-        const currentIndex = hierarchyLevels.indexOf(currentType)
-        if (currentIndex === -1) return null
-
-        for (let i = currentIndex + 1; i < hierarchyLevels.length; i++) {
-          if (this.leafNodeTypes.includes(hierarchyLevels[i])) {
-            return hierarchyLevels[i]
-          }
-        }
-
-        return null
-      }
-
-      const processNode = (node) => {
-        if (!node.children || node.children.length === 0) return
-
-        node.children.forEach((child) => {
-          if (child.type !== 'employee') {
-            processNode(child)
-          }
-        })
-
-        if (isLeafNode(node.type)) {
-          // Leaf node:  count employees with has_target_period
-          const nodeEmps = employees.filter((emp) => {
-            if (node.type === 'unit') return emp.unit === node.label
-            if (node.type === 'section') return emp.section === node.label
-            if (node.type === 'division') return emp.division === node.label
-            if (node.type === 'group') return emp.group === node.label
-            if (node.type === 'office2') return emp.office2 === node.label
-            if (node.type === 'office') return emp.office === node.label
-            return false
-          })
-
-          const completed = nodeEmps.filter((emp) => emp.has_target_period === true).length
-          const total = nodeEmps.length
-
-          if (total > 0) {
-            map[node.id] = {
-              completed,
-              total,
-              isLeafNode: true,
-            }
-          }
-        } else {
-          // Non-leaf node: count completed child organizational units
-          const nextLevel = getNextLevelDown(node.type)
-
-          if (nextLevel) {
-            const childNodes = getChildrenOfType(node, nextLevel)
-            let completedChildren = 0
-
-            childNodes.forEach((child) => {
-              const childCompletion = map[child.id]
-              if (
-                childCompletion &&
-                childCompletion.completed === childCompletion.total &&
-                childCompletion.total > 0
-              ) {
-                completedChildren++
-              }
-            })
-
-            if (childNodes.length > 0) {
-              map[node.id] = {
-                completed: completedChildren,
-                total: childNodes.length,
-                isLeafNode: false,
-              }
-            }
-          }
-        }
-      }
-
-      nodes.forEach((node) => {
-        processNode(node)
-      })
-
-      this.completionMap = map
     },
 
     async fetchStructure() {
@@ -321,21 +158,26 @@ export const useOrganizationStore = defineStore('organization', {
 
         if (structureData?.length) {
           this.officeName = structureData[0].office
+          // Build the tree then compute counts & leaf flags
           this.structure = this.transformStructure(structureData[0], employees)
-          this.calculateCompletionMap(this.structure, employees)
+          // Build completion map using the fully formed tree (structure already contains employee nodes)
+          this.calculateCompletionMap(this.structure)
         } else {
           this.structure = []
+          this.completionMap = {}
         }
 
         this.error = null
       } catch (err) {
         this.error = err.message
         this.structure = []
+        this.completionMap = {}
       } finally {
         this.loading = false
       }
     },
 
+    // Transform raw office data + employees into the hierarchical structure with employees embedded.
     transformStructure(officeData, employees) {
       if (!officeData) return []
 
@@ -358,16 +200,16 @@ export const useOrganizationStore = defineStore('organization', {
         ipcrStatus: emp.ipcr_status || 'pending',
         type: 'employee',
         isHead: isHeadByRank(emp.rank),
-        hasTargetPeriod: emp.has_target_period,
+        hasTargetPeriod: emp.has_target_period === true,
         employeeData: emp,
         children: [],
+        count: 1, // leaf employee = 1
       })
 
+      // Group employees by a location key so we can attach them to appropriate org nodes
       const employeesByLocation = new Map()
-
       employees.forEach((emp) => {
         let key = ''
-
         if (emp.unit) {
           key = `unit_${this.slugify(emp.unit)}`
         } else if (emp.section) {
@@ -382,12 +224,11 @@ export const useOrganizationStore = defineStore('organization', {
           key = 'office_root'
         }
 
-        if (!employeesByLocation.has(key)) {
-          employeesByLocation.set(key, [])
-        }
+        if (!employeesByLocation.has(key)) employeesByLocation.set(key, [])
         employeesByLocation.get(key).push(createEmployeeNode(emp))
       })
 
+      // builder helpers: each returns node objects with children (org nodes and employee nodes)
       const buildUnit = (unitName) => {
         const key = `unit_${this.slugify(unitName)}`
         const emps = employeesByLocation.get(key) || []
@@ -403,7 +244,7 @@ export const useOrganizationStore = defineStore('organization', {
       const buildSection = (sectionName, units) => {
         const key = `section_${this.slugify(sectionName)}`
         const emps = employeesByLocation.get(key) || []
-        const builtUnits = units && units.length > 0 ? units.map((u) => buildUnit(u)) : []
+        const builtUnits = (units || []).map((u) => buildUnit(u))
         const children = [...emps, ...builtUnits]
         return {
           id: key,
@@ -441,6 +282,7 @@ export const useOrganizationStore = defineStore('organization', {
       }
 
       const buildGroup = (groupData) => {
+        // if group is null, return children only (flatten)
         if (groupData.group === null) {
           const children = []
 
@@ -502,18 +344,13 @@ export const useOrganizationStore = defineStore('organization', {
       const buildOffice2 = (office2Data) => {
         if (office2Data.office2 === null) {
           const children = []
-
           if (office2Data.group && office2Data.group.length > 0) {
             office2Data.group.forEach((grp) => {
               const result = buildGroup(grp)
-              if (Array.isArray(result)) {
-                children.push(...result)
-              } else {
-                children.push(result)
-              }
+              if (Array.isArray(result)) children.push(...result)
+              else children.push(result)
             })
           }
-
           return children
         }
 
@@ -524,11 +361,8 @@ export const useOrganizationStore = defineStore('organization', {
         if (office2Data.group && office2Data.group.length > 0) {
           office2Data.group.forEach((grp) => {
             const result = buildGroup(grp)
-            if (Array.isArray(result)) {
-              children.push(...result)
-            } else {
-              children.push(result)
-            }
+            if (Array.isArray(result)) children.push(...result)
+            else children.push(result)
           })
         }
 
@@ -548,20 +382,16 @@ export const useOrganizationStore = defineStore('organization', {
         officeData.office2.forEach((office2Data) => {
           if (office2Data.office2 !== null) {
             const result = buildOffice2(office2Data)
-            if (Array.isArray(result)) {
-              children.push(...result)
-            } else {
-              children.push(result)
-            }
+            if (Array.isArray(result)) children.push(...result)
+            else children.push(result)
           }
         })
 
+        // append the special null office2 entries afterwards
         officeData.office2.forEach((office2Data) => {
           if (office2Data.office2 === null) {
             const result = buildOffice2(office2Data)
-            if (Array.isArray(result)) {
-              children.push(...result)
-            }
+            if (Array.isArray(result)) children.push(...result)
           }
         })
       }
@@ -574,20 +404,119 @@ export const useOrganizationStore = defineStore('organization', {
         count: rootEmps.length,
       }
 
+      // Recursively compute aggregated employee counts and set isLeaf flags
+      const computeAggregates = (node) => {
+        if (!node) return 0
+
+        if (node.type === 'employee') {
+          node.count = 1
+          node.isLeaf = false // employees are not treated as org-level leaf nodes
+          return 1
+        }
+
+        let total = 0
+        let hasOrgChild = false
+
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          for (const child of node.children) {
+            total += computeAggregates(child)
+            if (child.type !== 'employee') hasOrgChild = true
+          }
+        }
+
+        node.count = total
+        // isLeaf is true when the node has no non-employee (org) children
+        node.isLeaf = !hasOrgChild
+        return total
+      }
+
+      computeAggregates(officeNode)
+
       return [officeNode]
     },
 
-    slugify(text) {
-      return (
-        text
-          ?.toString()
-          .toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^\w-]+/g, '')
-          .replace(/--+/g, '-')
-          .replace(/^-+/, '')
-          .replace(/-+$/, '') || ''
-      )
+    // Build completion map by scanning the already-built structure
+    // Employees are included as completion entries with total:1 and completed:0/1.
+    // For leaf org nodes: completed = employees with hasTargetPeriod; total = employee count
+    // For parent org nodes: completed = number of immediate child org nodes that are fully complete; total = number of immediate child org nodes
+    calculateCompletionMap(nodes) {
+      const map = {}
+
+      const processNode = (node) => {
+        if (!node) return
+
+        // process children first (post-order)
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          node.children.forEach((child) => {
+            processNode(child)
+          })
+        }
+
+        // If this is an employee node, add 0/1 or 1/1 entry
+        if (node.type === 'employee') {
+          map[node.id] = {
+            completed: node.hasTargetPeriod ? 1 : 0,
+            total: 1,
+            isLeafNode: false, // employees are not org-level leaf nodes for UWP decisions
+          }
+          return
+        }
+
+        // For org nodes
+        if (node.isLeaf) {
+          // aggregate employee entries under this node using map (employees already processed)
+          const aggregateFromNode = (n) => {
+            if (!n) return { total: 0, completed: 0 }
+            if (n.type === 'employee') {
+              const entry = map[n.id] || { total: 1, completed: n.hasTargetPeriod ? 1 : 0 }
+              return { total: entry.total, completed: entry.completed }
+            }
+            let t = 0
+            let c = 0
+            if (Array.isArray(n.children)) {
+              for (const ch of n.children) {
+                const r = aggregateFromNode(ch)
+                t += r.total
+                c += r.completed
+              }
+            }
+            return { total: t, completed: c }
+          }
+
+          const { total, completed } = aggregateFromNode(node)
+
+          map[node.id] = {
+            completed,
+            total,
+            isLeafNode: true,
+          }
+        } else {
+          // Non-leaf: consider immediate child org nodes (ANY child that is not an 'employee')
+          const childOrgNodes = (node.children || []).filter((ch) => ch.type !== 'employee')
+          let completedChildren = 0
+          childOrgNodes.forEach((child) => {
+            const childEntry = map[child.id]
+            if (childEntry && childEntry.total > 0 && childEntry.completed === childEntry.total) {
+              completedChildren++
+            }
+          })
+
+          // Ensure we always store an entry (even zero totals) so UI and validation sees it
+          map[node.id] = {
+            completed: completedChildren,
+            total: childOrgNodes.length,
+            isLeafNode: false,
+          }
+        }
+      }
+
+      if (Array.isArray(nodes)) {
+        nodes.forEach((n) => processNode(n))
+      } else if (nodes) {
+        processNode(nodes)
+      }
+
+      this.completionMap = map
     },
 
     validateUWPCreation(nodeId) {
@@ -600,19 +529,39 @@ export const useOrganizationStore = defineStore('organization', {
         }
       }
 
-      const nodeCompletion = this.getNodeCompletion(nodeId)
-
-      // Leaf nodes can ALWAYS create UWP
-      if (nodeCompletion.isLeafNode) {
+      // If node is a leaf (bottom-level org that contains only employees), allow UWP creation regardless of employee completion.
+      if (node.isLeaf) {
         return {
           canCreate: true,
-          message: 'Ready to create Unit Work Plan',
+          message: 'Ready to create Unit Work Plan (leaf level)',
           incompleteItems: [],
         }
       }
 
-      // For parent nodes, check if all subordinate child units are complete
-      const incomplete = this.getIncompleteSubordinates(nodeId)
+      // For parent nodes, check if there are incomplete subordinate child org units
+      const findIncompleteSubordinates = (currentNode) => {
+        const incomplete = []
+        if (!currentNode || !currentNode.children) return incomplete
+
+        // immediate child org nodes
+        for (const child of currentNode.children) {
+          if (child.type === 'employee') continue
+          const completion = this.completionMap[child.id]
+          if (completion && completion.total > 0 && completion.completed !== completion.total) {
+            incomplete.push({
+              id: child.id,
+              label: child.label,
+              type: child.type,
+              completion: `${completion.completed}/${completion.total}`,
+            })
+          }
+          // also check recursively
+          incomplete.push(...findIncompleteSubordinates(child))
+        }
+        return incomplete
+      }
+
+      const incomplete = findIncompleteSubordinates(node)
 
       if (incomplete.length > 0) {
         const levelMap = {
@@ -624,11 +573,10 @@ export const useOrganizationStore = defineStore('organization', {
           office: 'Office',
         }
 
+        // group by type for a concise message
         const groupedByType = {}
         incomplete.forEach((item) => {
-          if (!groupedByType[item.type]) {
-            groupedByType[item.type] = []
-          }
+          if (!groupedByType[item.type]) groupedByType[item.type] = []
           groupedByType[item.type].push(item)
         })
 
@@ -642,7 +590,7 @@ export const useOrganizationStore = defineStore('organization', {
 
         return {
           canCreate: false,
-          message: `Cannot create Unit Work Plan.  The following subordinate levels are incomplete:\n\n${messages}`,
+          message: `Cannot create Unit Work Plan. The following subordinate levels are incomplete:\n\n${messages}`,
           incompleteItems: incomplete,
         }
       }
@@ -654,11 +602,25 @@ export const useOrganizationStore = defineStore('organization', {
       }
     },
 
+    // helper to find a node by id within the stored structure
     _findNode(nodeId, nodes = this.structure) {
       if (!nodes) return null
       return (
         nodes.find((n) => n.id === nodeId) ||
         nodes.reduce((acc, n) => acc || this._findNode(nodeId, n.children), null)
+      )
+    },
+
+    slugify(text) {
+      return (
+        text
+          ?.toString()
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^\w-]+/g, '')
+          .replace(/--+/g, '-')
+          .replace(/^-+/, '')
+          .replace(/-+$/, '') || ''
       )
     },
   },

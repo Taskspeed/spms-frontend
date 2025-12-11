@@ -4,12 +4,12 @@ import { useUserStore } from '../userStore'
 
 export const useEmployeeStore = defineStore('employee', {
   state: () => ({
-    employees: [],
+    employees: [], // Full list loaded once on mount
     loading: false,
     error: null,
     currentOfficeId: null,
     userOffice: null,
-    assignedEmployees: [],
+    assignedEmployees: [], // Filtered for selected node
     unassignedEmployees: [],
     currentNode: null,
     softDeletedEmployees: [],
@@ -27,7 +27,6 @@ export const useEmployeeStore = defineStore('employee', {
   getters: {
     getEmployeesByFilter: (state) => (filter) => {
       if (!filter) return state.assignedEmployees
-
       return state.assignedEmployees.filter((emp) => {
         if (filter.unit) return emp.unit === filter.unit
         if (filter.section) return emp.section === filter.section && !emp.unit
@@ -67,138 +66,34 @@ export const useEmployeeStore = defineStore('employee', {
   },
 
   actions: {
-    async fetchEmployeeCounts(officeId) {
+    // Load full employee list once and compute counts locally
+    async loadAllEmployees() {
+      if (this.employees && this.employees.length > 0) return this.employees
+
       this.loading = true
       this.error = null
-      try {
-        const token = localStorage.getItem('token')
-        const response = await api.get('/employee/counts', {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { office_id: officeId },
-        })
-
-        if (response.data.success) {
-          const data = response.data.data
-
-          const officeCount = parseInt(data.office) || 0
-
-          const office2Counts = {}
-          if (data.office2 && typeof data.office2 === 'object') {
-            Object.keys(data.office2).forEach((key) => {
-              office2Counts[key] = {
-                name: data.office2[key].office2 || key,
-                count: parseInt(data.office2[key].count) || 0,
-              }
-            })
-          }
-
-          const groupCounts = {}
-          if (data.groups && typeof data.groups === 'object') {
-            Object.keys(data.groups).forEach((key) => {
-              groupCounts[key] = {
-                name: data.groups[key].group || key,
-                count: parseInt(data.groups[key].count) || 0,
-              }
-            })
-          }
-
-          const divisionCounts = {}
-          if (data.divisions && typeof data.divisions === 'object') {
-            Object.keys(data.divisions).forEach((key) => {
-              divisionCounts[key] = {
-                name: data.divisions[key].division || key,
-                count: parseInt(data.divisions[key].count) || 0,
-              }
-            })
-          }
-
-          const sectionCounts = {}
-          if (data.sections && typeof data.sections === 'object') {
-            Object.keys(data.sections).forEach((key) => {
-              sectionCounts[key] = {
-                name: data.sections[key].section || key,
-                count: parseInt(data.sections[key].count) || 0,
-              }
-            })
-          }
-
-          const unitCounts = {}
-          if (data.units && typeof data.units === 'object' && !Array.isArray(data.units)) {
-            Object.keys(data.units).forEach((key) => {
-              unitCounts[key] = {
-                name: data.units[key].unit || key,
-                count: parseInt(data.units[key].count) || 0,
-              }
-            })
-          }
-
-          this.employeeCounts = {
-            office: officeCount,
-            office2: office2Counts,
-            groups: groupCounts,
-            divisions: divisionCounts,
-            sections: sectionCounts,
-            units: unitCounts,
-          }
-
-          return this.employeeCounts
-        }
-        throw new Error(response.data.message || 'Failed to fetch employee counts')
-      } catch (error) {
-        console.error('Failed to fetch employee counts:', error)
-        this.error = error.message || 'Failed to fetch employee counts'
-        this.employeeCounts = {
-          office: 0,
-          office2: {},
-          groups: {},
-          divisions: {},
-          sections: {},
-          units: {},
-        }
-        return this.employeeCounts
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async fetchEmployeesByNode(node) {
-      this.loading = true
-      this.error = null
-      this.currentNode = node
 
       try {
         const token = localStorage.getItem('token')
-        const userStore = useUserStore()
-        const params = { office_id: userStore.user?.office_id }
 
-        if (node) {
-          if (node.type === 'office2' && node.name) {
-            params.office2 = node.name
-          } else if (node.type === 'group' && node.name) {
-            params.group = node.name
-          } else if (node.type === 'division' && node.name) {
-            params.division = node.name
-          } else if (node.type === 'section' && node.name) {
-            params.section = node.name
-          } else if (node.type === 'unit' && node.name) {
-            params.unit = node.name
-          }
-        }
+        console.log('Loading employees from /employee endpoint')
 
-        const response = await api.get('/fetch_employees', {
+        const response = await api.get('/employee', {
           headers: { Authorization: `Bearer ${token}` },
-          params,
         })
 
-        if (response.data.success) {
-          this.assignedEmployees = response.data.data.map((emp) => ({
-            id: emp.id,
+        console.log('Response from /employee:', response.data)
+
+        // The endpoint returns data directly as an array
+        if (Array.isArray(response.data)) {
+          this.employees = response.data.map((emp) => ({
+            id: emp.id || null,
             ControlNo: emp.ControlNo || null,
             name: emp.name,
-            position_id: emp.position_id,
-            position: emp.position,
-            office_id: emp.office_id,
+            position: emp.position.name || emp.position,
+            position_id: emp.position_id || null,
             office: emp.office,
+            office_id: emp.office_id,
             office2: emp.office2 || null,
             group: emp.group || null,
             division: emp.division || null,
@@ -207,10 +102,196 @@ export const useEmployeeStore = defineStore('employee', {
             rank: emp.rank || '',
             selected: false,
           }))
-          return this.assignedEmployees
+
+          // Compute counts from the loaded employee list
+          this.computeCountsFromEmployees()
+
+          console.log('Employees loaded successfully:', this.employees.length)
+          console.log('Employee counts:', this.employeeCounts)
+
+          return this.employees
+        } else if (response.data && response.data.success) {
+          // Fallback for wrapped response
+          this.employees = response.data.data.map((emp) => ({
+            id: emp.id || null,
+            ControlNo: emp.ControlNo || null,
+            name: emp.name,
+            position: typeof emp.position === 'object' ? emp.position.name : emp.position,
+            position_id: emp.position_id || null,
+            office: emp.office,
+            office_id: emp.office_id,
+            office2: emp.office2 || null,
+            group: emp.group || null,
+            division: emp.division || null,
+            section: emp.section || null,
+            unit: emp.unit || null,
+            rank: emp.rank || '',
+            selected: false,
+          }))
+
+          this.userOffice = response.data.user_office || null
+          this.computeCountsFromEmployees()
+
+          return this.employees
         } else {
-          throw new Error(response.data.message || 'Failed to fetch employees')
+          throw new Error('Invalid response format from /employee endpoint')
         }
+      } catch (error) {
+        console.error('Failed to load employees:', error.message, error.response?.data)
+        this.error = error.message || 'Failed to load employees'
+        this.employees = []
+        this.employeeCounts = {
+          office: 0,
+          office2: {},
+          groups: {},
+          divisions: {},
+          sections: {},
+          units: {},
+        }
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Compute counts from the employees array - COUNT AT LOWEST LEVEL
+    computeCountsFromEmployees() {
+      const counts = {
+        office: 0,
+        office2: {},
+        groups: {},
+        divisions: {},
+        sections: {},
+        units: {},
+      }
+
+      if (!Array.isArray(this.employees)) return counts
+
+      this.employees.forEach((emp) => {
+        // Count at the LOWEST level the employee is assigned to
+
+        // UNIT LEVEL:   Has unit (deepest level)
+        if (emp.unit) {
+          counts.units[emp.unit] = counts.units[emp.unit] || { name: emp.unit, count: 0 }
+          counts.units[emp.unit].count++
+          return
+        }
+
+        // SECTION LEVEL: Has section but NO unit
+        if (emp.section) {
+          counts.sections[emp.section] = counts.sections[emp.section] || {
+            name: emp.section,
+            count: 0,
+          }
+          counts.sections[emp.section].count++
+          return
+        }
+
+        // DIVISION LEVEL: Has division but NO section or unit
+        if (emp.division) {
+          counts.divisions[emp.division] = counts.divisions[emp.division] || {
+            name: emp.division,
+            count: 0,
+          }
+          counts.divisions[emp.division].count++
+          return
+        }
+
+        // GROUP LEVEL: Has group but NO division, section, or unit
+        if (emp.group) {
+          counts.groups[emp.group] = counts.groups[emp.group] || { name: emp.group, count: 0 }
+          counts.groups[emp.group].count++
+          return
+        }
+
+        // OFFICE2 LEVEL: Has office2 but NO group, division, section, or unit
+        if (emp.office2) {
+          counts.office2[emp.office2] = counts.office2[emp.office2] || {
+            name: emp.office2,
+            count: 0,
+          }
+          counts.office2[emp.office2].count++
+          return
+        }
+
+        // OFFICE LEVEL: Employee has no hierarchy assignments at all
+        if (!emp.office2 && !emp.group && !emp.division && !emp.section && !emp.unit) {
+          counts.office++
+          return
+        }
+      })
+
+      this.employeeCounts = counts
+      return counts
+    },
+
+    // Fetch employees for a node (filter from loaded list, no API call after first load)
+    async fetchEmployeesByNode(node) {
+      this.loading = true
+      this.error = null
+      this.currentNode = node
+
+      try {
+        // Ensure full employee list is loaded
+        if (!this.employees || this.employees.length === 0) {
+          await this.loadAllEmployees()
+        }
+
+        if (!node) {
+          this.assignedEmployees = []
+          return this.assignedEmployees
+        }
+
+        // Filter employees locally based on node type - SHOW AT LOWEST LEVEL
+        let filtered = []
+
+        if (node.type === 'unit') {
+          // Unit:   Show employees with this unit
+          filtered = this.employees.filter((emp) => emp.unit === node.name)
+        } else if (node.type === 'section') {
+          // Section: Show employees with this section and NO unit
+          filtered = this.employees.filter((emp) => emp.section === node.name && !emp.unit)
+        } else if (node.type === 'division') {
+          // Division: Show employees with this division but NO section or unit
+          filtered = this.employees.filter(
+            (emp) => emp.division === node.name && !emp.section && !emp.unit,
+          )
+        } else if (node.type === 'group') {
+          // Group:   Show employees with this group but NO division, section, or unit
+          filtered = this.employees.filter(
+            (emp) => emp.group === node.name && !emp.division && !emp.section && !emp.unit,
+          )
+        } else if (node.type === 'office2') {
+          // Office2: Show employees with this office2 but NO group, division, section, or unit
+          filtered = this.employees.filter(
+            (emp) =>
+              emp.office2 === node.name && !emp.group && !emp.division && !emp.section && !emp.unit,
+          )
+        } else if (node.type === 'office') {
+          // Office: Show employees with NO hierarchy assignments at all
+          filtered = this.employees.filter(
+            (emp) => !emp.office2 && !emp.group && !emp.division && !emp.section && !emp.unit,
+          )
+        }
+
+        this.assignedEmployees = filtered.map((emp) => ({
+          id: emp.id,
+          ControlNo: emp.ControlNo || null,
+          name: emp.name,
+          position_id: emp.position_id,
+          position: emp.position,
+          office_id: emp.office_id,
+          office: emp.office,
+          office2: emp.office2 || null,
+          group: emp.group || null,
+          division: emp.division || null,
+          section: emp.section || null,
+          unit: emp.unit || null,
+          rank: emp.rank || '',
+          selected: emp.selected || false,
+        }))
+
+        return this.assignedEmployees
       } catch (error) {
         console.error('Failed to fetch employees by node:', error)
         this.error = error.message || 'Failed to fetch employees'
@@ -248,7 +329,7 @@ export const useEmployeeStore = defineStore('employee', {
             id: emp.id || null,
             ControlNo: emp.ControlNo || null,
             name: emp.name,
-            position: emp.position,
+            position: typeof emp.position === 'object' ? emp.position.name : emp.position,
             position_id: emp.position_id || null,
             office: emp.office,
             office_id: emp.office_id || userStore.user?.office_id,
@@ -265,6 +346,7 @@ export const useEmployeeStore = defineStore('employee', {
             this.unassignedEmployees = employees
           } else {
             this.employees = employees
+            this.computeCountsFromEmployees()
           }
 
           this.userOffice = response.data.user_office
@@ -299,7 +381,7 @@ export const useEmployeeStore = defineStore('employee', {
             throw new Error(`Position "${emp.position}" not found`)
           }
           return {
-            ControlNo: emp.ControlNo || null,
+            ControlNo: emp.ControlNo || '',
             name: emp.name,
             position: emp.position,
             position_id: position.id,
@@ -323,12 +405,15 @@ export const useEmployeeStore = defineStore('employee', {
         )
 
         if (response.data.success) {
+          // Reload the full employee list and recompute counts
+          this.employees = []
+          await this.loadAllEmployees()
+
+          // Refresh the current node's employees
           if (this.currentNode) {
             await this.fetchEmployeesByNode(this.currentNode)
-          } else {
-            await this.fetchUnassignedEmployees()
           }
-          await this.fetchEmployeeCounts(this.currentOfficeId || useUserStore().user?.office_id)
+
           return response.data
         }
         throw new Error(response.data.message || 'Failed to add employees')
@@ -385,7 +470,8 @@ export const useEmployeeStore = defineStore('employee', {
           this.assignedEmployees = this.assignedEmployees.filter((e) => e.id !== employeeId)
           this.employees = this.employees.filter((e) => e.id !== employeeId)
 
-          await this.fetchEmployeeCounts(this.currentOfficeId || useUserStore().user?.office_id)
+          // Recompute counts after deletion
+          this.computeCountsFromEmployees()
 
           return response.data
         }
@@ -417,7 +503,7 @@ export const useEmployeeStore = defineStore('employee', {
             id: emp.id,
             ControlNo: emp.ControlNo || null,
             name: emp.name,
-            position: emp.position,
+            position: typeof emp.position === 'object' ? emp.position.name : emp.position,
             position_id: emp.position_id || null,
             office: emp.office,
             office_id: emp.office_id || userStore.user?.office_id,

@@ -108,12 +108,14 @@ import AddEmployeeModal from '../../components/add_employee_Modal.vue'
 import { api } from 'src/boot/axios'
 import { useUserStore } from 'src/stores/userStore'
 import { useEmployeeStore } from 'src/stores/office/employee_Store'
+import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
 
 export default {
   components: { AddEmployeeModal },
   setup() {
     const employeeStore = useEmployeeStore()
-    return { employeeStore }
+    const libraryStore = useLibraryStore()
+    return { employeeStore, libraryStore }
   },
   data() {
     return {
@@ -146,13 +148,14 @@ export default {
   },
   computed: {
     rankOptions() {
-      const baseOptions = [
-        { value: 'Employee', label: 'Employee' },
-        { value: 'Supervisor', label: 'Supervisor' },
-        { value: 'Rank-in-File', label: 'Rank-in-File' },
-        { value: 'Managerial', label: 'Managerial' },
-      ]
+      // Use ranks from library store (dynamically fetched)
+      const baseOptions = this.libraryStore.ranks.map((rank) => ({
+        value: rank.rank_name,
+        label: rank.rank_name,
+        id: rank.id,
+      }))
 
+      // Add head-specific options based on selected node type
       if (this.selectedNode) {
         switch (this.selectedNode.type) {
           case 'office':
@@ -267,6 +270,26 @@ export default {
     },
   },
   async created() {
+    // Fetch ranks from library store first
+    try {
+      await this.libraryStore.fetchRanks()
+    } catch (error) {
+      console.error('Failed to fetch ranks:', error)
+      this.$q.notify({
+        type: 'warning',
+        message: 'Failed to load rank options.  Using default ranks.',
+      })
+      // Set default ranks if fetch fails
+      this.libraryStore.ranks = [
+        { id: 4, rank_name: 'Office-Head' },
+        { id: 5, rank_name: 'Employee' },
+        { id: 6, rank_name: 'Supervisor' },
+        { id: 7, rank_name: 'Rank-in-File' },
+        { id: 8, rank_name: 'Managerial' },
+      ]
+    }
+
+    // Then fetch organization structure
     await this.fetchOrganizationStructure()
   },
   methods: {
@@ -322,7 +345,7 @@ export default {
                 type: 'positive',
                 message: result.message || 'Employee moved to trash',
               })
-              if (result.deletedEmployee) this.updateLocalCountsAfterDelete(result.deletedEmployee)
+              this.updateTreeCounts()
               if (this.selectedNode)
                 await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
             } else {
@@ -336,30 +359,28 @@ export default {
           }
         })
     },
-    updateLocalCountsAfterDelete() {
-      if (this.employeeStore.employeeCounts?.office > 0) {
-        this.employeeStore.employeeCounts.office--
-      }
-      this.updateTreeCounts()
-    },
     async fetchOrganizationStructure() {
       this.loading = true
       try {
-        const [structureResponse, counts] = await Promise.all([
-          api.get('/office/structure'),
-          this.employeeStore.fetchEmployeeCounts(useUserStore().user?.office_id),
-        ])
+        const structureResponse = await api.get('/office/structure')
 
         const officeData = structureResponse.data.find(
           (office) => office.office === this.officeName,
         )
 
         if (officeData) {
+          // Load all employees once (this computes counts internally)
+          await this.employeeStore.loadAllEmployees()
+
+          // Build tree with computed counts
+          const counts = this.employeeStore.employeeCounts
           this.treeNodes = [this.processOrganizationData(officeData, counts)]
           this.expandedNodes = [this.treeNodes[0].id]
           this.selectedNodeId = this.treeNodes[0].id
           this.selectedNode = this.treeNodes[0]
           this.employeeStore.currentNode = this.selectedNode
+
+          // Load initial node employees (no API call, filters locally)
           await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
         }
       } catch (error) {
@@ -633,27 +654,26 @@ export default {
     },
 
     updateTreeCounts() {
-      this.employeeStore.fetchEmployeeCounts(useUserStore().user?.office_id).then((counts) => {
-        const updateNodeCounts = (node) => {
-          if (node.type === 'office') {
-            node.count = counts.office || 0
-          } else if (node.type === 'office2') {
-            node.count = counts.office2?.[node.name]?.count || 0
-          } else if (node.type === 'group') {
-            node.count = counts.groups?.[node.name]?.count || 0
-          } else if (node.type === 'division') {
-            node.count = counts.divisions?.[node.name]?.count || 0
-          } else if (node.type === 'section') {
-            node.count = counts.sections?.[node.name]?.count || 0
-          } else if (node.type === 'unit') {
-            node.count = counts.units?.[node.name]?.count || 0
-          }
-          if (node.children) {
-            node.children.forEach((child) => updateNodeCounts(child))
-          }
+      const counts = this.employeeStore.employeeCounts || {}
+      const updateNodeCounts = (node) => {
+        if (node.type === 'office') {
+          node.count = counts.office || 0
+        } else if (node.type === 'office2') {
+          node.count = counts.office2?.[node.name]?.count || 0
+        } else if (node.type === 'group') {
+          node.count = counts.groups?.[node.name]?.count || 0
+        } else if (node.type === 'division') {
+          node.count = counts.divisions?.[node.name]?.count || 0
+        } else if (node.type === 'section') {
+          node.count = counts.sections?.[node.name]?.count || 0
+        } else if (node.type === 'unit') {
+          node.count = counts.units?.[node.name]?.count || 0
         }
-        this.treeNodes.forEach((node) => updateNodeCounts(node))
-      })
+        if (node.children) {
+          node.children.forEach((child) => updateNodeCounts(child))
+        }
+      }
+      this.treeNodes.forEach((node) => updateNodeCounts(node))
     },
 
     async handleAddEmployees(selectedEmployees) {
@@ -785,7 +805,7 @@ export default {
                 this.$q
                   .dialog({
                     title: 'Current Head Exists',
-                    message: `There is already a ${newRank} (${currentHead.name}) in this unit.  Do you want to demote them to Employee? `,
+                    message: `There is already a ${newRank} (${currentHead.name}) in this unit. Do you want to demote them to Employee? `,
                     cancel: true,
                     persistent: true,
                   })
