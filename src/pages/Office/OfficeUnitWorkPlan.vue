@@ -254,6 +254,9 @@
                     <q-item-section>
                       <q-item-label>{{ scope.opt.name }}</q-item-label>
                       <q-item-label caption lines="1">{{ scope.opt.position }}</q-item-label>
+                      <q-item-label caption lines="1">{{
+                        scope.opt.employeeData.ControlNo
+                      }}</q-item-label>
                     </q-item-section>
                   </q-item>
                 </template>
@@ -1115,8 +1118,14 @@ export default {
         section: null,
         unit: null,
       },
+
       availableEmployees: [],
+      filteredAvailableEmployees: [],
+      employeesWithoutTargetPeriod: [],
+
       totalAvailableEmployees: 0,
+      filteredAvailableEmployeesCount: 0,
+      employeesWithoutTargetPeriodCount: 0,
       selectedEmployees: [],
       timestamp: null,
     })
@@ -1126,6 +1135,7 @@ export default {
     const maxVisibleTabs = ref(3)
     const activeEmployeeTab = ref(null)
     const employeeTabs = ref([])
+    const isLoadingFilteredEmployees = ref(false) // ✅ NEW
     const form = ref({
       unit: null,
       section: null,
@@ -1198,8 +1208,8 @@ export default {
     ]
 
     const quantityIndicator = [
-      { label: 'Quantity (A.  Custom Target)', value: 'numeric' },
-      { label: 'Quantity (B. Can exceed 100%)', value: 'B' },
+      { label: 'Quantity (A.   Custom Target)', value: 'numeric' },
+      { label: 'Quantity (B.  Can exceed 100%)', value: 'B' },
       { label: 'Quantity (C. Cannot exceed 100%)', value: 'C' },
     ]
 
@@ -1272,6 +1282,69 @@ export default {
       activeEmployeeTab.value = defaultEmp.id
     }
 
+    // ✅ NEW:  Fetch and populate filtered employees
+    const fetchAndPopulateFilteredEmployees = async () => {
+      if (isLoadingFilteredEmployees.value) return
+
+      try {
+        isLoadingFilteredEmployees.value = true
+        console.log('📊 Fetching filtered employees with target periods...')
+
+        // Set the UWP data in the store first
+        uwpStore.setUWPData(uwpData.value)
+
+        // Fetch transformed data from store
+        const transformedEmployees = await uwpStore.fetchFilteredEmployeesData()
+
+        if (!transformedEmployees || transformedEmployees.length === 0) {
+          console.warn('⚠️ No filtered employees found')
+          $q.notify({
+            message: 'No employees with target periods found',
+            color: 'info',
+            position: 'top',
+          })
+          return
+        }
+
+        console.log('✅ Loaded filtered employees:', transformedEmployees)
+
+        // ✅ Auto-populate employee tabs with transformed data
+        employeeTabs.value = transformedEmployees
+        activeEmployeeTab.value = transformedEmployees[0].id
+
+        // ✅ Auto-populate form semester from first employee's target period
+        if (transformedEmployees[0].employeeData?.target_periods?.[0]) {
+          const targetPeriod = transformedEmployees[0].employeeData.target_periods[0]
+          form.value.semester = targetPeriod.semester
+          form.value.year = parseInt(targetPeriod.year) || new Date().getFullYear()
+
+          console.log(
+            '✅ Auto-populated form with semester:',
+            form.value.semester,
+            'year:',
+            form.value.year,
+          )
+        }
+
+        $q.notify({
+          message: `Loaded ${transformedEmployees.length} employees with their performance standards`,
+          color: 'positive',
+          position: 'top',
+        })
+
+        return transformedEmployees
+      } catch (error) {
+        console.error('❌ Error fetching filtered employees:', error)
+        $q.notify({
+          message: error.message || 'Failed to fetch filtered employees',
+          color: 'negative',
+          position: 'top',
+        })
+      } finally {
+        isLoadingFilteredEmployees.value = false
+      }
+    }
+
     // Computed
     const semesterOptions = computed(() => uwpStore.getSemesterOptions)
     const yearOptions = computed(() => uwpStore.getYearOptions)
@@ -1321,15 +1394,23 @@ export default {
     const availableEmployeesForTab = computed(() => {
       if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0)
         return []
+
       const selectedIds = getSelectedEmployeeIds()
       const currentTabId = activeEmployeeTab.value
       const currentTabEmployeeId = employeeTabs.value.find(
         (emp) => emp.id === currentTabId,
       )?.employeeId
-      return uwpData.value.availableEmployees.filter(
-        (emp) => !selectedIds.includes(emp.id) || emp.id === currentTabEmployeeId,
-      )
+
+      return uwpData.value.availableEmployees.filter((emp) => {
+        // Allow the employee if they're not selected elsewhere
+        if (!selectedIds.includes(emp.id)) return true
+        // OR allow if they're the current tab's employee
+        if (emp.id === currentTabEmployeeId) return true
+        return false
+      })
     })
+    console.log('availableEmployeesForTab:', availableEmployeesForTab.value)
+    console.log('First employee:', availableEmployeesForTab.value[0])
 
     const selectedEmployee = computed(
       () =>
@@ -1611,6 +1692,7 @@ export default {
 
     const onEmployeeSelected = (employeeId) => {
       if (employeeId === null) return
+
       const selectedEmp = uwpData.value.availableEmployees.find((emp) => emp.id === employeeId)
       if (selectedEmp && activeEmployeeTab.value) {
         const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
@@ -1964,15 +2046,18 @@ export default {
 
         console.log('📊 Submitting UWP Data:', submissionData)
 
-        await uwpStore.saveUWP(submissionData)
+        await uwpStore.saveUWP(submissionData, officeLibraryIndicatorStore)
 
+        // ✅ Success notification (only after submission completes)
         $q.notify({
-          message: 'Unit Work Plan submitted successfully',
+          message: 'Unit Work Plan saved successfully',
           color: 'positive',
           icon: 'check_circle',
+          position: 'top',
         })
 
-        router.push('/unit-work-plans')
+        // ✅ Navigate back to /office/spms
+        router.push('/office/spms')
       } catch (error) {
         $q.notify({
           message: error.message || 'Failed to save Unit Work Plan',
@@ -1982,6 +2067,7 @@ export default {
         console.error('❌ Submit error:', error)
       }
     }
+
     watch(
       () => {
         return currentEmployee.value.performanceStandards.map((s) => ({
@@ -2014,12 +2100,18 @@ export default {
         await officeLibraryStore.fetchAllData(officeId)
         await officeLibraryIndicatorStore.fetchVerbs()
         console.log('✅ Data loaded successfully')
+
+        // ✅ NEW:  Fetch and populate filtered employees automatically
+        await fetchAndPopulateFilteredEmployees()
       } catch (error) {
         console.error('❌ Error loading data:', error)
         $q.notify({ message: 'Failed to load data', color: 'negative', position: 'top' })
       }
 
-      form.value.semester = semesterOptions.value[0]
+      // Set default semester only if form not already populated
+      if (!form.value.semester) {
+        form.value.semester = semesterOptions.value[0]
+      }
     })
 
     return {
@@ -2099,6 +2191,8 @@ export default {
       onEffectivenessUpdate,
       onBack,
       uwpStore,
+      isLoadingFilteredEmployees, // ✅ NEW
+      fetchAndPopulateFilteredEmployees, // ✅ NEW - optional manual trigger
     }
   },
 }

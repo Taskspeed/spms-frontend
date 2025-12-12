@@ -82,6 +82,13 @@
                             {{ scope.node.label }}
                           </div>
 
+                          <!-- Debug info -->
+                          <!-- <q-badge color="grey" class="q-ml-xs">
+                            Type: {{ scope.node.type }}, Leaf: {{ scope.node.isLeaf }}, Direct:
+                            {{ scope.node.directCount }}
+                          </q-badge> -->
+                          <!-- End debug -->
+
                           <!-- For bottom-level org nodes (leaf org nodes) show employee count instead of an X/check -->
                           <q-badge
                             v-if="isLeafNode(scope.node.id)"
@@ -91,11 +98,10 @@
                             {{ getNodeCount(scope.node.id) }}
                           </q-badge>
 
-                          <!-- Completion badge for parent nodes only (counts child units) -->
                           <q-badge
                             v-else-if="
                               scope.node.type !== 'employee' &&
-                              getNodeCompletionRatio(scope.node.id)
+                              getNodeCompletionRatio(scope.node.id) !== '0/0'
                             "
                             :color="getCompletionColor(scope.node.id)"
                             class="q-ml-sm"
@@ -400,7 +406,7 @@ const columns = ref([
   { name: 'actions', align: 'center', label: 'Actions', field: 'actions' },
 ])
 
-// Computed properties for target period
+// Computed properties
 const selectedSemester = computed({
   get: () => orgStore.selectedSemester,
   set: (value) => {
@@ -420,7 +426,6 @@ const availableYears = computed(() => orgStore.getAvailableYears)
 const currentTargetPeriod = computed(() => orgStore.getCurrentTargetPeriod)
 const organizationTree = computed(() => orgStore.structure)
 
-// Selected node computation
 const selectedNode = computed(() => {
   const findNode = (nodes) => {
     if (!nodes) return null
@@ -432,7 +437,6 @@ const selectedNode = computed(() => {
   return selectedNodeId.value ? findNode(orgStore.structure) : null
 })
 
-// Get breadcrumb path
 const getNodePath = (nodeId, nodes = orgStore.structure) => {
   const path = []
 
@@ -461,10 +465,9 @@ const getNodePath = (nodeId, nodes = orgStore.structure) => {
 const selectedNodeBreadcrumb = computed(() => {
   if (!selectedNode.value) return ''
   const path = getNodePath(selectedNodeId.value)
-  return path.length > 3 ? `...  / ${path.slice(-2).join('/')}` : path.join(' / ')
+  return path.length > 3 ? `...   / ${path.slice(-2).join('/')}` : path.join(' / ')
 })
 
-// Get organizational hierarchy path
 const getHierarchyPath = (nodeId, nodes = orgStore.structure) => {
   const path = {
     office: null,
@@ -515,7 +518,6 @@ const getHierarchyPath = (nodeId, nodes = orgStore.structure) => {
   return path
 }
 
-// Get node employees
 const getNodeEmployees = (nodeId, nodes = orgStore.structure) => {
   const employees = []
 
@@ -534,6 +536,7 @@ const getNodeEmployees = (nodeId, nodes = orgStore.structure) => {
                 rank: child.rank,
                 ipcrStatus: child.ipcrStatus,
                 isHead: child.isHead,
+                hasTargetPeriod: child.hasTargetPeriod,
                 employeeData: child.employeeData,
               })
             }
@@ -552,7 +555,6 @@ const getNodeEmployees = (nodeId, nodes = orgStore.structure) => {
   return employees
 }
 
-// Get direct employees
 const employees = computed(() => {
   if (!selectedNode.value) return []
 
@@ -563,7 +565,6 @@ const employees = computed(() => {
   return selectedNode.value.children?.filter((child) => child.type === 'employee') || []
 })
 
-// Filter employees
 const filteredEmployees = computed(() => {
   if (!employeeFilter.value) return employees.value
   const term = employeeFilter.value.toLowerCase()
@@ -575,7 +576,6 @@ const filteredEmployees = computed(() => {
   )
 })
 
-// Check if UWP can be created
 const canCreateUWP = computed(() => {
   if (!selectedNode.value) return false
   return ['office', 'office2', 'group', 'division', 'section', 'unit'].includes(
@@ -583,7 +583,6 @@ const canCreateUWP = computed(() => {
   )
 })
 
-// Head ranks
 const headRanks = [
   'office-head',
   'division-head',
@@ -595,7 +594,6 @@ const headRanks = [
 
 const isHeadRank = (rank) => !!rank && headRanks.some((h) => rank.toLowerCase().includes(h))
 
-// Get node color
 const getNodeColor = (node) => {
   return (
     {
@@ -610,7 +608,6 @@ const getNodeColor = (node) => {
   )
 }
 
-// Get node icon
 const getNodeIcon = (node) => {
   if (node.type === 'employee') {
     return isHeadRank(node.rank) ? 'supervisor_account' : 'person'
@@ -628,7 +625,6 @@ const getNodeIcon = (node) => {
   )
 }
 
-// Get status color
 const getStatusColor = (row) => {
   const s = row.ipcrStatus?.toLowerCase() || ''
   if (s.includes('approved')) return 'positive'
@@ -638,25 +634,25 @@ const getStatusColor = (row) => {
   return 'grey'
 }
 
-// Check if node is leaf node
 const isLeafNode = (nodeId) => {
   const completion = orgStore.getNodeCompletion(nodeId)
   return completion.isLeafNode === true
 }
 
-// // Check if all employees in leaf node have target period
-// const isAllComplete = (nodeId) => {
-//   const completion = orgStore.getNodeCompletion(nodeId)
-//   return completion.isLeafNode && completion.completed === completion.total && completion.total > 0
-// }
-
-// Get node completion ratio
 const getNodeCompletionRatio = (nodeId) => {
   const completion = orgStore.getNodeCompletion(nodeId)
-  return completion.ratio !== '0/0' ? completion.ratio : ''
+
+  // For leaf nodes, show employee completion (e.g., "1/5")
+  const node = orgStore._findNode(nodeId)
+  if (node && node.isLeaf) {
+    return completion.ratio
+  }
+
+  // For parent nodes, show child org unit completion
+  // Always return the ratio (even if it's '0/0')
+  return completion.ratio
 }
 
-// Get completion color
 const getCompletionColor = (nodeId) => {
   const completion = orgStore.getNodeCompletion(nodeId)
   if (completion.isCompleted) {
@@ -667,29 +663,46 @@ const getCompletionColor = (nodeId) => {
   }
   return 'warning'
 }
-
-// New: get the aggregated employee count for a node (prefer structure.count, fallback to completion total)
 const getNodeCount = (nodeId) => {
   try {
-    const node = orgStore._findNode(nodeId) // store helper
-    if (node && typeof node.count === 'number') return node.count
+    const node = orgStore._findNode(nodeId)
+    if (!node) return 0
+
+    // If it's a leaf organizational node, count all employees in it
+    if (node.isLeaf) {
+      return countAllEmployees(node)
+    }
+
+    // For non-leaf nodes (parent nodes), return direct children count
+    // This includes both direct employees + direct org child nodes
+    return node.directCount || 0
   } catch {
-    // ignore
+    return 0
   }
-  const completion = orgStore.getNodeCompletion(nodeId)
-  return completion.total || 0
 }
 
-// New: color for leaf badge (employee count)
+// Helper function to recursively count all employees in a node
+const countAllEmployees = (node) => {
+  if (!node) return 0
+
+  if (node.type === 'employee') {
+    return 1
+  }
+
+  let total = 0
+  if (node.children && node.children.length > 0) {
+    for (const child of node.children) {
+      total += countAllEmployees(child)
+    }
+  }
+
+  return total
+}
 const getLeafBadgeColor = (nodeId) => {
-  const completion = orgStore.getNodeCompletion(nodeId)
-  if (!completion) return 'grey-5'
-  if (completion.total === 0) return 'grey-5'
-  if (completion.completed === completion.total) return 'positive'
-  return 'warning'
+  const count = getNodeCount(nodeId)
+  return count > 0 ? 'positive' : 'grey-5'
 }
 
-// Filter tree nodes
 const filterMethod = (node, filter) => {
   if (!filter) return true
   const term = filter.toLowerCase()
@@ -725,15 +738,6 @@ const onYearChange = async () => {
     }
   }
 }
-
-// const resetToLatestPeriod = async () => {
-//   const latest = orgStore.getLatestPeriod
-//   if (latest) {
-//     selectedSemester.value = latest.semester
-//     selectedYear.value = latest.year
-//     await orgStore.setTargetPeriod(latest.semester, latest.year)
-//   }
-// }
 
 const showUnitWorkPlanModal = () => {
   if (!selectedNode.value)
@@ -796,6 +800,12 @@ const createUnitWorkPlan = () => {
   }
 
   const availableEmployees = getNodeEmployees(selectedNode.value.id)
+  const filteredAvailableEmployees = availableEmployees.filter(
+    (emp) => emp.hasTargetPeriod === true,
+  )
+  const employeesWithoutTargetPeriod = availableEmployees.filter(
+    (emp) => emp.hasTargetPeriod === false,
+  )
   const breadcrumb = getNodePath(selectedNodeId.value)
 
   const uwpData = {
@@ -804,8 +814,12 @@ const createUnitWorkPlan = () => {
     selectedNodeLabel: selectedNode.value.label,
     breadcrumb,
     hierarchy: hierarchyPath,
-    availableEmployees,
+    availableEmployees, // ALL employees (with and without target period)
+    filteredAvailableEmployees, // Only employees WITH target period
+    employeesWithoutTargetPeriod, // Only employees WITHOUT target period
     totalAvailableEmployees: availableEmployees.length,
+    filteredAvailableEmployeesCount: filteredAvailableEmployees.length,
+    employeesWithoutTargetPeriodCount: employeesWithoutTargetPeriod.length,
     selectedEmployees: [],
     targetPeriod: currentTargetPeriod.value,
     timestamp: new Date().toISOString(),
