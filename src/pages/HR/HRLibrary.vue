@@ -11,6 +11,7 @@
     >
       <q-tab name="verbs" label="Verbs Library" icon="description" />
       <q-tab name="ranks" label="Ranks Library" icon="military_tech" />
+      <q-tab name="targetperiod" label="Target Period" icon="calendar_today" />
     </q-tabs>
 
     <q-separator class="q-mb-md" />
@@ -135,7 +136,7 @@
                 outlined
                 color="green"
                 v-model="newRank"
-                label="Add rank (e.g., Office Head)"
+                label="Add rank (e. g., Office Head)"
                 @keyup.enter="addRank"
                 clearable
               />
@@ -230,6 +231,136 @@
           </div>
         </q-card>
       </q-tab-panel>
+
+      <!-- ========== TARGET PERIOD TAB ========== -->
+      <q-tab-panel name="targetperiod">
+        <div class="row justify-between items-center q-mb-md">
+          <div class="col-auto">
+            <div class="text-h6 text-grey-7">Target Period</div>
+            <div class="text-caption text-grey-6">Manage target period semesters and years</div>
+          </div>
+
+          <div class="col-5 row items-center q-col-gutter-sm">
+            <div class="col-5">
+              <q-select
+                dense
+                outlined
+                colo="green"
+                v-model="newTargetPeriod.semester"
+                :options="semesterOptions"
+                label="Select Semester"
+                clearable
+                emit-value
+                map-options
+              />
+            </div>
+
+            <div class="col-5">
+              <q-select
+                dense
+                outlined
+                color="green"
+                v-model="newTargetPeriod.year"
+                :options="yearOptions"
+                label="Select Year"
+                clearable
+                emit-value
+                map-options
+              />
+            </div>
+
+            <div class="col-auto">
+              <q-btn
+                color="green-9"
+                label="Add"
+                @click="addTargetPeriod"
+                :loading="libraryStore.loading"
+                :disabled="!newTargetPeriod.semester || !newTargetPeriod.year"
+              />
+            </div>
+          </div>
+        </div>
+
+        <q-card flat bordered class="q-pa-md">
+          <div class="row items-center q-col-gutter-sm">
+            <div class="col-12 col-md-4">
+              <q-input
+                dense
+                outlined
+                color="green"
+                v-model="targetperiodSearch"
+                placeholder="Search target periods..."
+                clearable
+                class="q-pr-md"
+                debounce="150"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="search" />
+                </template>
+              </q-input>
+            </div>
+
+            <div class="col" />
+
+            <div class="col-auto">
+              <q-btn
+                flat
+                color="negative"
+                :disabled="!selectedTargetPeriodIds.length"
+                :label="`Delete selected (${selectedTargetPeriodIds.length})`"
+                icon="delete"
+                @click="confirmDeleteSelected('targetperiod')"
+              />
+            </div>
+          </div>
+
+          <div class="q-mt-xl">
+            <q-list class="targetperiod-grid">
+              <q-item
+                v-for="period in filteredTargetPeriods"
+                :key="`${period.id}`"
+                class="item-card targetperiod-card q-pa-sm"
+                clickable
+              >
+                <q-item-section side class="col-auto">
+                  <q-checkbox
+                    dense
+                    v-model="selectedTargetPeriodIds"
+                    :val="period.id"
+                    color="primary"
+                  />
+                </q-item-section>
+
+                <q-item-section class="q-pl-sm">
+                  <q-item-label class="text-body1">
+                    {{ period.semester }}
+                  </q-item-label>
+                  <q-item-label class="text-caption text-grey-6">
+                    Year: {{ period.year }}
+                  </q-item-label>
+                </q-item-section>
+
+                <q-item-section side>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="delete"
+                    color="negative"
+                    size="sm"
+                    @click.stop="confirmDelete('targetperiod', [period.id])"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <div v-if="!filteredTargetPeriods.length" class="text-center q-pa-md text-grey-6">
+              <q-icon name="event" size="48px" class="q-mb-sm" />
+              <div>No target periods found. Add one above or adjust your search.</div>
+            </div>
+          </div>
+        </q-card>
+      </q-tab-panel>
     </q-tab-panels>
 
     <!-- ========== EDIT RANK DIALOG ========== -->
@@ -289,10 +420,18 @@ export default {
         id: null,
         rank_name: '',
       },
+      // Target Period Data
+      selectedTargetPeriodIds: [],
+      newTargetPeriod: {
+        semester: null,
+        year: null,
+      },
+      targetperiodSearch: '',
+      semesterOptions: [
+        { label: 'January-June', value: 'January-June' },
+        { label: 'July-December', value: 'July-December' },
+      ],
     }
-  },
-  async created() {
-    await this.loadData()
   },
   computed: {
     filteredVerbs() {
@@ -307,11 +446,32 @@ export default {
       if (!search) return ranks
       return ranks.filter((r) => (r.rank_name || '').toLowerCase().includes(search))
     },
+    filteredTargetPeriods() {
+      const search = (this.targetperiodSearch || '').toLowerCase().trim()
+      const periods = this.libraryStore.sortedTargetPeriods
+      if (!search) return periods
+      return periods.filter(
+        (p) =>
+          (p.semester || '').toLowerCase().includes(search) ||
+          (p.year || '').toString().includes(search),
+      )
+    },
+    yearOptions() {
+      const currentYear = new Date().getFullYear()
+      return [currentYear, currentYear + 1, currentYear + 2]
+    },
+  },
+  async created() {
+    await this.loadData()
   },
   methods: {
     async loadData() {
       try {
-        await Promise.all([this.libraryStore.fetchVerbs(), this.libraryStore.fetchRanks()])
+        await Promise.all([
+          this.libraryStore.fetchVerbs(),
+          this.libraryStore.fetchRanks(),
+          this.libraryStore.fetchTargetPeriods(),
+        ])
       } catch {
         this.$q.notify({
           type: 'negative',
@@ -369,6 +529,38 @@ export default {
       }
     },
 
+    async addTargetPeriod() {
+      const { semester, year } = this.newTargetPeriod
+
+      if (!semester || !year) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'Please select both semester and year.',
+        })
+        return
+      }
+
+      // FIX: Check if target period already exists
+      if (this.libraryStore.targetPeriodExists(semester, year)) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'This target period already exists.',
+        })
+        return
+      }
+
+      try {
+        await this.libraryStore.addTargetPeriod(semester, year)
+        this.newTargetPeriod = { semester: null, year: null }
+        this.$q.notify({ type: 'positive', message: 'Target period added successfully.' })
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || 'Failed to add target period.',
+        })
+      }
+    },
+
     editRank(rank) {
       this.editingRank = { ...rank }
       this.dialogEditRank = true
@@ -393,7 +585,15 @@ export default {
     },
 
     confirmDeleteSelected(type) {
-      const ids = type === 'verbs' ? this.selectedVerbIds : this.selectedRankIds
+      let ids = []
+      if (type === 'verbs') {
+        ids = this.selectedVerbIds
+      } else if (type === 'ranks') {
+        ids = this.selectedRankIds
+      } else if (type === 'targetperiod') {
+        ids = this.selectedTargetPeriodIds
+      }
+
       if (!ids.length) return
       this.confirmDelete(type, ids)
     },
@@ -402,7 +602,7 @@ export default {
       this.$q
         .dialog({
           title: 'Confirm Delete',
-          message: `Are you sure you want to delete ${ids.length} ${type}?`,
+          message: `Are you sure you want to delete ${ids.length} item(s)?`,
           cancel: true,
           persistent: true,
         })
@@ -416,9 +616,12 @@ export default {
         if (type === 'verbs') {
           await this.libraryStore.deleteVerbs(ids)
           this.selectedVerbIds = []
-        } else {
+        } else if (type === 'ranks') {
           await this.libraryStore.deleteRanks(ids)
           this.selectedRankIds = []
+        } else if (type === 'targetperiod') {
+          await this.libraryStore.deleteTargetPeriods(ids)
+          this.selectedTargetPeriodIds = []
         }
         this.$q.notify({ type: 'positive', message: 'Deleted successfully.' })
       } catch (error) {
@@ -449,6 +652,14 @@ export default {
   align-items: start;
 }
 
+/* TARGET PERIOD GRID - 2 columns */
+.targetperiod-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
 .item-card {
   border: 1px solid var(--q-color-grey-3);
   border-radius: 6px;
@@ -468,7 +679,7 @@ export default {
 
 /* ========== VERTICAL LINE SEPARATORS ========== */
 
-/* VERBS - 4 columns: Add left border except first column */
+/* VERBS - 4 columns:  Add left border except first column */
 .verb-card {
   border-left: 2px solid var(--q-color-grey-4);
 }
@@ -483,6 +694,15 @@ export default {
 }
 
 .rank-card:nth-child(2n + 1) {
+  border-left: 1px solid var(--q-color-grey-3);
+}
+
+/* TARGET PERIOD - 2 columns:  Add left border except first column */
+.targetperiod-card {
+  border-left: 2px solid var(--q-color-grey-4);
+}
+
+.targetperiod-card:nth-child(2n + 1) {
   border-left: 1px solid var(--q-color-grey-3);
 }
 
@@ -522,6 +742,22 @@ export default {
   .verb-card:nth-child(4n + 1) {
     border-left: 2px solid var(--q-color-grey-4);
   }
+
+  .ranks-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .rank-card {
+    border-left: 1px solid var(--q-color-grey-3);
+  }
+
+  .targetperiod-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .targetperiod-card {
+    border-left: 1px solid var(--q-color-grey-3);
+  }
 }
 
 @media (max-width: 420px) {
@@ -530,17 +766,6 @@ export default {
   }
 
   .verb-card {
-    border-left: 1px solid var(--q-color-grey-3);
-  }
-}
-
-/* ========== RESPONSIVE GRID FOR RANKS ========== */
-@media (max-width: 720px) {
-  .ranks-grid {
-    grid-template-columns: repeat(1, 1fr);
-  }
-
-  .rank-card {
     border-left: 1px solid var(--q-color-grey-3);
   }
 }

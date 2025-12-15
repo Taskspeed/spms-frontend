@@ -191,7 +191,8 @@ export const useOrganizationStore = defineStore('organization', {
       const createEmployeeNode = (emp) => ({
         id: 'emp_' + emp.id,
         label: emp.name,
-        position: emp.position?.name || 'N/A',
+        position:
+          typeof emp.position === 'object' ? emp.position?.name || 'N/A' : emp.position || 'N/A',
         rank: emp.rank,
         ipcrStatus: emp.ipcr_status || 'pending',
         type: 'employee',

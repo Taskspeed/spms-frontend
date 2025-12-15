@@ -151,7 +151,7 @@ watch(
         await employeeStore.fetchUnassignedEmployees()
       }
       isSearching.value = false
-      searchTerm.value = '' // Clear search term when modal opens
+      searchTerm.value = ''
     }
   },
   { immediate: true },
@@ -197,7 +197,6 @@ async function handleSearch() {
 }
 
 function closeModal() {
-  // Clear selections from all employee lists
   employeeStore.unassignedEmployees.forEach((emp) => (emp.selected = false))
   employeeStore.searchedEmployees.forEach((emp) => (emp.selected = false))
 
@@ -208,7 +207,6 @@ function closeModal() {
 }
 
 async function addEmployee() {
-  // Get the correct employee list based on whether we're searching
   const sourceList = isSearching.value ? employeeStore.searchedEmployees : employees.value
 
   const selectedEmployees = sourceList
@@ -221,6 +219,12 @@ async function addEmployee() {
       office: emp.office,
       office_id: emp.office_id,
       position_id: emp.position_id,
+      positionID: emp.positionID,
+      tblStructureID: emp.tblStructureID,
+      sg: emp.sg,
+      level: emp.level,
+      itemNo: emp.itemNo,
+      pageNo: emp.pageNo,
     }))
 
   console.log('Selected employees to emit:', selectedEmployees)

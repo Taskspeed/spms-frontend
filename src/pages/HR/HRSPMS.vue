@@ -18,7 +18,8 @@
                     v-model="selectedOffice"
                     :options="filteredOfficeOptions"
                     option-label="name"
-                    option-value="id"
+                    emit-value
+                    map-options
                     label="Select Office"
                     class="full-width office-select"
                     color="red-10"
@@ -40,8 +41,8 @@
                       </q-item>
                     </template>
                     <template v-slot:selected-item="scope">
-                      <div class="selected-office-name">
-                        {{ scope.opt?.name || 'Select Office' }}
+                      <div class="selected-office-name" v-if="scope.opt">
+                        {{ scope.opt.name || 'Select Office' }}
                       </div>
                     </template>
                     <template v-slot:option="scope">
@@ -379,8 +380,8 @@ const getNodeColor = (node) => {
   return (
     {
       office: 'green',
-      office2: 'teal', // NEW
-      group: 'purple', // NEW
+      office2: 'teal',
+      group: 'purple',
       division: 'red',
       section: 'blue',
       unit: 'indigo',
@@ -396,8 +397,8 @@ const getNodeIcon = (node) => {
   return (
     {
       office: 'account_balance',
-      office2: 'business', // NEW
-      group: 'group_work', // NEW
+      office2: 'business',
+      group: 'group_work',
       division: 'corporate_fare',
       section: 'view_quilt',
       unit: 'widgets',
@@ -426,19 +427,20 @@ const filterMethod = (node, filter) => {
   return node.children?.some((child) => filterMethod(child, filter))
 }
 
-// Office dropdown filter function
+// Office dropdown filter function - FIX: Changed from "Office" to "name"
 const filterOffices = (val, update) => {
   if (val === '') {
     update(() => {
-      filteredOfficeOptions.value = userManageStore.offices
+      filteredOfficeOptions.value = userManageStore.offices || []
     })
     return
   }
 
   update(() => {
     const needle = val.toLowerCase()
-    filteredOfficeOptions.value = userManageStore.offices.filter((office) =>
-      office.name.toLowerCase().includes(needle),
+    const offices = userManageStore.offices || []
+    filteredOfficeOptions.value = offices.filter((office) =>
+      (office.name ?? '').toLowerCase().includes(needle),
     )
   })
 }
@@ -556,7 +558,9 @@ const refreshData = async () => {
 watch(
   () => userManageStore.offices,
   (offices) => {
-    filteredOfficeOptions.value = offices
+    if (offices && offices.length > 0) {
+      filteredOfficeOptions.value = offices
+    }
   },
 )
 
@@ -564,7 +568,7 @@ onMounted(async () => {
   await userStore.loadUserData()
   // Fetch offices for the dropdown
   await userManageStore.fetchOffices()
-  filteredOfficeOptions.value = userManageStore.offices
+  filteredOfficeOptions.value = userManageStore.offices || []
 })
 </script>
 
@@ -572,26 +576,29 @@ onMounted(async () => {
 .q-page {
   background-color: #f7fafc;
 }
+
 .clean-table {
   border-radius: 8px;
 }
+
 .status-badge {
   border-radius: 4px;
   padding: 4px 8px;
 }
+
 .neu-button {
   border-radius: 50%;
   box-shadow:
     3px 3px 6px rgba(0, 0, 0, 0.15),
-    -3px -3px 6px rgba(255, 255, 255, 0 8);
-  transition: all 0 2s ease;
+    -3px -3px 6px rgba(255, 255, 255, 0.8);
+  transition: all 0.2s ease;
   background: #f7fafc;
 }
 
 .neu-button:hover {
   box-shadow:
-    2px 2px 4px rgba(0, 0, 0, 0 2),
-    -2px -2px 4px rgba(255, 255, 255, 0 9);
+    2px 2px 4px rgba(0, 0, 0, 0.2),
+    -2px -2px 4px rgba(255, 255, 255, 0.9);
   transform: translateY(1px);
 }
 
@@ -607,7 +614,7 @@ onMounted(async () => {
   box-shadow:
     3px 3px 6px rgba(0, 0, 0, 0.15),
     -3px -3px 6px rgba(255, 255, 255, 0.8);
-  transition: all 0 2s ease;
+  transition: all 0.2s ease;
   background: #f7fafc;
   padding: 8px 16px;
 }

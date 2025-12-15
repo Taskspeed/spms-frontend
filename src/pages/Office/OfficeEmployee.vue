@@ -148,14 +148,12 @@ export default {
   },
   computed: {
     rankOptions() {
-      // Use ranks from library store (dynamically fetched)
       const baseOptions = this.libraryStore.ranks.map((rank) => ({
         value: rank.rank_name,
         label: rank.rank_name,
         id: rank.id,
       }))
 
-      // Add head-specific options based on selected node type
       if (this.selectedNode) {
         switch (this.selectedNode.type) {
           case 'office':
@@ -209,11 +207,9 @@ export default {
       if (!this.selectedNode) return []
 
       return this.employeeStore.assignedEmployees.filter((emp) => {
-        // Match by unit (most specific)
         if (emp.unit) {
           return this.selectedNode.type === 'unit' && emp.unit === this.selectedNode.name
         }
-        // Match by section (no unit)
         if (emp.section) {
           return (
             this.selectedNode.type === 'section' &&
@@ -221,7 +217,6 @@ export default {
             !emp.unit
           )
         }
-        // Match by division (no section/unit)
         if (emp.division) {
           return (
             this.selectedNode.type === 'division' &&
@@ -230,7 +225,6 @@ export default {
             !emp.unit
           )
         }
-        // Match by group (no division/section/unit)
         if (emp.group) {
           return (
             this.selectedNode.type === 'group' &&
@@ -240,7 +234,6 @@ export default {
             !emp.unit
           )
         }
-        // Match by office2 (no group/division/section/unit)
         if (emp.office2) {
           return (
             this.selectedNode.type === 'office2' &&
@@ -251,7 +244,6 @@ export default {
             !emp.unit
           )
         }
-        // Match by office (no office2/group/division/section/unit)
         return (
           this.selectedNode.type === 'office' &&
           !emp.office2 &&
@@ -266,20 +258,20 @@ export default {
       return this.selectedNode?.label || this.selectedNode?.name || ''
     },
     officeName() {
-      return useUserStore().officeName
+      const userStore = useUserStore()
+      // FIX: Use office.Office instead of officeName
+      return userStore.user?.office?.Office || 'Unknown Office'
     },
   },
   async created() {
-    // Fetch ranks from library store first
     try {
       await this.libraryStore.fetchRanks()
     } catch (error) {
       console.error('Failed to fetch ranks:', error)
       this.$q.notify({
         type: 'warning',
-        message: 'Failed to load rank options.  Using default ranks.',
+        message: 'Failed to load rank options.   Using default ranks.',
       })
-      // Set default ranks if fetch fails
       this.libraryStore.ranks = [
         { id: 4, rank_name: 'Office-Head' },
         { id: 5, rank_name: 'Employee' },
@@ -289,7 +281,6 @@ export default {
       ]
     }
 
-    // Then fetch organization structure
     await this.fetchOrganizationStructure()
   },
   methods: {
@@ -343,13 +334,19 @@ export default {
             if (result?.success) {
               this.$q.notify({
                 type: 'positive',
-                message: result.message || 'Employee moved to trash',
+                message: 'Employee moved to trash',
               })
+
+              this.employeeStore.employees = [...this.employeeStore.employees]
+              this.employeeStore.assignedEmployees = [...this.employeeStore.assignedEmployees]
+
               this.updateTreeCounts()
-              if (this.selectedNode)
-                await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
+
+              this.$nextTick(() => {
+                this.$forceUpdate()
+              })
             } else {
-              throw new Error(result?.message || 'Failed to delete employee')
+              throw new Error('Failed to delete employee')
             }
           } catch (error) {
             this.$q.notify({
@@ -364,15 +361,23 @@ export default {
       try {
         const structureResponse = await api.get('/office/structure')
 
+        console.log('API Response:', structureResponse.data) // DEBUG
+
+        // FIX: Get the correct office name from userStore
+        const userStore = useUserStore()
+        const currentOfficeName = userStore.user?.office?.Office
+
+        console.log('Looking for office:', currentOfficeName) // DEBUG
+
         const officeData = structureResponse.data.find(
-          (office) => office.office === this.officeName,
+          (office) => office.office === currentOfficeName,
         )
 
+        console.log('Office Data Found:', officeData) // DEBUG
+
         if (officeData) {
-          // Load all employees once (this computes counts internally)
           await this.employeeStore.loadAllEmployees()
 
-          // Build tree with computed counts
           const counts = this.employeeStore.employeeCounts
           this.treeNodes = [this.processOrganizationData(officeData, counts)]
           this.expandedNodes = [this.treeNodes[0].id]
@@ -380,8 +385,17 @@ export default {
           this.selectedNode = this.treeNodes[0]
           this.employeeStore.currentNode = this.selectedNode
 
-          // Load initial node employees (no API call, filters locally)
           await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
+        } else {
+          console.error('No office found matching:', currentOfficeName)
+          console.error(
+            'Available offices:',
+            structureResponse.data.map((o) => o.office),
+          )
+          this.$q.notify({
+            type: 'warning',
+            message: `No structure found for office: ${currentOfficeName}`,
+          })
         }
       } catch (error) {
         console.error('Error fetching organization structure:', error)
@@ -398,54 +412,52 @@ export default {
         return `${prefix}-${nodeIdCounter++}`
       }
 
-      // Main office node
       const officeNode = {
         id: generateId('office'),
-        label: this.officeName,
-        name: this.officeName,
+        label: officeData.office,
+        name: officeData.office,
         type: 'office',
         icon: 'business',
         count: counts.office || 0,
         children: [],
       }
 
-      // Separate office2 with values and groups without office2
-      const office2WithValues = []
-      const groupsWithoutOffice2 = []
-
+      // FIX: Handle office2 array properly
       if (Array.isArray(officeData.office2) && officeData.office2.length > 0) {
+        const office2WithValues = []
+        const groupsWithoutOffice2 = []
+
         officeData.office2.forEach((office2Data) => {
           if (office2Data.office2) {
-            // Has office2 value - add to office2 list
+            // This office2 has a name, process it
             office2WithValues.push(office2Data)
           } else {
-            // No office2 value - extract groups to add directly under office
-            if (Array.isArray(office2Data.group) && office2Data.group.length > 0) {
+            // This is actually groups without office2 wrapper
+            if (Array.isArray(office2Data.group)) {
               groupsWithoutOffice2.push(...office2Data.group)
             }
           }
         })
+
+        // Process office2 nodes with values
+        office2WithValues.forEach((office2Data) => {
+          const office2Node = {
+            id: generateId('office2'),
+            label: office2Data.office2,
+            name: office2Data.office2,
+            type: 'office2',
+            icon: 'domain',
+            count: counts.office2?.[office2Data.office2]?.count || 0,
+            children: [],
+          }
+
+          this.processGroups(office2Data.group || [], office2Node, counts, generateId)
+          officeNode.children.push(office2Node)
+        })
+
+        // Process groups without office2
+        this.processGroups(groupsWithoutOffice2, officeNode, counts, generateId)
       }
-
-      // Process office2 nodes (those with actual office2 values)
-      office2WithValues.forEach((office2Data) => {
-        const office2Node = {
-          id: generateId('office2'),
-          label: office2Data.office2,
-          name: office2Data.office2,
-          type: 'office2',
-          icon: 'domain',
-          count: counts.office2?.[office2Data.office2]?.count || 0,
-          children: [],
-        }
-
-        // Process groups under office2
-        this.processGroups(office2Data.group || [], office2Node, counts, generateId)
-        officeNode.children.push(office2Node)
-      })
-
-      // Process groups that don't have office2 (add directly under office)
-      this.processGroups(groupsWithoutOffice2, officeNode, counts, generateId)
 
       return officeNode
     },
@@ -458,52 +470,55 @@ export default {
       groupsData.forEach((groupData) => {
         if (!groupData) return
 
-        if (groupData.group) {
-          // group has value - create group node
-          const groupNode = {
-            id: generateId('group'),
-            label: groupData.group,
-            name: groupData.group,
-            type: 'group',
-            icon: 'workspaces',
-            count: counts.groups?.[groupData.group]?.count || 0,
-            children: [],
+        if (groupData.group === null || groupData.group === undefined) {
+          // Skip null groups but process their children at parent level
+          if (Array.isArray(groupData.divisions)) {
+            this.processDivisions(groupData.divisions, parentNode, counts, generateId)
           }
-
-          // Process divisions under group
-          this.processDivisions(groupData.divisions || [], groupNode, counts, generateId)
-          // Process sections without division under group
-          this.processSectionsWithoutDivision(
-            groupData.sections_without_division || [],
-            groupNode,
-            counts,
-            generateId,
-          )
-          // Process units without division under group
-          this.processUnitsWithoutDivision(
-            groupData.units_without_division || [],
-            groupNode,
-            counts,
-            generateId,
-          )
-
-          parentNode.children.push(groupNode)
-        } else {
-          // group is null - cascade to divisions, sections, and units
-          this.processDivisions(groupData.divisions || [], parentNode, counts, generateId)
-          this.processSectionsWithoutDivision(
-            groupData.sections_without_division || [],
-            parentNode,
-            counts,
-            generateId,
-          )
-          this.processUnitsWithoutDivision(
-            groupData.units_without_division || [],
-            parentNode,
-            counts,
-            generateId,
-          )
+          if (Array.isArray(groupData.sections_without_division)) {
+            this.processSectionsWithoutDivision(
+              groupData.sections_without_division,
+              parentNode,
+              counts,
+              generateId,
+            )
+          }
+          if (Array.isArray(groupData.units_without_division)) {
+            this.processUnitsWithoutDivision(
+              groupData.units_without_division,
+              parentNode,
+              counts,
+              generateId,
+            )
+          }
+          return
         }
+
+        const groupNode = {
+          id: generateId('group'),
+          label: groupData.group,
+          name: groupData.group,
+          type: 'group',
+          icon: 'workspaces',
+          count: counts.groups?.[groupData.group]?.count || 0,
+          children: [],
+        }
+
+        this.processDivisions(groupData.divisions || [], groupNode, counts, generateId)
+        this.processSectionsWithoutDivision(
+          groupData.sections_without_division || [],
+          groupNode,
+          counts,
+          generateId,
+        )
+        this.processUnitsWithoutDivision(
+          groupData.units_without_division || [],
+          groupNode,
+          counts,
+          generateId,
+        )
+
+        parentNode.children.push(groupNode)
       })
     },
 
@@ -513,7 +528,7 @@ export default {
       }
 
       divisionsData.forEach((divData) => {
-        if (!divData) return
+        if (!divData || !divData.division) return
 
         const divisionNode = {
           id: generateId('div'),
@@ -525,10 +540,7 @@ export default {
           children: [],
         }
 
-        // Process sections within division
         this.processSections(divData.sections || [], divisionNode, counts, generateId)
-
-        // Process units without section under division
         this.processUnitsWithoutSection(
           divData.units_without_section || [],
           divisionNode,
@@ -546,7 +558,7 @@ export default {
       }
 
       sectionsData.forEach((secData) => {
-        if (!secData) return
+        if (!secData || !secData.section) return
 
         const sectionNode = {
           id: generateId('sec'),
@@ -558,7 +570,6 @@ export default {
           children: [],
         }
 
-        // Process units within section
         this.processUnits(secData.units || [], sectionNode, counts, generateId)
 
         parentNode.children.push(sectionNode)
@@ -571,7 +582,7 @@ export default {
       }
 
       sectionsData.forEach((secData) => {
-        if (!secData) return
+        if (!secData || !secData.section) return
 
         const sectionNode = {
           id: generateId('sec'),
@@ -583,7 +594,6 @@ export default {
           children: [],
         }
 
-        // Process units within section
         this.processUnits(secData.units || [], sectionNode, counts, generateId)
 
         parentNode.children.push(sectionNode)
@@ -680,12 +690,12 @@ export default {
       try {
         const userStore = useUserStore()
         const officeId = userStore.user?.office_id
-        const officeName = userStore.officeName
+        const officeName = userStore.user?.office?.Office
 
         if (!officeId || !this.selectedNode) {
           throw new Error(
             !officeId
-              ? 'Unable to determine office.  Please make sure you are properly authenticated.'
+              ? 'Unable to determine office.   Please make sure you are properly authenticated.'
               : 'Please select an office, division, or section before adding employees.',
           )
         }
@@ -694,6 +704,8 @@ export default {
           ControlNo: emp.ControlNo,
           name: emp.name,
           position: emp.position,
+          position_id: emp.position_id || emp.positionID,
+          positionID: emp.positionID || emp.position_id,
           office_id: officeId,
           office: officeName,
           office2: this.getOffice2ForSelectedNode(),
@@ -701,6 +713,11 @@ export default {
           division: this.getDivisionForSelectedNode(),
           section: this.getSectionForSelectedNode(),
           unit: this.getUnitForSelectedNode(),
+          tblStructureID: emp.tblStructureID,
+          sg: emp.sg,
+          level: emp.level,
+          itemNo: emp.itemNo,
+          pageNo: emp.pageNo,
         }))
 
         await this.employeeStore.addEmployees({ employees: employeesToAdd })
@@ -759,12 +776,10 @@ export default {
     findParentByType(nodes, childId, parentType) {
       for (const node of nodes) {
         if (node.children) {
-          // Check if any direct child matches
           const directChild = node.children.find((child) => child.id === childId)
           if (directChild && node.type === parentType) {
             return node.name
           }
-          // Recursively search in children
           const found = this.findParentByType(node.children, childId, parentType)
           if (found) return found
         }
@@ -805,7 +820,7 @@ export default {
                 this.$q
                   .dialog({
                     title: 'Current Head Exists',
-                    message: `There is already a ${newRank} (${currentHead.name}) in this unit. Do you want to demote them to Employee? `,
+                    message: `There is already a ${newRank} (${currentHead.name}) in this unit.  Do you want to demote them to Employee?`,
                     cancel: true,
                     persistent: true,
                   })
@@ -856,12 +871,10 @@ export default {
     },
 
     isSameOrganizationalUnit(emp1, emp2) {
-      // Check unit level
       if (this.selectedNode?.type === 'unit') {
         return emp1.unit === emp2.unit && emp1.unit === this.selectedNode.name
       }
 
-      // Check section level
       if (this.selectedNode?.type === 'section') {
         return (
           emp1.section === emp2.section &&
@@ -871,7 +884,6 @@ export default {
         )
       }
 
-      // Check division level
       if (this.selectedNode?.type === 'division') {
         return (
           emp1.division === emp2.division &&
@@ -883,7 +895,6 @@ export default {
         )
       }
 
-      // Check group level
       if (this.selectedNode?.type === 'group') {
         return (
           emp1.group === emp2.group &&
@@ -897,7 +908,6 @@ export default {
         )
       }
 
-      // Check office2 level
       if (this.selectedNode?.type === 'office2') {
         return (
           emp1.office2 === emp2.office2 &&
@@ -913,7 +923,6 @@ export default {
         )
       }
 
-      // Check office level (top)
       if (this.selectedNode?.type === 'office') {
         return (
           emp1.office_id === emp2.office_id &&

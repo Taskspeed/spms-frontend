@@ -21,7 +21,8 @@ export const useUserStore = defineStore('user', () => {
     return roleMap[user.value.role_id] || null
   })
 
-  const officeName = computed(() => user.value?.office?.name || 'Unknown Office')
+  // FIX: Changed from office?. name to office?. Office
+  const officeName = computed(() => user.value?.office?.Office || 'Unknown Office')
 
   const groupedMfos = computed(() => {
     const grouped = {}
@@ -61,7 +62,7 @@ export const useUserStore = defineStore('user', () => {
 
       const data = response.data
 
-      // Debug: inspect the raw response to understand shape when something goes wrong
+      // Debug:  inspect the raw response to understand shape when something goes wrong
       console.debug('user_data response:', data)
 
       // Unauthenticated handling (API may return this sentinel)
@@ -149,7 +150,7 @@ export const useUserStore = defineStore('user', () => {
   /**
    * Update user credentials.
    * If updatedData contains an `id` property, it will be used in the URL:
-   *   POST /user/update/credentials/:id
+   *   POST /user/update/credentials/: id
    * Otherwise it will post to /user/update/credentials
    */
   async function updateUserCredentials(updatedData = {}, router = null) {

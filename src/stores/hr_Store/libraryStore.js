@@ -5,6 +5,7 @@ export const useLibraryStore = defineStore('library', {
   state: () => ({
     verbs: [],
     ranks: [],
+    targetPeriods: [],
     loading: false,
     error: null,
   }),
@@ -26,6 +27,18 @@ export const useLibraryStore = defineStore('library', {
       )
     },
 
+    // Get target periods sorted by year and semester
+    sortedTargetPeriods: (state) => {
+      return [...state.targetPeriods].sort((a, b) => {
+        if (a.year !== b.year) {
+          return b.year - a.year // Descending year
+        }
+        // Semester order: July-December comes after January-June
+        const semesterOrder = { 'January-June': 0, 'July-December': 1 }
+        return (semesterOrder[a.semester] || 0) - (semesterOrder[b.semester] || 0)
+      })
+    },
+
     // Check if a verb already exists
     verbExists: (state) => (verbName) => {
       return state.verbs.some(
@@ -37,6 +50,13 @@ export const useLibraryStore = defineStore('library', {
     rankExists: (state) => (rankName) => {
       return state.ranks.some(
         (r) => (r.rank_name || '').toLowerCase().trim() === rankName.toLowerCase().trim(),
+      )
+    },
+
+    // Check if a target period already exists
+    targetPeriodExists: (state) => (semester, year) => {
+      return state.targetPeriods.some(
+        (tp) => tp.semester === semester && tp.year.toString() === year.toString(),
       )
     },
   },
@@ -104,7 +124,7 @@ export const useLibraryStore = defineStore('library', {
         if (newVerb) {
           this.verbs.push(newVerb)
         } else {
-          // Fallback: create a temporary entry and refresh
+          // Fallback:  create a temporary entry and refresh
           await this.fetchVerbs()
         }
 
@@ -331,11 +351,124 @@ export const useLibraryStore = defineStore('library', {
     },
 
     /**
+     * Fetch all target periods
+     */
+    async fetchTargetPeriods() {
+      this.loading = true
+      this.error = null
+      try {
+        const token = localStorage.getItem('token')
+        const response = await api.get('/targetPeriod', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        // Handle both array and object responses
+        if (Array.isArray(response.data)) {
+          this.targetPeriods = response.data
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          this.targetPeriods = response.data.data
+        } else if (response.data.success && Array.isArray(response.data.targetPeriods)) {
+          this.targetPeriods = response.data.targetPeriods
+        } else {
+          this.targetPeriods = []
+        }
+
+        return this.targetPeriods
+      } catch (error) {
+        console.error('Failed to fetch target periods:', error)
+        this.error = error.response?.data?.message || 'Failed to load target periods'
+        this.targetPeriods = []
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Add a new target period
+     */
+    async addTargetPeriod(semester, year) {
+      this.loading = true
+      this.error = null
+      try {
+        const token = localStorage.getItem('token')
+        const payload = {
+          semester: semester.trim(),
+          year: parseInt(year),
+        }
+
+        const response = await api.post('/targetPeriod/store', payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        // Extract the new target period from response
+        let newTargetPeriod = null
+        if (response.data.data) {
+          newTargetPeriod = response.data.data
+        } else if (response.data.targetPeriod) {
+          newTargetPeriod = response.data.targetPeriod
+        } else if (response.data.id) {
+          newTargetPeriod = response.data
+        }
+
+        // Add to local state
+        if (newTargetPeriod) {
+          this.targetPeriods.push(newTargetPeriod)
+        } else {
+          // Fallback: refresh from server
+          await this.fetchTargetPeriods()
+        }
+
+        return newTargetPeriod
+      } catch (error) {
+        console.error('Failed to add target period:', error)
+        this.error = error.response?.data?.message || 'Failed to add target period'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Delete target period(s)
+     */
+    async deleteTargetPeriods(targetPeriodIds) {
+      this.loading = true
+      this.error = null
+      try {
+        const token = localStorage.getItem('token')
+        const ids = Array.isArray(targetPeriodIds) ? targetPeriodIds : [targetPeriodIds]
+
+        // Delete each target period
+        await Promise.all(
+          ids.map((id) =>
+            api.delete(`/targetPeriod/delete/${id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ),
+        )
+
+        // Remove from local state
+        const idSet = new Set(ids)
+        this.targetPeriods = this.targetPeriods.filter((tp) => !idSet.has(tp.id))
+
+        return true
+      } catch (error) {
+        console.error('Failed to delete target periods:', error)
+        this.error = error.response?.data?.message || 'Failed to delete target periods'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
      * Clear all state
      */
     clearState() {
       this.verbs = []
       this.ranks = []
+      this.targetPeriods = []
       this.error = null
     },
   },

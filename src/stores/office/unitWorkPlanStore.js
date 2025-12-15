@@ -171,25 +171,8 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
       return endpoint
     },
 
-    // ✅ UPDATED: Create default performance standard structure
+    // Also update the createDefaultPerformanceStandard function to use sorted rows:
     createDefaultPerformanceStandard(standard = {}) {
-      const standardOutcomes = standard.target_periods?.[0]?.standard_outcomes || []
-
-      // Use provided standard outcomes or fall back to default rows
-      const rows =
-        standardOutcomes.length > 0
-          ? standardOutcomes.map((outcome) => ({
-              rating: outcome.rating || '',
-              quantity: outcome.quantity_target || outcome.quantity || '',
-              effectiveness: outcome.effectiveness_criteria || outcome.effectiveness || '',
-              timeliness: outcome.timeliness_range || outcome.timeliness || '',
-              timelinessRange: outcome.timeliness_range || '',
-              timelinessText: outcome.timeliness_text || '',
-              timelinessDeadline: outcome.timeliness_deadline || '',
-              timelinessDate: outcome.timeliness_date || '',
-            }))
-          : [...this.defaultStandardRows] // Deep copy of default rows
-
       return {
         id: uuidv4(),
         expanded: true,
@@ -212,11 +195,11 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         coreCompetencies: standard.core || [],
         technicalCompetencies: standard.technical || [],
         leadershipCompetencies: standard.leadership || [],
-        standardOutcomeRows: rows,
+        standardOutcomeRows: this.createSortedDefaultRows(),
       }
     },
 
-    // ✅ UPDATED: Transform API response to form structure
+    // In your unitWorkPlanStore.js, update the transformApiResponseToForm function:
     transformApiResponseToForm(employeesData) {
       if (!employeesData || !Array.isArray(employeesData) || employeesData.length === 0) {
         console.warn('⚠️ No employees data to transform')
@@ -225,45 +208,180 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
       console.log('🔄 Transforming employees data:', employeesData.length, 'employees')
 
-      return employeesData.map((emp, index) => {
-        console.log(`🔄 Employee ${index}:`, {
-          id: emp.id,
-          name: emp.name,
-          hasTargetPeriods: !!emp.target_periods,
-          targetPeriodsCount: emp.target_periods?.length || 0,
-        })
+      return employeesData.map((emp) => {
+        // Get the first target period (should match the selected semester/year)
+        const targetPeriod = emp.target_periods?.[0]
 
-        const targetPeriod = emp.target_periods?.[0] // Get first target period
+        // Get performance standards from target period
         const performanceStandards = targetPeriod?.performance_standards || []
 
-        console.log(`🔄 Employee ${index} performance standards:`, performanceStandards.length)
+        // Get standard outcomes from target period
+        const standardOutcomes = targetPeriod?.standard_outcomes || []
+
+        console.log(`🔄 Employee ${emp.name} data:`, {
+          name: emp.name,
+          rank: emp.rank,
+          position: emp.position,
+          performanceStandards: performanceStandards.length,
+          standardOutcomes: standardOutcomes.length,
+        })
+
+        // Transform performance standards with their corresponding standard outcomes
+        const transformedStandards = performanceStandards.map((standard, stdIndex) => {
+          // Find standard outcomes for this standard (if any)
+          const standardRows = this.mapStandardOutcomesToRows(standardOutcomes, stdIndex)
+
+          console.log(`🔄 Standard ${stdIndex} outcomes mapped:`, standardRows)
+
+          // Create the performance standard with proper data
+          const perfStandard = this.createDefaultPerformanceStandard(standard)
+
+          // Update the standard outcome rows with actual data from API
+          if (standardRows.length > 0) {
+            perfStandard.standardOutcomeRows = standardRows
+          }
+
+          // Set other properties from API
+          perfStandard.outputName = standard.output_name || standard.output || ''
+          perfStandard.indicatorName = standard.performance_indicator || ''
+          perfStandard.successIndicator = standard.success_indicator || ''
+          perfStandard.requiredOutput = standard.required_output || ''
+
+          return perfStandard
+        })
+
+        // If no performance standards from API, create a default one
+        if (transformedStandards.length === 0) {
+          transformedStandards.push(this.createDefaultPerformanceStandard())
+        }
 
         return {
-          id: uuidv4(),
+          id: uuidv4(), // Generate new ID for the tab
           name: emp.name || '',
-          employeeId: emp.id,
-          employeeData: emp,
-          performanceStandards:
-            performanceStandards.length > 0
-              ? performanceStandards.map((standard, stdIndex) => {
-                  console.log(`🔄 Employee ${index}, Standard ${stdIndex}:`, standard)
-                  return this.createDefaultPerformanceStandard(standard)
-                })
-              : [this.createDefaultPerformanceStandard()], // Default empty standard
+          employeeId: emp.id, // This should be the employee ID (18)
+          employeeData: emp, // The full employee object from API
+          performanceStandards: transformedStandards,
+          // Store the rank for quick access
+          rank: emp.rank || '',
+          position: emp.position || '',
         }
       })
     },
 
-    // ✅ UPDATED: Fetch filtered employees data
+    // In unitWorkPlanStore.js, update the mapStandardOutcomesToRows function:
+    mapStandardOutcomesToRows(standardOutcomes) {
+      if (!standardOutcomes || standardOutcomes.length === 0) {
+        console.log('⚠️ No standard outcomes found')
+        return this.createSortedDefaultRows()
+      }
+
+      try {
+        // Group outcomes by rating
+        const outcomesByRating = {}
+
+        standardOutcomes.forEach((outcome) => {
+          if (outcome.rating) {
+            outcomesByRating[outcome.rating] = {
+              rating: outcome.rating.toString(),
+              quantity: outcome.quantity_target || '',
+              effectiveness: outcome.effectiveness_criteria || '',
+              timeliness: outcome.timeliness_range || '',
+              timelinessRange: outcome.timeliness_range || '',
+              timelinessDate: outcome.timeliness_date || '',
+              timelinessText: outcome.timeliness_description || '',
+            }
+          }
+        })
+
+        console.log('📊 Mapped outcomes by rating:', outcomesByRating)
+
+        // Create rows in descending order: 5, 4, 3, 2, 1
+        const rows = [5, 4, 3, 2, 1].map((rating) => {
+          const ratingStr = rating.toString()
+          const outcome = outcomesByRating[ratingStr] || {}
+
+          return {
+            rating: ratingStr,
+            quantity: outcome.quantity || '',
+            effectiveness: outcome.effectiveness || '',
+            timeliness: outcome.timeliness || '',
+            timelinessRange: outcome.timelinessRange || '',
+            timelinessDate: outcome.timelinessDate || '',
+            timelinessText: outcome.timelinessText || '',
+            timelinessDeadline: '',
+          }
+        })
+
+        console.log('📊 Final rows in descending order:', rows)
+        return rows
+      } catch (error) {
+        console.error('❌ Error mapping standard outcomes:', error)
+        return this.createSortedDefaultRows()
+      }
+    },
+
+    // Add this helper method to create default rows in descending order
+    createSortedDefaultRows() {
+      return [
+        {
+          rating: '5',
+          quantity: '',
+          effectiveness: '',
+          timeliness: '',
+          timelinessRange: '',
+          timelinessDate: '',
+          timelinessText: '',
+          timelinessDeadline: '',
+        },
+        {
+          rating: '4',
+          quantity: '',
+          effectiveness: '',
+          timeliness: '',
+          timelinessRange: '',
+          timelinessDate: '',
+          timelinessText: '',
+          timelinessDeadline: '',
+        },
+        {
+          rating: '3',
+          quantity: '',
+          effectiveness: '',
+          timeliness: '',
+          timelinessRange: '',
+          timelinessDate: '',
+          timelinessText: '',
+          timelinessDeadline: '',
+        },
+        {
+          rating: '2',
+          quantity: '',
+          effectiveness: '',
+          timeliness: '',
+          timelinessRange: '',
+          timelinessDate: '',
+          timelinessText: '',
+          timelinessDeadline: '',
+        },
+        {
+          rating: '1',
+          quantity: '',
+          effectiveness: '',
+          timeliness: '',
+          timelinessRange: '',
+          timelinessDate: '',
+          timelinessText: '',
+          timelinessDeadline: '',
+        },
+      ]
+    },
+
     async fetchFilteredEmployeesData() {
       this.loading = true
       this.error = null
 
       try {
         console.log('🚀 Starting fetchFilteredEmployeesData')
-
-        // Debug UWP data
-        console.log('🔍 Current UWP data:', this.uwpData)
 
         const token = localStorage.getItem('token')
         const endpoint = this.buildFilteredEmployeeEndpoint()
@@ -280,37 +398,23 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           headers: { Authorization: `Bearer ${token}` },
         })
 
-        console.log('📥 API Response received:', {
-          success: response.data.success,
-          dataLength: response.data.data?.length || 0,
-          data: response.data.data,
-        })
+        console.log('📥 API Response received:', response.data)
 
-        if (response.data.success && response.data.data && Array.isArray(response.data.data)) {
-          // ✅ Transform the response
-          const transformedData = this.transformApiResponseToForm(response.data.data)
+        // The data is an array directly in response.data
+        if (Array.isArray(response.data)) {
+          console.log('✅ Data found as array:', response.data.length)
+          const transformedData = this.transformApiResponseToForm(response.data)
           console.log('✅ Transformed employees:', transformedData)
-
-          // ✅ Store the transformed data
-          this.filteredEmployeesData = transformedData
-
-          return transformedData
-        }
-
-        // If API returns error but with data, still try to transform
-        if (response.data.data && Array.isArray(response.data.data)) {
-          const transformedData = this.transformApiResponseToForm(response.data.data)
           this.filteredEmployeesData = transformedData
           return transformedData
         }
 
-        console.log('ℹ️ No valid data in response, returning empty array')
+        console.log('⚠️ Unexpected response structure:', response.data)
         return []
       } catch (error) {
         console.error('❌ Error fetching filtered employees data:', error)
+        console.error('❌ Error response:', error.response?.data)
         this.error = error.message || 'Failed to fetch filtered employees data'
-
-        // Return empty array on error instead of throwing
         this.filteredEmployeesData = []
         return []
       } finally {

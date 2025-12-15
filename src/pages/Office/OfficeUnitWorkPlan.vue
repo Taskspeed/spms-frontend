@@ -1282,13 +1282,13 @@ export default {
       activeEmployeeTab.value = defaultEmp.id
     }
 
-    // ✅ NEW:  Fetch and populate filtered employees
     const fetchAndPopulateFilteredEmployees = async () => {
       if (isLoadingFilteredEmployees.value) return
 
       try {
         isLoadingFilteredEmployees.value = true
         console.log('📊 Fetching filtered employees with target periods...')
+        console.log('📊 Current form values (should be preserved):', form.value)
 
         // Set the UWP data in the store first
         uwpStore.setUWPData(uwpData.value)
@@ -1308,23 +1308,37 @@ export default {
 
         console.log('✅ Loaded filtered employees:', transformedEmployees)
 
-        // ✅ Auto-populate employee tabs with transformed data
-        employeeTabs.value = transformedEmployees
-        activeEmployeeTab.value = transformedEmployees[0].id
+        // ✅ Clear existing employee tabs first
+        employeeTabs.value = []
 
-        // ✅ Auto-populate form semester from first employee's target period
-        if (transformedEmployees[0].employeeData?.target_periods?.[0]) {
-          const targetPeriod = transformedEmployees[0].employeeData.target_periods[0]
-          form.value.semester = targetPeriod.semester
-          form.value.year = parseInt(targetPeriod.year) || new Date().getFullYear()
+        // ✅ Populate employee tabs with transformed data
+        transformedEmployees.forEach((emp) => {
+          employeeTabs.value.push({
+            ...emp,
+            // Ensure each employee tab has the required structure
+            id: emp.id || uuidv4(),
+            employeeId: emp.employeeId || emp.id,
+            name: emp.name || '',
+            employeeData: emp.employeeData || emp,
+          })
+        })
 
-          console.log(
-            '✅ Auto-populated form with semester:',
-            form.value.semester,
-            'year:',
-            form.value.year,
-          )
-        }
+        // ✅ Set the first employee as active
+        activeEmployeeTab.value = employeeTabs.value[0]?.id
+
+        // ✅ IMPORTANT: Trigger employee selection for each tab
+        employeeTabs.value.forEach((empTab) => {
+          if (empTab.employeeId) {
+            // This will automatically populate the dropdown
+            onEmployeeSelected(empTab.employeeId)
+          }
+        })
+
+        console.log('✅ Form values preserved:', form.value)
+        console.log('✅ Employee tabs populated:', employeeTabs.value.length)
+        console.log('Transformed employees from store:', transformedEmployees)
+        console.log('First employee from transformed:', transformedEmployees[0])
+        console.log('First employee employeeId:', transformedEmployees[0]?.employeeId)
 
         $q.notify({
           message: `Loaded ${transformedEmployees.length} employees with their performance standards`,
@@ -1392,8 +1406,34 @@ export default {
     })
 
     const availableEmployeesForTab = computed(() => {
-      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0)
-        return []
+      // Combine employees from multiple sources
+      const allAvailableEmployees = [
+        ...(uwpData.value.availableEmployees || []),
+        ...(uwpData.value.filteredAvailableEmployees || []),
+        // Also include employees from the transformed API data
+        ...employeeTabs.value
+          .filter((emp) => emp.employeeId && emp.employeeData)
+          .map((emp) => ({
+            id: emp.employeeId,
+            name: emp.name,
+            employeeData: emp.employeeData,
+          })),
+      ]
+
+      // Remove duplicates by id
+      const uniqueEmployees = []
+      const seenIds = new Set()
+
+      allAvailableEmployees.forEach((emp) => {
+        if (emp.id && !seenIds.has(emp.id)) {
+          seenIds.add(emp.id)
+          uniqueEmployees.push(emp)
+        }
+      })
+
+      console.log('🔍 availableEmployeesForTab - Unique employees:', uniqueEmployees)
+
+      if (uniqueEmployees.length === 0) return []
 
       const selectedIds = getSelectedEmployeeIds()
       const currentTabId = activeEmployeeTab.value
@@ -1401,23 +1441,44 @@ export default {
         (emp) => emp.id === currentTabId,
       )?.employeeId
 
-      return uwpData.value.availableEmployees.filter((emp) => {
+      const filtered = uniqueEmployees.filter((emp) => {
         // Allow the employee if they're not selected elsewhere
         if (!selectedIds.includes(emp.id)) return true
         // OR allow if they're the current tab's employee
         if (emp.id === currentTabEmployeeId) return true
         return false
       })
+
+      console.log('🔍 availableEmployeesForTab - Filtered for current tab:', filtered)
+      return filtered
     })
     console.log('availableEmployeesForTab:', availableEmployeesForTab.value)
     console.log('First employee:', availableEmployeesForTab.value[0])
 
-    const selectedEmployee = computed(
-      () =>
-        uwpData.value.availableEmployees.find(
-          (emp) => emp.id === currentEmployee.value.employeeId,
-        ) || { rank: '', position: '' },
-    )
+    const selectedEmployee = computed(() => {
+      // First, try to get from the current employee tab
+      const currentTab = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
+      if (currentTab && currentTab.employeeId) {
+        // If we have the data in the tab itself
+        if (currentTab.rank) {
+          return {
+            rank: currentTab.rank,
+            position: currentTab.position || '',
+          }
+        }
+
+        // Otherwise, look in the available employees
+        const emp = uwpData.value.availableEmployees.find((e) => e.id === currentTab.employeeId)
+        if (emp) {
+          return {
+            rank: emp.rank || emp.employeeData?.rank || '',
+            position: emp.position || emp.employeeData?.position || '',
+          }
+        }
+      }
+
+      return { rank: '', position: '' }
+    })
 
     const categoryOptions = computed(() =>
       officeLibraryStore.categories.map((cat) => ({
@@ -1524,25 +1585,45 @@ export default {
         }))
       }
     }
-
     const getFilteredMfoOptions = (index) => {
       const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard || !standard.rows.category) return []
+      console.log('🔍 getFilteredMfoOptions - standard:', standard)
+      console.log('🔍 getFilteredMfoOptions - standard.rows.category:', standard?.rows?.category)
+
+      if (!standard || !standard.rows.category) {
+        console.log('❌ No category selected')
+        return []
+      }
+
       const categoryId = standard.rows.category
-      if (filteredMfoOptions.value[index]) return filteredMfoOptions.value[index]
-      const allMfos = officeLibraryStore.mfos
-        .filter((mfo) => mfo.f_category_id === categoryId)
-        .map((mfo) => ({
-          id: mfo.id,
-          label: mfo.name,
-          value: mfo.id,
-          name: mfo.name,
-          code: mfo.code || '',
-          description: mfo.description || '',
-        }))
+      console.log('🔍 Looking for MFOs with category_id:', categoryId)
+
+      // Check what categories are available
+      console.log('🔍 All categories:', officeLibraryStore.categories)
+
+      // Check what MFOs are available
+      console.log('🔍 All MFOs:', officeLibraryStore.mfos)
+
+      const categoryMfos = officeLibraryStore.mfos.filter((mfo) => mfo.f_category_id === categoryId)
+      console.log('🔍 MFOs for category', categoryId, ':', categoryMfos)
+
+      if (filteredMfoOptions.value[index]) {
+        console.log('🔍 Using cached filtered options:', filteredMfoOptions.value[index])
+        return filteredMfoOptions.value[index]
+      }
+
+      const allMfos = categoryMfos.map((mfo) => ({
+        id: mfo.id,
+        label: mfo.name,
+        value: mfo.id,
+        name: mfo.name,
+        code: mfo.code || '',
+        description: mfo.description || '',
+      }))
+
+      console.log('🔍 Processed MFO options:', allMfos)
       return allMfos
     }
-
     const getFilteredOutputOptions = (index) => {
       if (filteredOutputOptions.value[index] && filteredOutputOptions.value[index].length > 0)
         return filteredOutputOptions.value[index]
@@ -1691,15 +1772,59 @@ export default {
     }
 
     const onEmployeeSelected = (employeeId) => {
+      console.log('🔍 onEmployeeSelected called with employeeId:', employeeId)
+
       if (employeeId === null) return
 
-      const selectedEmp = uwpData.value.availableEmployees.find((emp) => emp.id === employeeId)
+      // Try to find the employee in multiple places
+      let selectedEmp = null
+      let foundSource = ''
+
+      // 1. Check in uwpData.value.availableEmployees
+      selectedEmp = uwpData.value.availableEmployees.find((emp) => emp.id === employeeId)
+      if (selectedEmp) foundSource = 'availableEmployees'
+
+      // 2. If not found, check in uwpData.value.filteredAvailableEmployees
+      if (!selectedEmp && uwpData.value.filteredAvailableEmployees) {
+        selectedEmp = uwpData.value.filteredAvailableEmployees.find((emp) => emp.id === employeeId)
+        if (selectedEmp) foundSource = 'filteredAvailableEmployees'
+      }
+
+      // 3. If still not found, check the current employee tabs (from API)
+      if (!selectedEmp && employeeTabs.value.length > 0) {
+        const empFromTabs = employeeTabs.value.find((emp) => emp.employeeId === employeeId)
+        if (empFromTabs) {
+          selectedEmp = empFromTabs.employeeData || empFromTabs
+          foundSource = 'employeeTabs'
+        }
+      }
+
+      console.log('🔍 Found selectedEmp:', {
+        selectedEmp,
+        foundSource,
+        hasRank: !!selectedEmp?.rank,
+        rank: selectedEmp?.rank,
+        employeeTabs: employeeTabs.value,
+      })
+
       if (selectedEmp && activeEmployeeTab.value) {
         const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
         if (tabIndex !== -1) {
-          employeeTabs.value[tabIndex].name = selectedEmp.name
+          // Always update the tab with the found employee data
+          employeeTabs.value[tabIndex].name = selectedEmp.name || selectedEmp.label || ''
           employeeTabs.value[tabIndex].employeeId = selectedEmp.id
           employeeTabs.value[tabIndex].employeeData = selectedEmp
+
+          // ✅ CRITICAL: Set the rank from the employee data
+          employeeTabs.value[tabIndex].rank = selectedEmp.rank || ''
+          employeeTabs.value[tabIndex].position = selectedEmp.position || ''
+
+          console.log('✅ Updated employee tab:', {
+            name: employeeTabs.value[tabIndex].name,
+            rank: employeeTabs.value[tabIndex].rank,
+            position: employeeTabs.value[tabIndex].position,
+            employeeId: employeeTabs.value[tabIndex].employeeId,
+          })
         }
       }
     }
@@ -2096,21 +2221,22 @@ export default {
       initializeEmployeeTabs()
       const officeId = uwpData.value.hierarchy.office?.id || 1
 
+      console.log('🔍 DEBUG - uwpData.value.availableEmployees:', uwpData.value.availableEmployees)
+      console.log(
+        '🔍 DEBUG - uwpData.value.filteredAvailableEmployees:',
+        uwpData.value.filteredAvailableEmployees,
+      )
+
       try {
         await officeLibraryStore.fetchAllData(officeId)
         await officeLibraryIndicatorStore.fetchVerbs()
         console.log('✅ Data loaded successfully')
 
-        // ✅ NEW:  Fetch and populate filtered employees automatically
+        // ✅ Fetch and populate filtered employees automatically
         await fetchAndPopulateFilteredEmployees()
       } catch (error) {
         console.error('❌ Error loading data:', error)
         $q.notify({ message: 'Failed to load data', color: 'negative', position: 'top' })
-      }
-
-      // Set default semester only if form not already populated
-      if (!form.value.semester) {
-        form.value.semester = semesterOptions.value[0]
       }
     })
 

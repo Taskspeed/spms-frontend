@@ -181,7 +181,7 @@
             :rules="[(val) => !!val || 'Role is required']"
             :loading="loading"
           >
-            <template v-slot:prepend>
+            <template v-slot: prepend>
               <q-icon name="security" />
             </template>
           </q-select>
@@ -395,22 +395,23 @@ export default {
 
     const isEmployeeSelected = (row) => {
       if (!selectedEmployee.value || !row) return false
-      // Use ControlNo as the unique identifier since employees don't have 'id' field
       return selectedEmployee.value.ControlNo === row.ControlNo
     }
 
     const filterOffices = () => {
-      const searchTerm = officeSearch.value?.toLowerCase().trim() || ''
-      filteredOffices.value = store.offices.filter((office) =>
-        office.name.toLowerCase().includes(searchTerm),
+      const offices = store.offices || []
+      const searchTerm = (officeSearch.value ?? '').toLowerCase().trim()
+      filteredOffices.value = offices.filter((office) =>
+        (office.Office ?? '').toLowerCase().includes(searchTerm),
       )
     }
 
     const filterEmployees = () => {
-      if (!store.employees.length) return
+      const employees = store.employees || []
+      if (!employees.length) return
 
-      const searchTerm = search.value?.toLowerCase().trim() || ''
-      filteredEmployees.value = store.employees.filter(
+      const searchTerm = (search.value ?? '').toLowerCase().trim()
+      filteredEmployees.value = employees.filter(
         (emp) =>
           emp.name4.toLowerCase().includes(searchTerm) ||
           emp.Designation.toLowerCase().includes(searchTerm),
@@ -421,8 +422,8 @@ export default {
       if (selectedOffice.value) {
         loading.value = true
         try {
-          await store.fetchEmployees(selectedOffice.value.name)
-          filteredEmployees.value = store.employees
+          await store.fetchEmployees(selectedOffice.value.Office)
+          filteredEmployees.value = store.employees || []
           selectedEmployee.value = null
           search.value = ''
           showOfficeModal.value = false
@@ -440,7 +441,7 @@ export default {
       showOfficeModal.value = true
       selectedEmployee.value = null
       officeSearch.value = ''
-      filteredOffices.value = store.offices
+      filteredOffices.value = store.offices || []
     }
 
     const goBackToEmployeeModal = () => {
@@ -466,6 +467,7 @@ export default {
           password: `emp${selectedEmployee.value.ControlNo}`,
           designation: selectedEmployee.value.Designation,
           office_id: selectedOffice.value.id,
+          office_name: selectedOffice.value.Office,
           role_id: selectedRole.value.value,
           permissions: selectedPermissions.value,
           control_no: selectedEmployee.value.ControlNo,
@@ -488,8 +490,8 @@ export default {
       selectedPermissions.value = []
       search.value = ''
       officeSearch.value = ''
-      filteredOffices.value = store.offices
-      filteredEmployees.value = store.employees
+      filteredOffices.value = store.offices || []
+      filteredEmployees.value = store.employees || []
       showOfficeModal.value = false
       showEmployeeModal.value = false
       showRoleModal.value = false
@@ -503,7 +505,7 @@ export default {
 
     const editUser = (user) => {
       selectedUser.value = user
-      selectedOffice.value = { id: user.office_id, name: user.office_name }
+      selectedOffice.value = { id: user.office_id, Office: user.office_name }
       selectedRole.value = roles.find((role) => role.value === user.role_id)
       selectedPermissions.value = user.permissions || []
       showRoleModal.value = true
@@ -525,9 +527,9 @@ export default {
       return role ? role.label : 'Unknown'
     }
 
-    onMounted(() => {
-      store.fetchUserAccounts()
-      store.fetchOffices()
+    onMounted(async () => {
+      await store.fetchUserAccounts()
+      await store.fetchOffices()
     })
 
     watch(showOfficeModal, (newValue) => {
@@ -551,8 +553,8 @@ export default {
         loading.value = true
         selectedEmployee.value = null
         try {
-          await store.fetchEmployees(newOffice.name)
-          filteredEmployees.value = store.employees
+          await store.fetchEmployees(newOffice.Office)
+          filteredEmployees.value = store.employees || []
         } catch (error) {
           console.error('Error fetching employees:', error)
         } finally {
@@ -631,7 +633,7 @@ export default {
 /* Employee styles */
 .employee-row {
   cursor: pointer;
-  transition: background-color 0 3s ease;
+  transition: background-color 0.3s ease;
 }
 
 .employee-row:hover:not(.selected) {
