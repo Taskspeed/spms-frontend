@@ -8,9 +8,10 @@
         <p class="text-grey-7 q-mt-xs">{{ breadcrumbDisplay }}</p>
         <p class="text-caption text-grey-6 q-mt-xs">
           <!-- Show available employees to select -->
-          Available Employees: <strong>{{ uwpData.totalAvailableEmployees }}</strong>
+          Available Employees:
+          <strong>{{ uwpData.employeesWithoutTargetPeriod?.length || 0 }}</strong>
           <span v-if="employeeTabs.length > 0" class="q-ml-md">
-            Selected: <strong>{{ employeeTabs.filter((e) => e.employeeId).length }}</strong>
+            Selected: <strong>{{ getSelectedEmployeeIds().length }}</strong>
           </span>
         </p>
       </div>
@@ -33,9 +34,9 @@
             <!-- Left Side:  Division, Section, Unit -->
             <div class="col-12 col-md-6">
               <div class="column q-gutter-sm">
-                <q-select
-                  v-model="form.semester"
-                  :options="semesterOptions"
+                <q-input
+                  v-model="uwpData.targetPeriod.semester"
+                  readonly
                   label="Semester"
                   outlined
                   dense
@@ -45,7 +46,7 @@
                   <template v-slot:prepend>
                     <q-icon name="calendar_view_month" size="xs" />
                   </template>
-                </q-select>
+                </q-input>
 
                 <q-separator />
 
@@ -81,9 +82,9 @@
             <!-- Right Side:  Semester, Year -->
             <div class="col-12 col-md-6">
               <div class="column q-gutter-sm">
-                <q-select
-                  v-model="form.year"
-                  :options="yearOptions"
+                <q-input
+                  v-model="uwpData.targetPeriod.year"
+                  readonly
                   label="Year"
                   outlined
                   dense
@@ -93,7 +94,7 @@
                   <template v-slot:prepend>
                     <q-icon name="event" size="xs" />
                   </template>
-                </q-select>
+                </q-input>
 
                 <q-separator />
 
@@ -166,6 +167,7 @@
               <q-menu>
                 <q-list style="min-width: 150px">
                   <q-item-label header>More Employees</q-item-label>
+                  <q-separator />
                   <q-item
                     v-for="emp in overflowEmployeeTabs"
                     :key="`overflow-${emp.id}`"
@@ -254,9 +256,13 @@
                     <q-item-section>
                       <q-item-label>{{ scope.opt.name }}</q-item-label>
                       <q-item-label caption lines="1">{{ scope.opt.position }}</q-item-label>
-                      <q-item-label caption lines="1">{{
+                      <!-- <q-item-label caption lines="1">{{
                         scope.opt.employeeData.ControlNo
                       }}</q-item-label>
+                      <q-item-label caption lines="1" class="text-blue">
+                        SG {{ scope.opt.employeeData.sg }} (Level
+                        {{ scope.opt.employeeData.level }})
+                      </q-item-label> -->
                     </q-item-section>
                   </q-item>
                 </template>
@@ -293,6 +299,32 @@
               </div>
             </div>
           </div>
+
+          <!-- Display SG and Level -->
+          <!-- <div v-if="currentEmployee.employeeId" class="q-mt-sm">
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="selectedEmployee.sg"
+                  label="Salary Grade (SG)"
+                  outlined
+                  dense
+                  readonly
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="attach_money" size="xs" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input v-model="selectedEmployee.level" label="Level" outlined dense readonly>
+                  <template v-slot:prepend>
+                    <q-icon name="trending_up" size="xs" />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+          </div> -->
 
           <!-- Performance Standards Section -->
           <div v-if="currentEmployee.employeeId" class="q-mt-md">
@@ -368,7 +400,7 @@
 
                                   <!-- MFO Select with search -->
                                   <q-select
-                                    v-if="standard.rows.category && hasMfosForCategory(index)"
+                                    v-if="!isSupportCategory(standard.rows.category)"
                                     outlined
                                     dense
                                     v-model="standard.rows.mfo"
@@ -420,7 +452,6 @@
                                     input-debounce="300"
                                     @filter="(val, update) => filterOutputs(val, update, index)"
                                     clearable
-                                    :disable="!standard.rows.category"
                                   >
                                     <template v-slot:prepend>
                                       <q-icon name="output" size="xs" />
@@ -460,12 +491,20 @@
                             <q-card flat bordered class="full-height">
                               <q-card-section class="q-pa-sm">
                                 <div class="text-subtitle2">Competencies</div>
+                                <!-- <div
+                                  class="text-caption text-grey-7"
+                                  v-if="currentEmployee.sg && currentEmployee.level"
+                                >
+                                  Based on SG {{ currentEmployee.sg }} (Level
+                                  {{ getLevelText(currentEmployee.level) }})
+                                </div> -->
                               </q-card-section>
 
                               <q-separator />
 
                               <q-card-section class="q-pa-sm">
                                 <div class="row q-col-gutter-sm">
+                                  <!-- Core Competencies -->
                                   <div class="col-md-4">
                                     <q-card flat bordered class="full-height">
                                       <q-card-section class="q-pa-sm">
@@ -474,25 +513,31 @@
                                       <q-separator />
                                       <q-card-section class="q-pa-sm">
                                         <div class="competency-list">
-                                          <template
-                                            v-if="Object.keys(mergedCoreCompetency).length > 0"
+                                          <div
+                                            v-if="coreCompetencies.length === 0"
+                                            class="text-grey-6 text-center"
                                           >
-                                            <div
-                                              v-for="(comp, name) in mergedCoreCompetency"
-                                              :key="'core-' + name"
-                                              class="q-pb-xs"
-                                            >
-                                              {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                                            </div>
-                                          </template>
-                                          <div v-else class="text-grey-6 text-center">
                                             No core competencies
+                                          </div>
+                                          <div
+                                            v-for="comp in coreCompetencies"
+                                            :key="comp.code"
+                                            class="competency-item q-pb-xs"
+                                          >
+                                            <div class="text-caption">
+                                              {{ comp.code }} - {{ numberCom(comp.value) }}
+                                            </div>
+                                            <!-- <div class="text-caption">{{ comp.description }}</div> -->
+                                            <!-- <div class="text-caption text-blue">
+                                              {{ comp.value }}
+                                            </div> -->
                                           </div>
                                         </div>
                                       </q-card-section>
                                     </q-card>
                                   </div>
 
+                                  <!-- Technical Competencies -->
                                   <div class="col-md-4">
                                     <q-card flat bordered class="full-height">
                                       <q-card-section class="q-pa-sm">
@@ -501,25 +546,31 @@
                                       <q-separator />
                                       <q-card-section class="q-pa-sm">
                                         <div class="competency-list">
-                                          <template
-                                            v-if="Object.keys(mergedTechnicalCompetency).length > 0"
+                                          <div
+                                            v-if="technicalCompetencies.length === 0"
+                                            class="text-grey-6 text-center"
                                           >
-                                            <div
-                                              v-for="(comp, name) in mergedTechnicalCompetency"
-                                              :key="'tech-' + name"
-                                              class="q-pb-xs"
-                                            >
-                                              {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                                            </div>
-                                          </template>
-                                          <div v-else class="text-grey-6 text-center">
                                             No technical competencies
+                                          </div>
+                                          <div
+                                            v-for="comp in technicalCompetencies"
+                                            :key="comp.code"
+                                            class="competency-item q-pb-xs"
+                                          >
+                                            <div class="text-caption">
+                                              {{ comp.code }} - {{ numberCom(comp.value) }}
+                                            </div>
+                                            <!-- <div class="text-caption">{{ comp.description }}</div> -->
+                                            <!-- <div class="text-caption text-blue">
+                                              {{ comp.value }}
+                                            </div> -->
                                           </div>
                                         </div>
                                       </q-card-section>
                                     </q-card>
                                   </div>
 
+                                  <!-- Leadership Competencies -->
                                   <div class="col-md-4">
                                     <q-card flat bordered class="full-height">
                                       <q-card-section class="q-pa-sm">
@@ -530,21 +581,24 @@
                                       <q-separator />
                                       <q-card-section class="q-pa-sm">
                                         <div class="competency-list">
-                                          <template
-                                            v-if="
-                                              Object.keys(mergedLeadershipCompetency).length > 0
-                                            "
+                                          <div
+                                            v-if="leadershipCompetencies.length === 0"
+                                            class="text-grey-6 text-center"
                                           >
-                                            <div
-                                              v-for="(comp, name) in mergedLeadershipCompetency"
-                                              :key="'leader-' + name"
-                                              class="q-pb-xs"
-                                            >
-                                              {{ comp.code }}-{{ comp.value }} ({{ comp.legend }})
-                                            </div>
-                                          </template>
-                                          <div v-else class="text-grey-6 text-center">
                                             No leadership competencies
+                                          </div>
+                                          <div
+                                            v-for="comp in leadershipCompetencies"
+                                            :key="comp.code"
+                                            class="competency-item q-pb-xs"
+                                          >
+                                            <div class="text-caption">
+                                              {{ comp.code }} - {{ numberCom(comp.value) }}
+                                            </div>
+                                            <!-- <div class="text-caption">{{ comp.description }}</div> -->
+                                            <!-- <div class="text-caption text-blue">
+                                              {{ comp.value }}
+                                            </div> -->
                                           </div>
                                         </div>
                                       </q-card-section>
@@ -577,7 +631,7 @@
                                   >
                                   </q-input>
 
-                                  <!-- ✅ Performance Indicator - Searchable Dropdown -->
+                                  <!-- Performance Indicator - Searchable Dropdown -->
                                   <q-select
                                     outlined
                                     v-model="standard.indicatorName"
@@ -1092,6 +1146,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useMfoStore } from 'src/stores/office/officeLibrary'
 import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
 import { useUnitWorkPlanStore } from 'src/stores/office/unitWorkPlanStore'
+import { useCompetencyStore } from 'src/stores/competencyStore'
 
 export default {
   setup() {
@@ -1100,6 +1155,7 @@ export default {
     const officeLibraryStore = useMfoStore()
     const officeLibraryIndicatorStore = useLibraryStore()
     const uwpStore = useUnitWorkPlanStore()
+    const competencyStore = useCompetencyStore()
 
     // Refs
     const filteredMfoOptions = ref({})
@@ -1135,7 +1191,7 @@ export default {
     const maxVisibleTabs = ref(3)
     const activeEmployeeTab = ref(null)
     const employeeTabs = ref([])
-    const isLoadingFilteredEmployees = ref(false) // ✅ NEW
+    const isLoadingFilteredEmployees = ref(false)
     const form = ref({
       unit: null,
       section: null,
@@ -1151,17 +1207,9 @@ export default {
     const quantityValue = ref(null)
 
     // Competencies data
-    const mergedCoreCompetency = ref({
-      Communication: { code: 'C1', value: 'Advanced', legend: '4' },
-      Teamwork: { code: 'C2', value: 'Proficient', legend: '3' },
-    })
-    const mergedTechnicalCompetency = ref({
-      Programming: { code: 'T1', value: 'Advanced', legend: '4' },
-      Database: { code: 'T2', value: 'Expert', legend: '5' },
-    })
-    const mergedLeadershipCompetency = ref({
-      'Decision Making': { code: 'L1', value: 'Proficient', legend: '3' },
-    })
+    const coreCompetencies = ref([])
+    const technicalCompetencies = ref([])
+    const leadershipCompetencies = ref([])
 
     // Organization data
     const units = ref([
@@ -1254,8 +1302,24 @@ export default {
       name: '',
       employeeId: null,
       employeeData: null,
+      sg: null,
+      level: null,
       performanceStandards: [createDefaultPerformanceStandard()],
     })
+
+    // In your setup() function, add this computed property
+    const numberCom = (value) => {
+      if (!value || value === '-') return '-'
+
+      const mapping = {
+        Basic: '1',
+        Intermediate: '2',
+        Advanced: '3',
+        Superior: '4',
+      }
+
+      return mapping[value] || value
+    }
 
     const initializeUWPData = () => {
       try {
@@ -1271,92 +1335,144 @@ export default {
     }
 
     const initializeEmployeeTabs = () => {
-      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0) {
-        const defaultEmp = createDefaultEmployeeData()
-        employeeTabs.value = [defaultEmp]
-        activeEmployeeTab.value = defaultEmp.id
-        return
-      }
+      // Always start with one empty employee tab
       const defaultEmp = createDefaultEmployeeData()
       employeeTabs.value = [defaultEmp]
       activeEmployeeTab.value = defaultEmp.id
     }
 
-    const fetchAndPopulateFilteredEmployees = async () => {
-      if (isLoadingFilteredEmployees.value) return
+    // Helper to get level text
+    const getLevelText = (level) => {
+      if (level === '1') return '1st Level'
+      if (level === '2') return '2nd Level'
+      return `Level ${level}`
+    }
 
-      try {
-        isLoadingFilteredEmployees.value = true
-        console.log('📊 Fetching filtered employees with target periods...')
-        console.log('📊 Current form values (should be preserved):', form.value)
+    // Helper to get the SG range from the competency store
+    const getSGRange = (sg, level) => {
+      const levelText = getLevelText(level)
+      const salaryGrades = competencyStore.getSalaryGrades(levelText)
 
-        // Set the UWP data in the store first
-        uwpStore.setUWPData(uwpData.value)
+      if (!salaryGrades) return sg.toString()
 
-        // Fetch transformed data from store
-        const transformedEmployees = await uwpStore.fetchFilteredEmployeesData()
-
-        if (!transformedEmployees || transformedEmployees.length === 0) {
-          console.warn('⚠️ No filtered employees found')
-          $q.notify({
-            message: 'No employees with target periods found',
-            color: 'info',
-            position: 'top',
-          })
-          return
+      // Find the matching range for the SG
+      for (const range of salaryGrades) {
+        if (range.includes('-')) {
+          const [min, max] = range.split('-').map(Number)
+          if (parseInt(sg) >= min && parseInt(sg) <= max) return range
+        } else {
+          if (parseInt(sg) === parseInt(range)) return range
         }
-
-        console.log('✅ Loaded filtered employees:', transformedEmployees)
-
-        // ✅ Clear existing employee tabs first
-        employeeTabs.value = []
-
-        // ✅ Populate employee tabs with transformed data
-        transformedEmployees.forEach((emp) => {
-          employeeTabs.value.push({
-            ...emp,
-            // Ensure each employee tab has the required structure
-            id: emp.id || uuidv4(),
-            employeeId: emp.employeeId || emp.id,
-            name: emp.name || '',
-            employeeData: emp.employeeData || emp,
-          })
-        })
-
-        // ✅ Set the first employee as active
-        activeEmployeeTab.value = employeeTabs.value[0]?.id
-
-        // ✅ IMPORTANT: Trigger employee selection for each tab
-        employeeTabs.value.forEach((empTab) => {
-          if (empTab.employeeId) {
-            // This will automatically populate the dropdown
-            onEmployeeSelected(empTab.employeeId)
-          }
-        })
-
-        console.log('✅ Form values preserved:', form.value)
-        console.log('✅ Employee tabs populated:', employeeTabs.value.length)
-        console.log('Transformed employees from store:', transformedEmployees)
-        console.log('First employee from transformed:', transformedEmployees[0])
-        console.log('First employee employeeId:', transformedEmployees[0]?.employeeId)
-
-        $q.notify({
-          message: `Loaded ${transformedEmployees.length} employees with their performance standards`,
-          color: 'positive',
-          position: 'top',
-        })
-
-        return transformedEmployees
-      } catch (error) {
-        console.error('❌ Error fetching filtered employees:', error)
-        $q.notify({
-          message: error.message || 'Failed to fetch filtered employees',
-          color: 'negative',
-          position: 'top',
-        })
-      } finally {
-        isLoadingFilteredEmployees.value = false
       }
+
+      // If not found, return the SG as is
+      return sg.toString()
+    }
+
+    // Function to update competencies based on employee SG and level
+    const updateEmployeeCompetencies = (employee) => {
+      if (!employee || !employee.sg || !employee.level) {
+        coreCompetencies.value = []
+        technicalCompetencies.value = []
+        leadershipCompetencies.value = []
+        return
+      }
+
+      const levelText = getLevelText(employee.level)
+      const sgRange = getSGRange(employee.sg, employee.level)
+
+      console.log('🔍 Getting competencies for:', {
+        level: levelText,
+        sgRange: sgRange,
+        sg: employee.sg,
+      })
+
+      const competencyRow = competencyStore.getRow(levelText, sgRange)
+
+      if (!competencyRow) {
+        console.log('❌ No competency row found for:', { level: levelText, sgRange })
+        coreCompetencies.value = []
+        technicalCompetencies.value = []
+        leadershipCompetencies.value = []
+        return
+      }
+
+      console.log('✅ Found competency row:', competencyRow)
+
+      // Get core competencies
+      coreCompetencies.value = [
+        {
+          code: 'DSE',
+          value: competencyRow.DSE,
+          description: competencyStore.descriptions.core.DSE,
+        },
+        { code: 'EI', value: competencyRow.EI, description: competencyStore.descriptions.core.EI },
+        { code: 'IS', value: competencyRow.IS, description: competencyStore.descriptions.core.IS },
+      ].filter((comp) => comp.value && comp.value !== '-')
+
+      // Get technical competencies
+      technicalCompetencies.value = [
+        {
+          code: 'P&O',
+          value: competencyRow['P&O'],
+          description: competencyStore.descriptions.technical['P&O'],
+        },
+        {
+          code: 'M&E',
+          value: competencyRow['M&E'],
+          description: competencyStore.descriptions.technical['M&E'],
+        },
+        {
+          code: 'RM',
+          value: competencyRow.RM,
+          description: competencyStore.descriptions.technical.RM,
+        },
+        {
+          code: 'P&N',
+          value: competencyRow['P&N'],
+          description: competencyStore.descriptions.technical['P&N'],
+        },
+        {
+          code: 'PM',
+          value: competencyRow.PM,
+          description: competencyStore.descriptions.technical.PM,
+        },
+        {
+          code: 'AD',
+          value: competencyRow.AD,
+          description: competencyStore.descriptions.technical.AD,
+        },
+      ].filter((comp) => comp.value && comp.value !== '-')
+
+      // Get leadership competencies
+      leadershipCompetencies.value = [
+        {
+          code: 'TSC',
+          value: competencyRow.TSC,
+          description: competencyStore.descriptions.leadership.TSC,
+        },
+        {
+          code: 'PSDM',
+          value: competencyRow.PSDM,
+          description: competencyStore.descriptions.leadership.PSDM,
+        },
+        {
+          code: 'BCIWR',
+          value: competencyRow.BCIWR,
+          description: competencyStore.descriptions.leadership.BCIWR,
+        },
+        {
+          code: 'MPCR',
+          value: competencyRow.MPCR,
+          description: competencyStore.descriptions.leadership.MPCR,
+        },
+      ].filter((comp) => comp.value && comp.value !== '-')
+
+      console.log('✅ Updated competencies:', {
+        core: coreCompetencies.value,
+        technical: technicalCompetencies.value,
+        leadership: leadershipCompetencies.value,
+      })
     }
 
     // Computed
@@ -1395,30 +1511,21 @@ export default {
       employeeTabs.value.filter((emp) => emp.employeeId !== null).map((emp) => emp.employeeId)
 
     const allEmployeesSelected = computed(() => {
-      if (!uwpData.value.availableEmployees || uwpData.value.availableEmployees.length === 0)
-        return false
-      const selectedIds = getSelectedEmployeeIds()
-      return (
-        uwpData.value.availableEmployees.length > 0 &&
-        uwpData.value.availableEmployees.length <= selectedIds.length &&
-        uwpData.value.availableEmployees.every((emp) => selectedIds.includes(emp.id))
+      if (
+        !uwpData.value.employeesWithoutTargetPeriod ||
+        uwpData.value.employeesWithoutTargetPeriod.length === 0
       )
+        return false
+
+      const selectedIds = getSelectedEmployeeIds()
+      const totalEmployees = uwpData.value.employeesWithoutTargetPeriod.length
+
+      return totalEmployees > 0 && selectedIds.length >= totalEmployees
     })
 
     const availableEmployeesForTab = computed(() => {
-      // Combine employees from multiple sources
-      const allAvailableEmployees = [
-        ...(uwpData.value.availableEmployees || []),
-        ...(uwpData.value.filteredAvailableEmployees || []),
-        // Also include employees from the transformed API data
-        ...employeeTabs.value
-          .filter((emp) => emp.employeeId && emp.employeeData)
-          .map((emp) => ({
-            id: emp.employeeId,
-            name: emp.name,
-            employeeData: emp.employeeData,
-          })),
-      ]
+      // Always use employeesWithoutTargetPeriod as the source
+      const allAvailableEmployees = [...(uwpData.value.employeesWithoutTargetPeriod || [])]
 
       // Remove duplicates by id
       const uniqueEmployees = []
@@ -1431,8 +1538,6 @@ export default {
         }
       })
 
-      console.log('🔍 availableEmployeesForTab - Unique employees:', uniqueEmployees)
-
       if (uniqueEmployees.length === 0) return []
 
       const selectedIds = getSelectedEmployeeIds()
@@ -1441,19 +1546,19 @@ export default {
         (emp) => emp.id === currentTabId,
       )?.employeeId
 
+      // Filter employees to show only those NOT selected in other tabs
+      // OR the employee assigned to the current tab
       const filtered = uniqueEmployees.filter((emp) => {
-        // Allow the employee if they're not selected elsewhere
+        // If this employee is not selected in any tab, show it
         if (!selectedIds.includes(emp.id)) return true
-        // OR allow if they're the current tab's employee
+        // If this employee is selected in the CURRENT tab, show it
         if (emp.id === currentTabEmployeeId) return true
+        // Otherwise, hide it (selected in another tab)
         return false
       })
 
-      console.log('🔍 availableEmployeesForTab - Filtered for current tab:', filtered)
       return filtered
     })
-    console.log('availableEmployeesForTab:', availableEmployeesForTab.value)
-    console.log('First employee:', availableEmployeesForTab.value[0])
 
     const selectedEmployee = computed(() => {
       // First, try to get from the current employee tab
@@ -1464,6 +1569,8 @@ export default {
           return {
             rank: currentTab.rank,
             position: currentTab.position || '',
+            sg: currentTab.sg || '',
+            level: currentTab.level || '',
           }
         }
 
@@ -1473,11 +1580,13 @@ export default {
           return {
             rank: emp.rank || emp.employeeData?.rank || '',
             position: emp.position || emp.employeeData?.position || '',
+            sg: emp.employeeData?.sg || '',
+            level: emp.employeeData?.level || '',
           }
         }
       }
 
-      return { rank: '', position: '' }
+      return { rank: '', position: '', sg: '', level: '' }
     })
 
     const categoryOptions = computed(() =>
@@ -1547,10 +1656,12 @@ export default {
     const hasMfosForCategory = (index) => {
       const standard = currentEmployee.value.performanceStandards[index]
       if (!standard || !standard.rows.category) return false
+
       const categoryId = standard.rows.category
       const mfosInCategory = officeLibraryStore.mfos.filter(
         (mfo) => mfo.f_category_id === categoryId,
       )
+
       return mfosInCategory.length > 0
     }
 
@@ -1585,30 +1696,25 @@ export default {
         }))
       }
     }
+
+    const isSupportCategory = (categoryId) => {
+      const category = officeLibraryStore.categories.find((cat) => cat.id === categoryId)
+      return category && category.name === 'C. SUPPORT FUNCTION'
+    }
+
     const getFilteredMfoOptions = (index) => {
       const standard = currentEmployee.value.performanceStandards[index]
-      console.log('🔍 getFilteredMfoOptions - standard:', standard)
-      console.log('🔍 getFilteredMfoOptions - standard.rows.category:', standard?.rows?.category)
 
+      // If no category is selected yet, return empty array
       if (!standard || !standard.rows.category) {
-        console.log('❌ No category selected')
         return []
       }
 
       const categoryId = standard.rows.category
-      console.log('🔍 Looking for MFOs with category_id:', categoryId)
-
-      // Check what categories are available
-      console.log('🔍 All categories:', officeLibraryStore.categories)
-
-      // Check what MFOs are available
-      console.log('🔍 All MFOs:', officeLibraryStore.mfos)
 
       const categoryMfos = officeLibraryStore.mfos.filter((mfo) => mfo.f_category_id === categoryId)
-      console.log('🔍 MFOs for category', categoryId, ':', categoryMfos)
 
       if (filteredMfoOptions.value[index]) {
-        console.log('🔍 Using cached filtered options:', filteredMfoOptions.value[index])
         return filteredMfoOptions.value[index]
       }
 
@@ -1621,22 +1727,44 @@ export default {
         description: mfo.description || '',
       }))
 
-      console.log('🔍 Processed MFO options:', allMfos)
       return allMfos
     }
+
     const getFilteredOutputOptions = (index) => {
-      if (filteredOutputOptions.value[index] && filteredOutputOptions.value[index].length > 0)
-        return filteredOutputOptions.value[index]
       const standard = currentEmployee.value.performanceStandards[index]
+
       if (!standard || !standard.rows.category) return []
+
       const categoryId = standard.rows.category
+
+      // For Support category, show category_outputs instead of MFO-based outputs
+      if (isSupportCategory(categoryId)) {
+        const filteredOutputs = officeLibraryStore.category_outputs.filter(
+          (output) => output.f_category_id === categoryId,
+        )
+
+        const result = filteredOutputs.map((output) => ({
+          id: output.id,
+          label: output.name,
+          value: output.id,
+          name: output.name,
+          code: output.code || '',
+          description: output.description || '',
+        }))
+
+        return result
+      }
+
+      // For other categories (A, B), show MFO-based outputs
       const mfoId = standard.rows.mfo
       if (!officeLibraryStore.outputs || officeLibraryStore.outputs.length === 0) return []
+
       const filteredOutputs = officeLibraryStore.outputs.filter((output) => {
-        if (output.f_category_id !== categoryId) return false
+        if (output.f_category_id !== standard.rows.category) return false
         if (mfoId) return output.mfo_id === mfoId
         return output.mfo_id === null
       })
+
       return filteredOutputs.map((output) => ({
         id: output.id,
         label: output.name,
@@ -1666,10 +1794,13 @@ export default {
         update(() => {
           const needle = (val || '').toLowerCase()
           const standard = currentEmployee.value.performanceStandards[index]
+
+          // If no category is selected, return empty array
           if (!standard || !standard.rows.category) {
             filteredMfoOptions.value[index] = []
             return
           }
+
           const categoryId = standard.rows.category
           const allMfos = officeLibraryStore.mfos
             .filter((mfo) => mfo.f_category_id === categoryId)
@@ -1700,28 +1831,52 @@ export default {
             filteredOutputOptions.value[index] = []
             return
           }
+
           const categoryId = standard.rows.category
-          const mfoId = standard.rows.mfo
-          const allOutputs = officeLibraryStore.outputs.filter((output) => {
-            if (output.f_category_id !== categoryId) return false
-            if (mfoId && output.mfo_id !== mfoId) return false
-            if (!mfoId && output.mfo_id !== null) return false
-            return true
-          })
-          const outputOptions = allOutputs.map((output) => ({
-            id: output.id,
-            label: output.name,
-            value: output.id,
-            name: output.name,
-            code: output.code || '',
-            description: output.description || '',
-          }))
-          filteredOutputOptions.value[index] = outputOptions.filter(
-            (output) =>
-              output.label.toLowerCase().includes(needle) ||
-              (output.code && output.code.toLowerCase().includes(needle)) ||
-              (output.description && output.description.toLowerCase().includes(needle)),
-          )
+
+          // For Support category, filter from category_outputs
+          if (isSupportCategory(categoryId)) {
+            const allOutputs = officeLibraryStore.category_outputs.filter(
+              (output) => output.f_category_id === categoryId,
+            )
+            const outputOptions = allOutputs.map((output) => ({
+              id: output.id,
+              label: output.name,
+              value: output.id,
+              name: output.name,
+              code: output.code || '',
+              description: output.description || '',
+            }))
+            filteredOutputOptions.value[index] = outputOptions.filter(
+              (output) =>
+                output.label.toLowerCase().includes(needle) ||
+                (output.code && output.code.toLowerCase().includes(needle)) ||
+                (output.description && output.description.toLowerCase().includes(needle)),
+            )
+          } else {
+            // For other categories (A, B), filter from MFO-based outputs
+            const mfoId = standard.rows.mfo
+            const allOutputs = officeLibraryStore.outputs.filter((output) => {
+              if (output.f_category_id !== categoryId) return false
+              if (mfoId && output.mfo_id !== mfoId) return false
+              if (!mfoId && output.mfo_id !== null) return false
+              return true
+            })
+            const outputOptions = allOutputs.map((output) => ({
+              id: output.id,
+              label: output.name,
+              value: output.id,
+              name: output.name,
+              code: output.code || '',
+              description: output.description || '',
+            }))
+            filteredOutputOptions.value[index] = outputOptions.filter(
+              (output) =>
+                output.label.toLowerCase().includes(needle) ||
+                (output.code && output.code.toLowerCase().includes(needle)) ||
+                (output.description && output.description.toLowerCase().includes(needle)),
+            )
+          }
         })
       }
     }
@@ -1769,62 +1924,51 @@ export default {
 
     const switchToEmployee = (tabId) => {
       activeEmployeeTab.value = tabId
+      // Update competencies when switching tabs
+      const employee = employeeTabs.value.find((emp) => emp.id === tabId)
+      updateEmployeeCompetencies(employee)
     }
 
     const onEmployeeSelected = (employeeId) => {
-      console.log('🔍 onEmployeeSelected called with employeeId:', employeeId)
+      if (employeeId === null || employeeId === undefined) {
+        // Clear the employee data if deselected
+        const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
+        if (tabIndex !== -1) {
+          employeeTabs.value[tabIndex].name = ''
+          employeeTabs.value[tabIndex].employeeId = null
+          employeeTabs.value[tabIndex].employeeData = null
+          employeeTabs.value[tabIndex].rank = ''
+          employeeTabs.value[tabIndex].position = ''
+          employeeTabs.value[tabIndex].sg = null
+          employeeTabs.value[tabIndex].level = null
 
-      if (employeeId === null) return
-
-      // Try to find the employee in multiple places
-      let selectedEmp = null
-      let foundSource = ''
-
-      // 1. Check in uwpData.value.availableEmployees
-      selectedEmp = uwpData.value.availableEmployees.find((emp) => emp.id === employeeId)
-      if (selectedEmp) foundSource = 'availableEmployees'
-
-      // 2. If not found, check in uwpData.value.filteredAvailableEmployees
-      if (!selectedEmp && uwpData.value.filteredAvailableEmployees) {
-        selectedEmp = uwpData.value.filteredAvailableEmployees.find((emp) => emp.id === employeeId)
-        if (selectedEmp) foundSource = 'filteredAvailableEmployees'
-      }
-
-      // 3. If still not found, check the current employee tabs (from API)
-      if (!selectedEmp && employeeTabs.value.length > 0) {
-        const empFromTabs = employeeTabs.value.find((emp) => emp.employeeId === employeeId)
-        if (empFromTabs) {
-          selectedEmp = empFromTabs.employeeData || empFromTabs
-          foundSource = 'employeeTabs'
+          // Clear competencies
+          updateEmployeeCompetencies(null)
         }
+        return
       }
 
-      console.log('🔍 Found selectedEmp:', {
-        selectedEmp,
-        foundSource,
-        hasRank: !!selectedEmp?.rank,
-        rank: selectedEmp?.rank,
-        employeeTabs: employeeTabs.value,
-      })
+      // Find the employee in employeesWithoutTargetPeriod
+      const selectedEmp = uwpData.value.employeesWithoutTargetPeriod.find(
+        (emp) => emp.id === employeeId,
+      )
 
       if (selectedEmp && activeEmployeeTab.value) {
         const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
         if (tabIndex !== -1) {
-          // Always update the tab with the found employee data
+          // Update the tab with the found employee data
           employeeTabs.value[tabIndex].name = selectedEmp.name || selectedEmp.label || ''
           employeeTabs.value[tabIndex].employeeId = selectedEmp.id
           employeeTabs.value[tabIndex].employeeData = selectedEmp
+          employeeTabs.value[tabIndex].rank =
+            selectedEmp.rank || selectedEmp.employeeData?.rank || ''
+          employeeTabs.value[tabIndex].position =
+            selectedEmp.position || selectedEmp.employeeData?.position || ''
+          employeeTabs.value[tabIndex].sg = selectedEmp.employeeData?.sg || ''
+          employeeTabs.value[tabIndex].level = selectedEmp.employeeData?.level || ''
 
-          // ✅ CRITICAL: Set the rank from the employee data
-          employeeTabs.value[tabIndex].rank = selectedEmp.rank || ''
-          employeeTabs.value[tabIndex].position = selectedEmp.position || ''
-
-          console.log('✅ Updated employee tab:', {
-            name: employeeTabs.value[tabIndex].name,
-            rank: employeeTabs.value[tabIndex].rank,
-            position: employeeTabs.value[tabIndex].position,
-            employeeId: employeeTabs.value[tabIndex].employeeId,
-          })
+          // Update competencies based on SG and level
+          updateEmployeeCompetencies(employeeTabs.value[tabIndex])
         }
       }
     }
@@ -2216,24 +2360,33 @@ export default {
       filterEmployees()
     })
 
+    // Watch for changes in current employee to update competencies
+    watch(
+      () => currentEmployee.value,
+      (newEmployee) => {
+        updateEmployeeCompetencies(newEmployee)
+      },
+      { deep: true },
+    )
+
     onMounted(async () => {
       initializeUWPData()
       initializeEmployeeTabs()
       const officeId = uwpData.value.hierarchy.office?.id || 1
 
       console.log('🔍 DEBUG - uwpData.value.availableEmployees:', uwpData.value.availableEmployees)
-      console.log(
-        '🔍 DEBUG - uwpData.value.filteredAvailableEmployees:',
-        uwpData.value.filteredAvailableEmployees,
-      )
 
       try {
         await officeLibraryStore.fetchAllData(officeId)
         await officeLibraryIndicatorStore.fetchVerbs()
-        console.log('✅ Data loaded successfully')
 
-        // ✅ Fetch and populate filtered employees automatically
-        await fetchAndPopulateFilteredEmployees()
+        console.log('✅ Data loaded successfully')
+        console.log('📊 Categories loaded:', officeLibraryStore.categories?.length || 0, 'items')
+        console.log('📊 MFOs loaded:', officeLibraryStore.mfos?.length || 0, 'items')
+
+        // ✅ DO NOT automatically fetch and populate filtered employees
+        // Only initialize with empty tabs as defined in initializeEmployeeTabs
+        console.log('✅ Ready for manual employee selection')
       } catch (error) {
         console.error('❌ Error loading data:', error)
         $q.notify({ message: 'Failed to load data', color: 'negative', position: 'top' })
@@ -2248,6 +2401,7 @@ export default {
       semesterOptions,
       yearOptions,
       form,
+      numberCom,
       filteredSections,
       filteredUnits,
       divisionOptions: divisions.value,
@@ -2277,13 +2431,14 @@ export default {
       allEmployeesSelected,
       availableEmployeesForTab,
       getSelectedEmployeeIds,
+      isSupportCategory,
       skipMfo,
       categoryOptions,
       getFilteredMfoOptions,
       getFilteredOutputOptions,
-      mergedCoreCompetency,
-      mergedTechnicalCompetency,
-      mergedLeadershipCompetency,
+      coreCompetencies,
+      technicalCompetencies,
+      leadershipCompetencies,
       hasMfosForCategory,
       filterMfos,
       filterOutputs,
@@ -2317,8 +2472,8 @@ export default {
       onEffectivenessUpdate,
       onBack,
       uwpStore,
-      isLoadingFilteredEmployees, // ✅ NEW
-      fetchAndPopulateFilteredEmployees, // ✅ NEW - optional manual trigger
+      isLoadingFilteredEmployees,
+      getLevelText,
     }
   },
 }
@@ -2349,9 +2504,13 @@ export default {
   padding: 4px;
 }
 
-.competency-list div {
+.competency-item {
   padding: 4px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.competency-item:last-child {
+  border-bottom: none;
 }
 
 .autogrow-textarea {

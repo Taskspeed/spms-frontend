@@ -137,8 +137,6 @@ export const useOrganizationStore = defineStore('organization', {
             employeeParams.year = this.selectedYear
           }
 
-          
-
           const employeeResponse = await api.get('spms/fetch_employees', {
             params: employeeParams,
           })

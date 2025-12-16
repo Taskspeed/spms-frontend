@@ -1,11 +1,12 @@
-import { defineStore } from 'pinia'
-import { api } from 'src/boot/axios'
+import { defineStore } from '/node_modules/.q-cache/dev-spa/vite-spa/deps/pinia.js?v=33133cfe'
+import { api } from '/src/boot/axios.js'
 
 export const useMfoStore = defineStore('mfo', {
   state: () => ({
     categories: [],
     mfos: [],
-    outputs: [],
+    outputs: [], // MFO-based outputs (for Strategic/Core categories)
+    category_outputs: [], // Direct category outputs (for Support category)
     loading: false,
     error: null,
   }),
@@ -61,17 +62,14 @@ export const useMfoStore = defineStore('mfo', {
     },
 
     /**
-     * Get all support outputs (outputs with no MFO ID in support category)
+     * Get all support outputs (category_outputs for support category)
      */
     supportOutputs: (state) => {
       const supportCat = state.categories.find(
         (cat) => cat.name.includes('SUPPORT') || cat.name.includes('C. '),
       )
       if (!supportCat) return []
-      return state.outputs.filter(
-        (output) =>
-          output.f_category_id === supportCat.id && (!output.mfo_id || output.mfo_id === null),
-      )
+      return state.category_outputs.filter((output) => output.f_category_id === supportCat.id)
     },
   },
 
@@ -124,9 +122,10 @@ export const useMfoStore = defineStore('mfo', {
           updated_at: cat.updated_at,
         }))
 
-        // Extract and process MFOs from categories
+        // Initialize arrays
         this.mfos = []
-        this.outputs = []
+        this.outputs = [] // For MFO-based outputs
+        this.category_outputs = [] // For direct category outputs (support)
 
         categoriesData.forEach((category) => {
           const categoryObj = this.categories.find((c) => c.id === category.id)
@@ -141,18 +140,18 @@ export const useMfoStore = defineStore('mfo', {
             this.mfos.push(...categoryMfos)
           }
 
-          // Process category outputs (support outputs)
+          // Process category outputs (direct outputs without MFO) - store in category_outputs
           if (category.category_outputs && Array.isArray(category.category_outputs)) {
             const categoryOutputs = category.category_outputs.map((output) => ({
               ...output,
               f_category_id: category.id,
               category: categoryObj,
             }))
-            this.outputs.push(...categoryOutputs)
+            this.category_outputs.push(...categoryOutputs)
           }
         })
 
-        // Extract and process outputs from MFOs
+        // Extract and process outputs from MFOs (for strategic/core categories) - store in outputs
         categoriesData.forEach((category) => {
           if (category.mfos && Array.isArray(category.mfos)) {
             category.mfos.forEach((mfo) => {
@@ -173,6 +172,40 @@ export const useMfoStore = defineStore('mfo', {
             })
           }
         })
+
+        console.log('✅ Data loaded successfully:')
+        console.log('📊 Categories loaded:', this.categories.length, 'items')
+        console.log('📊 MFOs loaded:', this.mfos.length, 'items')
+        console.log('📊 MFO-based outputs loaded:', this.outputs.length, 'items')
+        console.log('📊 Category outputs (support) loaded:', this.category_outputs.length, 'items')
+
+        // Debug: Show support category data
+        const supportCat = this.categories.find((cat) => cat.name === 'C. SUPPORT FUNCTION')
+        if (supportCat) {
+          console.log('📊 Support category found:', supportCat)
+          const supportCategoryOutputs = this.category_outputs.filter(
+            (output) => output.f_category_id === supportCat.id,
+          )
+          console.log('📊 Support category outputs:', supportCategoryOutputs.length, 'items')
+          console.log(
+            '📊 Support outputs:',
+            supportCategoryOutputs.map((o) => ({ id: o.id, name: o.name })),
+          )
+        }
+
+        // Debug: Show sample data
+        if (this.mfos.length > 0) {
+          console.log('📊 Sample MFO:', this.mfos[0])
+          console.log('📊 Sample MFO f_category_id:', this.mfos[0].f_category_id)
+        }
+
+        if (this.category_outputs.length > 0) {
+          console.log('📊 Sample category output:', this.category_outputs[0])
+          console.log(
+            '📊 Sample category output f_category_id:',
+            this.category_outputs[0].f_category_id,
+          )
+        }
 
         return true
       } catch (error) {
@@ -252,7 +285,8 @@ export const useMfoStore = defineStore('mfo', {
 
         // Process MFOs and outputs
         this.mfos = []
-        this.outputs = []
+        this.outputs = [] // MFO-based outputs
+        this.category_outputs = [] // Category outputs
 
         categoriesData.forEach((category) => {
           const categoryObj = this.categories.find((c) => c.id === category.id)
@@ -274,11 +308,36 @@ export const useMfoStore = defineStore('mfo', {
               f_category_id: category.id,
               category: categoryObj,
             }))
-            this.outputs.push(...categoryOutputs)
+            this.category_outputs.push(...categoryOutputs)
           }
         })
 
-        return { mfos: this.mfos, outputs: this.outputs }
+        // Process MFO-based outputs
+        categoriesData.forEach((category) => {
+          if (category.mfos && Array.isArray(category.mfos)) {
+            category.mfos.forEach((mfo) => {
+              const mfoObj = this.mfos.find((m) => m.id === mfo.id)
+              const categoryObj = this.categories.find((c) => c.id === category.id)
+
+              if (mfo.outputs && Array.isArray(mfo.outputs)) {
+                const mfoOutputs = mfo.outputs.map((output) => ({
+                  ...output,
+                  mfo_id: mfo.id,
+                  f_category_id: category.id,
+                  mfo: mfoObj,
+                  category: categoryObj,
+                }))
+                this.outputs.push(...mfoOutputs)
+              }
+            })
+          }
+        })
+
+        return {
+          mfos: this.mfos,
+          outputs: this.outputs,
+          category_outputs: this.category_outputs,
+        }
       } catch (error) {
         console.error('Error fetching MFOs and outputs:', error)
         this.error = error.message
@@ -460,6 +519,13 @@ export const useMfoStore = defineStore('mfo', {
     },
 
     /**
+     * Get category outputs for a specific category
+     */
+    getCategoryOutputsForCategory(categoryId) {
+      return this.category_outputs.filter((output) => output.f_category_id === categoryId)
+    },
+
+    /**
      * Find category by type
      */
     findCategoryByType(categoryType) {
@@ -488,6 +554,7 @@ export const useMfoStore = defineStore('mfo', {
       this.categories = []
       this.mfos = []
       this.outputs = []
+      this.category_outputs = []
       this.loading = false
       this.error = null
     },
