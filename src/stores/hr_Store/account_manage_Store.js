@@ -78,28 +78,29 @@ export const useUserManageStore = defineStore('userManage', {
       } finally {
         this.loading = false
       }
-    },
+    },  
 
-    async fetchEmployees(officeName = null) {
-      this.loading = true
-      try {
-        let url = '/employee/designation'
-        if (officeName) {
-          url += `?office_name=${encodeURIComponent(officeName)}`
+      async fetchEmployees(officeName) {
+        this.loading = true
+        try {
+          const encodedOffice = encodeURIComponent(officeName)
+
+          const response = await api.get(
+            `/employee/office-employee/${encodedOffice}`
+          )
+
+          this.employees = response.data
+        } catch (error) {
+          console.error('Error fetching employees:', error)
+          Notify.create({
+            message: 'Failed to fetch employees. Please try again.',
+            color: 'negative',
+          })
+        } finally {
+          this.loading = false
         }
-        const response = await api.get(url)
-        this.employees = response.data
-        this.filteredEmployees = response.data
-      } catch (error) {
-        console.error('Error fetching employees:', error)
-        Notify.create({
-          message: 'Failed to fetch employees. Please try again.',
-          color: 'negative',
-        })
-      } finally {
-        this.loading = false
-      }
-    },
+      },
+
 
     async createUser(userData) {
       this.saving = true

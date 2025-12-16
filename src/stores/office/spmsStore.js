@@ -91,7 +91,7 @@ export const useOrganizationStore = defineStore('organization', {
     async fetchListTargetPeriod() {
       this.loading = true
       try {
-        const response = await api.get('/spms/target_periods/semester-year')
+        const response = await api.get('/targetPeriod')
 
         this.targetPeriods = response.data || []
 
@@ -136,6 +136,8 @@ export const useOrganizationStore = defineStore('organization', {
             employeeParams.semester = this.selectedSemester
             employeeParams.year = this.selectedYear
           }
+
+          
 
           const employeeResponse = await api.get('spms/fetch_employees', {
             params: employeeParams,

@@ -296,7 +296,7 @@ export const useEmployeeStore = defineStore('employee', {
         const token = localStorage.getItem('token')
         const userStore = useUserStore()
 
-        const response = await api.get('/employees-by-office', {
+        const response = await api.get('/employee/by-office', {
           headers: { Authorization: `Bearer ${token}` },
           params,
         })
@@ -379,7 +379,7 @@ export const useEmployeeStore = defineStore('employee', {
         console.log('Validated Employees Payload:', validatedEmployees)
 
         const response = await api.post(
-          '/add/employee',
+          'employee/store',
           { employees: validatedEmployees },
           { headers: { Authorization: `Bearer ${token}` } },
         )
@@ -408,7 +408,7 @@ export const useEmployeeStore = defineStore('employee', {
       try {
         const token = localStorage.getItem('token')
         const response = await api.post(
-          `/employees/${employeeId}/rank`,
+          `/employee/rank/${employeeId}`,
           { rank: newRank },
           { headers: { Authorization: `Bearer ${token}` } },
         )
@@ -440,7 +440,7 @@ export const useEmployeeStore = defineStore('employee', {
 
       try {
         const token = localStorage.getItem('token')
-        const response = await api.delete(`/employees/${employeeId}`, {
+        const response = await api.delete(`/employee/delete/${employeeId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
@@ -473,7 +473,7 @@ export const useEmployeeStore = defineStore('employee', {
         const token = localStorage.getItem('token')
         const userStore = useUserStore()
 
-        const response = await api.get('/search-employees', {
+        const response = await api.get('/employee/search', {
           headers: { Authorization: `Bearer ${token}` },
           params: { search: searchTerm, unassigned_only: true },
         })

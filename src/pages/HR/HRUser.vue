@@ -380,6 +380,7 @@ export default {
 
     // Selection helper functions for Office
     const selectOffice = (row) => {
+        console.log('Selected office:', row)
       selectedOffice.value = { ...row }
     }
 
@@ -398,13 +399,22 @@ export default {
       return selectedEmployee.value.ControlNo === row.ControlNo
     }
 
+    // const filterOffices = () => {
+    //   const offices = store.offices || []
+    //   const searchTerm = (officeSearch.value ?? '').toLowerCase().trim()
+    //   filteredOffices.value = offices.filter((office) =>
+    //     (office.Office ?? '').toLowerCase().includes(searchTerm),
+    //   )
+    // }
+
     const filterOffices = () => {
-      const offices = store.offices || []
-      const searchTerm = (officeSearch.value ?? '').toLowerCase().trim()
-      filteredOffices.value = offices.filter((office) =>
-        (office.Office ?? '').toLowerCase().includes(searchTerm),
-      )
-    }
+  const offices = store.offices || []
+  const searchTerm = (officeSearch.value ?? '').toLowerCase().trim()
+
+  filteredOffices.value = offices.filter((office) =>
+    (office.name ?? '').toLowerCase().includes(searchTerm)
+  )
+}
 
     const filterEmployees = () => {
       const employees = store.employees || []
@@ -422,7 +432,7 @@ export default {
       if (selectedOffice.value) {
         loading.value = true
         try {
-          await store.fetchEmployees(selectedOffice.value.Office)
+          await store.fetchEmployees(selectedOffice.value.name)
           filteredEmployees.value = store.employees || []
           selectedEmployee.value = null
           search.value = ''
@@ -466,8 +476,8 @@ export default {
           name: selectedEmployee.value.name4,
           password: `emp${selectedEmployee.value.ControlNo}`,
           designation: selectedEmployee.value.Designation,
-          office_id: selectedOffice.value.id,
-          office_name: selectedOffice.value.Office,
+          // office_id: selectedOffice.value.id,
+           office_name: selectedOffice.value.name, // ✅ FIXED
           role_id: selectedRole.value.value,
           permissions: selectedPermissions.value,
           control_no: selectedEmployee.value.ControlNo,
@@ -548,22 +558,34 @@ export default {
       }
     })
 
-    watch(selectedOffice, async (newOffice) => {
-      if (newOffice) {
-        loading.value = true
-        selectedEmployee.value = null
-        try {
-          await store.fetchEmployees(newOffice.Office)
-          filteredEmployees.value = store.employees || []
-        } catch (error) {
-          console.error('Error fetching employees:', error)
-        } finally {
-          loading.value = false
-        }
-      } else {
-        filteredEmployees.value = []
-      }
-    })
+    // watch(selectedOffice, async (newOffice) => {
+    //   if (newOffice) {
+    //     loading.value = true
+    //     selectedEmployee.value = null
+    //     try {
+    //       await store.fetchEmployees(newOffice.Office)
+    //       filteredEmployees.value = store.employees || []
+    //     } catch (error) {
+    //       console.error('Error fetching employees:', error)
+    //     } finally {
+    //       loading.value = false
+    //     }
+    //   } else {
+    //     filteredEmployees.value = []
+    //   }
+    // })
+watch(selectedOffice, async (newOffice) => {
+  if (newOffice) {
+    loading.value = true
+    selectedEmployee.value = null
+    try {
+      await store.fetchEmployees(newOffice.name)
+      filteredEmployees.value = store.employees || []
+    } finally {
+      loading.value = false
+    }
+  }
+})
 
     return {
       store,

@@ -10,6 +10,43 @@
           <div class="col-12 col-md-4">
             <q-card flat bordered>
               <q-card-section>
+                <div class="col-12 col-md-6 q-mb-sm">
+                  <div class="row q-gutter-sm items-center">
+                    <q-select
+                      v-model="selectedSemester"
+                      :options="availableSemesters"
+                      label="Semester"
+                      outlined
+                      dense
+                      emit-value
+                      map-options
+                      @update:model-value="onSemesterChange"
+
+                      class="col"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="calendar_view_month" size="xs" />
+                      </template>
+                    </q-select>
+
+                    <q-select
+                      v-model="selectedYear"
+                      :options="availableYears"
+                      label="Year"
+                      outlined
+                      dense
+                      emit-value
+                      map-options
+                      @update:model-value="onYearChange"
+                      class="col"
+
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="event" size="xs" />
+                      </template>
+                    </q-select>
+                  </div>
+                </div>
                 <!-- Office Dropdown -->
                 <div class="row q-mb-md">
                   <q-select
@@ -371,6 +408,44 @@ const filteredEmployees = computed(() => {
   )
 })
 
+// target period selection
+
+const selectedSemester = computed({
+  get: () => orgStore.selectedSemester,
+  set: (value) => {
+    orgStore.selectedSemester = value
+  },
+})
+
+const selectedYear = computed({
+  get: () => orgStore.selectedYear,
+  set: (value) => {
+    orgStore.selectedYear = value
+  },
+})
+const availableSemesters = computed(() => orgStore.getAvailableSemesters)
+const availableYears = computed(() => orgStore.getAvailableYears)
+// const currentTargetPeriod = computed(() => orgStore.getCurrentTargetPeriod)
+
+const onSemesterChange = async () => {
+  if (selectedSemester.value && selectedYear.value) {
+    await orgStore.setTargetPeriod(selectedSemester.value, selectedYear.value)
+  }
+}
+
+const onYearChange = async () => {
+  if (selectedYear.value) {
+    const semesters = availableSemesters.value
+    if (semesters.length > 0 && !semesters.includes(selectedSemester.value)) {
+      selectedSemester.value = semesters[0]
+    }
+    if (selectedSemester.value && selectedYear.value) {
+      await orgStore.setTargetPeriod(selectedSemester.value, selectedYear.value)
+    }
+  }
+}
+
+
 // Helper constants and functions
 const headRanks = ['office-head', 'division-head', 'section-head', 'unit-head']
 
@@ -568,6 +643,7 @@ onMounted(async () => {
   await userStore.loadUserData()
   // Fetch offices for the dropdown
   await userManageStore.fetchOffices()
+  await orgStore.fetchListTargetPeriod()
   filteredOfficeOptions.value = userManageStore.offices || []
 })
 </script>
