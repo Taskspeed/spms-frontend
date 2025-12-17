@@ -1639,18 +1639,74 @@ export default {
     }
 
     const isFormValid = computed(() => {
-      if (employeeTabs.value.length === 0) return false
-      const basicRequirements = form.value.year && form.value.semester
+      console.log('🔍 Validating form...')
+
+      // Debug: Log current state
+      console.log('Target Period:', uwpData.value.targetPeriod)
+      console.log(
+        'Employee tabs:',
+        employeeTabs.value.map((e) => ({
+          hasEmployee: !!e.employeeId,
+          name: e.name,
+          tabId: e.id,
+        })),
+      )
+
+      // Check if we have at least one employee tab
+      if (employeeTabs.value.length === 0) {
+        console.log('❌ No employee tabs')
+        return false
+      }
+
+      // Check target period - FIXED: Use uwpData.targetPeriod
+      const hasTargetPeriod =
+        uwpData.value.targetPeriod?.semester && uwpData.value.targetPeriod?.year
+      console.log('Has target period?', hasTargetPeriod, uwpData.value.targetPeriod)
+
+      if (!hasTargetPeriod) {
+        console.log('❌ Missing target period')
+        return false
+      }
+
+      // Check all employees
       const allEmployeesValid = employeeTabs.value.every((emp) => {
-        if (!emp.employeeId) return false
-        return emp.performanceStandards.every((_, index) => {
-          if (emp.id === activeEmployeeTab.value) {
-            return hasMinimumEffectivenessValues(index)
+        console.log(`Checking employee: ${emp.name || emp.id}`)
+
+        // 1. Employee must have an ID selected
+        if (!emp.employeeId) {
+          console.log(`❌ Employee ${emp.id} has no employeeId`)
+          return false
+        }
+
+        // 2. Check all performance standards for this employee
+        const allStandardsValid = emp.performanceStandards.every((standard, index) => {
+          if (!standard.standardOutcomeRows) {
+            console.log(`❌ Standard ${index} has no rows`)
+            return false
           }
-          return true
+
+          const filledValues = standard.standardOutcomeRows.filter(
+            (row) => row.effectiveness && row.effectiveness.trim().length > 0,
+          ).length
+
+          const isValid = filledValues >= 2
+          console.log(
+            `  Standard ${index + 1}: ${filledValues} effectiveness values = ${isValid ? '✓' : '✗'}`,
+          )
+          return isValid
         })
+
+        console.log(`  All standards valid for ${emp.name}: ${allStandardsValid ? '✓' : '✗'}`)
+        return allStandardsValid
       })
-      return basicRequirements && allEmployeesValid
+
+      console.log('Final validation result:', {
+        hasTargetPeriod,
+        allEmployeesValid,
+        isValid: hasTargetPeriod && allEmployeesValid,
+      })
+
+      return hasTargetPeriod && allEmployeesValid
     })
 
     const hasMfosForCategory = (index) => {
@@ -2242,22 +2298,21 @@ export default {
           return
         }
 
-        if (emp.id === activeEmployeeTab.value) {
-          const invalidStandards = emp.performanceStandards
-            .map((_, i) => i)
-            .filter((index) => !hasMinimumEffectivenessValues(index))
+        // Check ALL standards for ALL employees, not just the active tab
+        const invalidStandards = emp.performanceStandards
+          .map((_, i) => i)
+          .filter((index) => !hasMinimumEffectivenessValuesForEmployee(emp, index))
 
-          if (invalidStandards.length > 0) {
-            invalidEmployees.push(
-              `${emp.name || 'Employee ' + (empIndex + 1)} (Standards ${invalidStandards.map((i) => i + 1).join(', ')})`,
-            )
-          }
+        if (invalidStandards.length > 0) {
+          invalidEmployees.push(
+            `${emp.name || 'Employee ' + (empIndex + 1)} (Standards ${invalidStandards.map((i) => i + 1).join(', ')})`,
+          )
         }
       })
 
       if (invalidEmployees.length > 0) {
         $q.notify({
-          message: `Please complete required fields for:  ${invalidEmployees.join(', ')}`,
+          message: `Please complete required fields for: ${invalidEmployees.join(', ')}`,
           color: 'negative',
           position: 'top',
           timeout: 3000,
@@ -2271,53 +2326,52 @@ export default {
         uwpStore.setFormData(form.value)
         uwpStore.setEmployeeData(employeeTabs.value)
 
-        // Only pass employees with selected employeeId (skip empty tabs)
-        const validEmployees = employeeTabs.value
-          .filter((emp) => emp.employeeId !== null)
-          .map((emp) => ({
-            ...emp,
-            performanceStandards: emp.performanceStandards.map((standard) => {
-              // Get category, mfo, output names from options
-              const categoryOption = categoryOptions.value.find(
-                (c) => c.value === standard.rows.category,
-              )
-              const mfoOption = getFilteredMfoOptions(employeeTabs.value.indexOf(emp)).find(
-                (m) => m.value === standard.rows.mfo,
-              )
-              const outputOption = getFilteredOutputOptions(employeeTabs.value.indexOf(emp)).find(
-                (o) => o.value === standard.rows.output,
-              )
-
-              return {
-                ...standard,
-                categoryName: categoryOption?.label || '',
-                mfoName: mfoOption?.label || '',
-                outputName: outputOption?.label || '',
-              }
-            }),
-          }))
-
-        if (validEmployees.length === 0) {
-          $q.notify({
-            message: 'Please select at least one employee',
-            color: 'negative',
-            position: 'top',
-          })
-          return
-        }
-
+        // FIX 1: Get the category, MFO, and output names correctly
         const submissionData = {
           uwpData: uwpData.value,
-          form: form.value,
-          employees: validEmployees,
+          form: {
+            semester: uwpData.value.targetPeriod?.semester || '', // ✅ Make sure this is not null
+            year: uwpData.value.targetPeriod?.year || new Date().getFullYear(), // ✅ Make sure this is not null
+          },
+          employees: employeeTabs.value
+            .filter((emp) => emp.employeeId !== null)
+            .map((emp) => {
+              // Ensure performance standards have the right structure
+              const performanceStandards = emp.performanceStandards.map((standard) => {
+                return {
+                  ...standard,
+                  // Ensure rows have string values for category, mfo, output
+                  rows: {
+                    category: standard.rows?.category?.name || standard.rows?.category || '',
+                    mfo: standard.rows?.mfo?.name || standard.rows?.mfo || '',
+                    output: standard.rows?.output?.name || standard.rows?.output || '',
+                  },
+                }
+              })
+
+              return {
+                ...emp,
+                performanceStandards: performanceStandards,
+              }
+            }),
           timestamp: new Date().toISOString(),
         }
 
+        console.log('📤 Submission data prepared:', {
+          semester: submissionData.form.semester,
+          year: submissionData.form.year,
+          employeeCount: submissionData.employees.length,
+        })
+
         console.log('📊 Submitting UWP Data:', submissionData)
+        console.log(
+          '📊 First employee standards:',
+          submissionData.employees[0]?.performanceStandards,
+        )
 
         await uwpStore.saveUWP(submissionData, officeLibraryIndicatorStore)
 
-        // ✅ Success notification (only after submission completes)
+        // ✅ Success notification
         $q.notify({
           message: 'Unit Work Plan saved successfully',
           color: 'positive',
@@ -2335,6 +2389,26 @@ export default {
         })
         console.error('❌ Submit error:', error)
       }
+    }
+
+    // FIX 4: Helper function to check effectiveness for any employee
+    const hasMinimumEffectivenessValuesForEmployee = (employee, index) => {
+      if (
+        !employee ||
+        !employee.performanceStandards ||
+        index >= employee.performanceStandards.length
+      ) {
+        return false
+      }
+
+      const standard = employee.performanceStandards[index]
+      if (!standard || !standard.standardOutcomeRows) return false
+
+      const filledValues = standard.standardOutcomeRows.filter(
+        (row) => row.effectiveness && row.effectiveness.trim().length > 0,
+      ).length
+
+      return filledValues >= 2
     }
 
     watch(

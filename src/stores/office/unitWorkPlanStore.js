@@ -188,10 +188,16 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           mfo: standard.mfo_id || standard.mfo || null,
           output: standard.output_id || standard.output || null,
         },
+        // ✅ Ensure these configuration fields are included
         quantityIndicatorType: standard.quantity_indicator_type || 'numeric',
         timelinessIndicatorType: standard.timeliness_indicator_type || 'beforeDeadline',
         timelinessInputs: { range: true, date: false, description: false },
         activeTimelinessInputs: { range: true, date: false, description: false },
+        // ✅ Include target output data if available
+        targetOutput: standard.target_output || {
+          baseTarget: null,
+          calculated: [],
+        },
         coreCompetencies: standard.core || [],
         technicalCompetencies: standard.technical || [],
         leadershipCompetencies: standard.leadership || [],
@@ -433,9 +439,10 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         this.officeLibraryIndicatorStore = officeLibraryIndicatorStore
         console.log('📚 Store reference set:', this.officeLibraryIndicatorStore)
 
+        // ✅ IMPORTANT: Pass the submissionData directly, not wrapped
         const payload = this.transformPayload(submissionData)
 
-        console.log('📤 Saving UWP with payload:', payload)
+        console.log('📤 Saving UWP with payload:', JSON.stringify(payload, null, 2))
 
         const response = await api.post('/unit_work_plan/store', payload, {
           headers: { Authorization: `Bearer ${token}` },
@@ -446,8 +453,8 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
           this.savedUWPs.push({
             id: response.data.data?.id,
-            semester: this.formData.semester,
-            year: this.formData.year,
+            semester: submissionData.form.semester, // Use from submissionData
+            year: submissionData.form.year, // Use from submissionData
             savedAt: new Date().toISOString(),
           })
 
@@ -468,102 +475,294 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     },
 
     transformPayload(submissionData) {
-      return {
-        employees: submissionData.employees.map((emp) => {
-          const officeData = submissionData.uwpData.hierarchy.office || {}
-          const office2Data = submissionData.uwpData.hierarchy.office2 || {}
-          const groupData = submissionData.uwpData.hierarchy.group || {}
-          const divisionData = submissionData.uwpData.hierarchy.division || {}
-          const sectionData = submissionData.uwpData.hierarchy.section || {}
-          const unitData = submissionData.uwpData.hierarchy.unit || {}
+      console.log('🔍 Building payload from submissionData:', submissionData)
 
-          // ✅ FIX: Use the employeeData already stored in the tab
+      // Ensure we have the form data with semester and year
+      const semester =
+        submissionData.form?.semester || submissionData.uwpData?.targetPeriod?.semester || ''
+      const year =
+        submissionData.form?.year ||
+        submissionData.uwpData?.targetPeriod?.year ||
+        new Date().getFullYear()
+
+      console.log('📅 Using semester/year:', { semester, year })
+
+      const payload = {
+        employees: submissionData.employees.map((emp, empIndex) => {
+          console.log(`👤 Processing employee ${empIndex}:`, emp.name || emp.employeeId)
+
+          const officeData = submissionData.uwpData?.hierarchy?.office || {}
+          const office2Data = submissionData.uwpData?.hierarchy?.office2 || {}
+          const groupData = submissionData.uwpData?.hierarchy?.group || {}
+          const divisionData = submissionData.uwpData?.hierarchy?.division || {}
+          const sectionData = submissionData.uwpData?.hierarchy?.section || {}
+          const unitData = submissionData.uwpData?.hierarchy?.unit || {}
+
+          // Get employee data - ensure we have values
           const controlNo =
-            emp.employeeData?.employeeData?.ControlNo || emp.employeeData?.ControlNo || ''
+            emp.employeeData?.employeeData?.ControlNo ||
+            emp.employeeData?.ControlNo ||
+            emp.ControlNo ||
+            ''
+          const employeeName =
+            emp.name ||
+            emp.employeeData?.name ||
+            emp.employeeData?.employeeData?.name ||
+            'Unknown Employee'
+          const employeeId = emp.employeeId || emp.employeeData?.id || 0
 
-          return {
-            control_no: controlNo,
-            employee_id: emp.employeeId,
-            employee_name: emp.name || emp.employeeData?.name || '',
-            semester: submissionData.form.semester || '',
-            year: submissionData.form.year || new Date().getFullYear(),
-            office: officeData.label || officeData.name || '',
-            office2: office2Data.label || office2Data.name || null,
-            group: groupData.label || groupData.name || null,
-            division: divisionData.label || divisionData.name || null,
-            section: sectionData.label || sectionData.name || null,
-            unit: unitData.label || unitData.name || null,
-            performance_standards: (emp.performanceStandards || []).map((standard, index) => {
-              // ✅ FIX:  Properly resolve the indicator_name from the ID
-              let performanceIndicator = ''
+          const employeePayload = {
+            control_no: String(controlNo),
+            employee_id: Number(employeeId),
+            employee_name: String(employeeName),
+            semester: String(semester), // ✅ CRITICAL: Add semester at employee level
+            year: Number(year),
+            office: String(officeData.label || officeData.name || ''),
+            office2:
+              office2Data.label || office2Data.name
+                ? String(office2Data.label || office2Data.name)
+                : null,
+            group:
+              groupData.label || groupData.name ? String(groupData.label || groupData.name) : null,
+            division:
+              divisionData.label || divisionData.name
+                ? String(divisionData.label || divisionData.name)
+                : null,
+            section:
+              sectionData.label || sectionData.name
+                ? String(sectionData.label || sectionData.name)
+                : null,
+            unit: unitData.label || unitData.name ? String(unitData.label || unitData.name) : null,
+            performance_standards: [],
+          }
 
-              if (standard.indicatorName) {
-                // Check if it's an ID (number)
-                if (typeof standard.indicatorName === 'number' || !isNaN(standard.indicatorName)) {
-                  const verbId = Number(standard.indicatorName)
+          console.log(`📝 Employee ${empIndex} base data:`, {
+            semester: employeePayload.semester,
+            year: employeePayload.year,
+            control_no: employeePayload.control_no,
+          })
 
-                  // Look up the verb in the store
+          // Process performance standards
+          if (emp.performanceStandards && Array.isArray(emp.performanceStandards)) {
+            employeePayload.performance_standards = emp.performanceStandards.map(
+              (standard, stdIndex) => {
+                console.log(`   📋 Processing standard ${stdIndex} for employee ${empIndex}`)
+
+                // Resolve category, mfo, output as strings
+                let categoryValue = ''
+                let mfoValue = ''
+                let outputValue = ''
+
+                // Try multiple sources for category
+                if (standard.rows?.category?.name) {
+                  categoryValue = standard.rows.category.name
+                } else if (standard.categoryName) {
+                  categoryValue = standard.categoryName
+                } else if (standard.rows?.category) {
+                  categoryValue = String(standard.rows.category)
+                } else if (standard.category) {
+                  categoryValue = String(standard.category)
+                }
+
+                // Try multiple sources for MFO
+                if (standard.rows?.mfo?.name) {
+                  mfoValue = standard.rows.mfo.name
+                } else if (standard.mfoName) {
+                  mfoValue = standard.mfoName
+                } else if (standard.rows?.mfo) {
+                  mfoValue = String(standard.rows.mfo)
+                } else if (standard.mfo) {
+                  mfoValue = String(standard.mfo)
+                }
+
+                // Try multiple sources for output
+                if (standard.rows?.output?.name) {
+                  outputValue = standard.rows.output.name
+                } else if (standard.outputName) {
+                  outputValue = standard.outputName
+                } else if (standard.rows?.output) {
+                  outputValue = String(standard.rows.output)
+                } else if (standard.output) {
+                  outputValue = String(standard.output)
+                }
+
+                console.log(`   📊 Standard ${stdIndex} values:`, {
+                  category: categoryValue,
+                  mfo: mfoValue,
+                  output: outputValue,
+                })
+
+                // Resolve performance indicator
+                let performanceIndicator = ''
+                if (standard.indicatorName) {
                   if (
-                    this.officeLibraryIndicatorStore?.verbs &&
-                    Array.isArray(this.officeLibraryIndicatorStore.verbs)
+                    typeof standard.indicatorName === 'number' ||
+                    !isNaN(standard.indicatorName)
                   ) {
-                    const foundVerb = this.officeLibraryIndicatorStore.verbs.find(
-                      (v) => v.id === verbId,
-                    )
-
-                    if (foundVerb) {
-                      performanceIndicator = foundVerb.indicator_name || foundVerb.name || ''
-                      console.log(`✅ Found verb for ID ${verbId}: `, foundVerb.indicator_name)
-                    } else {
-                      console.warn(
-                        `⚠️ Verb not found for ID ${verbId}. Available verbs:`,
-                        this.officeLibraryIndicatorStore.verbs,
+                    const verbId = Number(standard.indicatorName)
+                    if (
+                      this.officeLibraryIndicatorStore?.verbs &&
+                      Array.isArray(this.officeLibraryIndicatorStore.verbs)
+                    ) {
+                      const foundVerb = this.officeLibraryIndicatorStore.verbs.find(
+                        (v) => v.id === verbId,
                       )
+                      if (foundVerb) {
+                        performanceIndicator = foundVerb.indicator_name || foundVerb.name || ''
+                      }
                     }
                   } else {
-                    console.warn('⚠️ officeLibraryIndicatorStore.verbs not available')
+                    performanceIndicator = String(standard.indicatorName).trim()
                   }
-                } else {
-                  // It's already a string
-                  performanceIndicator = String(standard.indicatorName).trim()
                 }
-              }
 
-              // Ensure it's never empty
-              if (!performanceIndicator) {
-                console.error(`❌ Performance indicator is empty for standard ${index}: `, standard)
-              }
+                // Build ratings array
+                const ratings = []
+                if (standard.standardOutcomeRows && Array.isArray(standard.standardOutcomeRows)) {
+                  standard.standardOutcomeRows.forEach((row) => {
+                    if (row.rating) {
+                      // Determine timeliness
+                      let timelinessValue = ''
 
-              console.log(`🎯 Standard ${index}: `, {
-                inputIndicatorName: standard.indicatorName,
-                resolvedIndicator: performanceIndicator,
-              })
+                      if (
+                        standard.timelinessIndicatorType === 'beforeDeadline' &&
+                        row.rating === '3'
+                      ) {
+                        if (standard.timelinessInputs?.range && row.timelinessRange) {
+                          timelinessValue = row.timelinessRange
+                        }
+                        if (standard.timelinessInputs?.date && row.timelinessDate) {
+                          timelinessValue = timelinessValue
+                            ? `${timelinessValue} by ${row.timelinessDate}`
+                            : `by ${row.timelinessDate}`
+                        }
+                        if (standard.timelinessInputs?.description && row.timelinessText) {
+                          timelinessValue = timelinessValue
+                            ? `${timelinessValue} ${row.timelinessText}`
+                            : row.timelinessText
+                        }
+                      } else if (
+                        standard.timelinessIndicatorType === 'onDeadline' &&
+                        row.rating === '5'
+                      ) {
+                        if (standard.timelinessInputs?.range && row.timelinessRange) {
+                          timelinessValue = row.timelinessRange
+                        }
+                        if (standard.timelinessInputs?.date && row.timelinessDate) {
+                          timelinessValue = timelinessValue
+                            ? `${timelinessValue} by ${row.timelinessDate}`
+                            : `by ${row.timelinessDate}`
+                        }
+                        if (standard.timelinessInputs?.description && row.timelinessText) {
+                          timelinessValue = timelinessValue
+                            ? `${timelinessValue} ${row.timelinessText}`
+                            : row.timelinessText
+                        }
+                      }
 
-              return {
-                category: standard.categoryName || standard.rows?.category || '',
-                mfo: standard.mfoName || standard.rows?.mfo || '',
-                output: standard.outputName || standard.rows?.output || '',
-                core_competency: standard.coreCompetencies || [],
-                technical_competency: standard.technicalCompetencies || [],
-                leadership_competency: standard.leadershipCompetencies || [],
-                success_indicator: standard.successIndicator || '',
-                performance_indicator: performanceIndicator,
-                required_output: standard.requiredOutput || '',
-                ratings: (standard.standardOutcomeRows || [])
-                  .map((row) => ({
-                    rating: parseInt(row.rating) || 0,
-                    quantity: row.quantity || '',
-                    effectiveness: row.effectiveness || '',
-                    timeliness: row.timeliness || row.timelinessRange || '',
-                  }))
-                  .filter((rating) => rating.rating > 0),
-              }
-            }),
+                      // Fallback
+                      if (!timelinessValue) {
+                        timelinessValue = row.timeliness || row.timelinessRange || ''
+                      }
+
+                      ratings.push({
+                        rating: Number(row.rating) || 0,
+                        quantity: String(row.quantity || ''),
+                        effectiveness: String(row.effectiveness || ''),
+                        timeliness: String(timelinessValue),
+                        timeliness_range: String(row.timelinessRange || ''),
+                        timeliness_date: String(row.timelinessDate || ''),
+                        timeliness_description: String(row.timelinessText || ''),
+                      })
+                    }
+                  })
+                }
+
+                console.log(`   📈 Standard ${stdIndex} has ${ratings.length} ratings`)
+
+                // Build config object
+                const config = {
+                  quantity_indicator_type: String(standard.quantityIndicatorType || 'numeric'),
+                  timeliness_indicator_type: String(
+                    standard.timelinessIndicatorType || 'beforeDeadline',
+                  ),
+                  timeliness_inputs: standard.timelinessInputs || {
+                    range: true,
+                    date: false,
+                    description: false,
+                  },
+                  target_output: standard.targetOutput || {
+                    baseTarget:
+                      standard.quantityIndicatorType === 'B'
+                        ? standard.targetOutput?.baseTarget || 0
+                        : null,
+                    calculated:
+                      standard.standardOutcomeRows?.map((row) => ({
+                        rating: row.rating,
+                        quantity: row.quantity,
+                        quantityType: standard.quantityIndicatorType,
+                      })) || [],
+                  },
+                }
+
+                // Build the final standard object
+                const standardPayload = {
+                  category: String(categoryValue || ''),
+                  mfo: String(mfoValue || ''),
+                  output: String(outputValue || ''),
+                  core_competency: Array.isArray(standard.coreCompetencies)
+                    ? standard.coreCompetencies
+                    : [],
+                  technical_competency: Array.isArray(standard.technicalCompetencies)
+                    ? standard.technicalCompetencies
+                    : [],
+                  leadership_competency: Array.isArray(standard.leadershipCompetencies)
+                    ? standard.leadershipCompetencies
+                    : [],
+                  success_indicator: String(standard.successIndicator || ''),
+                  performance_indicator: String(performanceIndicator || ''),
+                  required_output: String(standard.requiredOutput || ''),
+                  ratings: ratings.length > 0 ? ratings : [], // Ensure it's always an array
+                  config: config,
+                }
+
+                console.log(`   ✅ Built standard ${stdIndex}:`, {
+                  category: standardPayload.category,
+                  ratingsCount: standardPayload.ratings.length,
+                  hasConfig: !!standardPayload.config,
+                })
+
+                return standardPayload
+              },
+            )
           }
+
+          console.log(
+            `✅ Employee ${empIndex} payload ready with ${employeePayload.performance_standards.length} standards`,
+          )
+          return employeePayload
         }),
       }
-    },
 
+      // Final validation
+      console.log('🔍 Final payload validation:')
+      payload.employees.forEach((emp, idx) => {
+        console.log(`  Employee ${idx}:`, {
+          hasSemester: !!emp.semester,
+          semester: emp.semester,
+          standards: emp.performance_standards?.length || 0,
+          firstStandard: emp.performance_standards?.[0]
+            ? {
+                category: emp.performance_standards[0].category,
+                hasRatings: emp.performance_standards[0].ratings?.length > 0,
+                hasConfig: !!emp.performance_standards[0].config,
+              }
+            : null,
+        })
+      })
+
+      return payload
+    },
     // Fetch saved UWPs
     async fetchSavedUWPs() {
       this.loading = true
