@@ -14,7 +14,8 @@
 }
 
 .q-tree {
-  font-size: 12px;
+   font-size: 0.85rem;
+    word-break: break-word;
 }
 
 .q-tree__node--selected {
@@ -29,10 +30,10 @@
 }
 
 .node-icon {
-  font-size: 1rem;
+  font-size: 1.5rem;
   margin-right: 8px;
   margin-left: 8px;
-  color: #666;
+  color: #047727;
 }
 
 .employee-count {

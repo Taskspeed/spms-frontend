@@ -6,7 +6,6 @@
         <div class="row q-mb-lg">
           <div class="col-12 col-md-4">
             <q-card flat bordered>
-              
               <q-card-section>
                 <div class="col-12 col-md-6 q-mb-sm">
                   <div class="row q-gutter-sm items-center">
