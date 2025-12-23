@@ -1327,7 +1327,6 @@ export default {
         if (stored) {
           const parsed = JSON.parse(stored)
           uwpData.value = parsed
-          console.log('✅ Retrieved UWP Data from sessionStorage:', uwpData.value)
         }
       } catch (error) {
         console.error('❌ Failed to parse UWP data:', error)
@@ -1381,23 +1380,14 @@ export default {
       const levelText = getLevelText(employee.level)
       const sgRange = getSGRange(employee.sg, employee.level)
 
-      console.log('🔍 Getting competencies for:', {
-        level: levelText,
-        sgRange: sgRange,
-        sg: employee.sg,
-      })
-
       const competencyRow = competencyStore.getRow(levelText, sgRange)
 
       if (!competencyRow) {
-        console.log('❌ No competency row found for:', { level: levelText, sgRange })
         coreCompetencies.value = []
         technicalCompetencies.value = []
         leadershipCompetencies.value = []
         return
       }
-
-      console.log('✅ Found competency row:', competencyRow)
 
       // Get core competencies
       coreCompetencies.value = [
@@ -1467,12 +1457,6 @@ export default {
           description: competencyStore.descriptions.leadership.MPCR,
         },
       ].filter((comp) => comp.value && comp.value !== '-')
-
-      console.log('✅ Updated competencies:', {
-        core: coreCompetencies.value,
-        technical: technicalCompetencies.value,
-        leadership: leadershipCompetencies.value,
-      })
     }
 
     // Computed
@@ -1639,49 +1623,29 @@ export default {
     }
 
     const isFormValid = computed(() => {
-      console.log('🔍 Validating form...')
-
-      // Debug: Log current state
-      console.log('Target Period:', uwpData.value.targetPeriod)
-      console.log(
-        'Employee tabs:',
-        employeeTabs.value.map((e) => ({
-          hasEmployee: !!e.employeeId,
-          name: e.name,
-          tabId: e.id,
-        })),
-      )
-
       // Check if we have at least one employee tab
       if (employeeTabs.value.length === 0) {
-        console.log('❌ No employee tabs')
         return false
       }
 
       // Check target period - FIXED: Use uwpData.targetPeriod
       const hasTargetPeriod =
         uwpData.value.targetPeriod?.semester && uwpData.value.targetPeriod?.year
-      console.log('Has target period?', hasTargetPeriod, uwpData.value.targetPeriod)
 
       if (!hasTargetPeriod) {
-        console.log('❌ Missing target period')
         return false
       }
 
       // Check all employees
       const allEmployeesValid = employeeTabs.value.every((emp) => {
-        console.log(`Checking employee: ${emp.name || emp.id}`)
-
         // 1. Employee must have an ID selected
         if (!emp.employeeId) {
-          console.log(`❌ Employee ${emp.id} has no employeeId`)
           return false
         }
 
         // 2. Check all performance standards for this employee
-        const allStandardsValid = emp.performanceStandards.every((standard, index) => {
+        const allStandardsValid = emp.performanceStandards.every((standard) => {
           if (!standard.standardOutcomeRows) {
-            console.log(`❌ Standard ${index} has no rows`)
             return false
           }
 
@@ -1690,20 +1654,11 @@ export default {
           ).length
 
           const isValid = filledValues >= 2
-          console.log(
-            `  Standard ${index + 1}: ${filledValues} effectiveness values = ${isValid ? '✓' : '✗'}`,
-          )
+
           return isValid
         })
 
-        console.log(`  All standards valid for ${emp.name}: ${allStandardsValid ? '✓' : '✗'}`)
         return allStandardsValid
-      })
-
-      console.log('Final validation result:', {
-        hasTargetPeriod,
-        allEmployeesValid,
-        isValid: hasTargetPeriod && allEmployeesValid,
       })
 
       return hasTargetPeriod && allEmployeesValid
@@ -2357,18 +2312,6 @@ export default {
           timestamp: new Date().toISOString(),
         }
 
-        console.log('📤 Submission data prepared:', {
-          semester: submissionData.form.semester,
-          year: submissionData.form.year,
-          employeeCount: submissionData.employees.length,
-        })
-
-        console.log('📊 Submitting UWP Data:', submissionData)
-        console.log(
-          '📊 First employee standards:',
-          submissionData.employees[0]?.performanceStandards,
-        )
-
         await uwpStore.saveUWP(submissionData, officeLibraryIndicatorStore)
 
         // ✅ Success notification
@@ -2448,19 +2391,9 @@ export default {
       initializeEmployeeTabs()
       const officeId = uwpData.value.hierarchy.office?.id || 1
 
-      console.log('🔍 DEBUG - uwpData.value.availableEmployees:', uwpData.value.availableEmployees)
-
       try {
         await officeLibraryStore.fetchAllData(officeId)
         await officeLibraryIndicatorStore.fetchVerbs()
-
-        console.log('✅ Data loaded successfully')
-        console.log('📊 Categories loaded:', officeLibraryStore.categories?.length || 0, 'items')
-        console.log('📊 MFOs loaded:', officeLibraryStore.mfos?.length || 0, 'items')
-
-        // ✅ DO NOT automatically fetch and populate filtered employees
-        // Only initialize with empty tabs as defined in initializeEmployeeTabs
-        console.log('✅ Ready for manual employee selection')
       } catch (error) {
         console.error('❌ Error loading data:', error)
         $q.notify({ message: 'Failed to load data', color: 'negative', position: 'top' })
@@ -2498,7 +2431,7 @@ export default {
       hasMinimumEffectivenessValues,
       getEffectivenessErrorCount,
       isFormValid,
-      hasOrganizationalSelection: computed(
+       hasOrganizationalSelection: computed(
         () =>
           form.value.division !== null || form.value.section !== null || form.value.unit !== null,
       ),

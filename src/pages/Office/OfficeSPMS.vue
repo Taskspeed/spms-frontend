@@ -18,7 +18,6 @@
                       emit-value
                       map-options
                       @update:model-value="onSemesterChange"
-
                       class="col"
                     >
                       <template v-slot:prepend>
@@ -36,7 +35,6 @@
                       map-options
                       @update:model-value="onYearChange"
                       class="col"
-
                     >
                       <template v-slot:prepend>
                         <q-icon name="event" size="xs" />
@@ -247,11 +245,11 @@
                             color="amber"
                             icon="edit"
                             size="md"
-                            @click="editEmployee(props.row)"
+                            @click="showEditModal(props.row)"
                           >
                             <q-tooltip>Edit</q-tooltip>
                           </q-btn>
-                          <q-btn
+                          <!-- <q-btn
                             class="neu-button"
                             flat
                             round
@@ -261,7 +259,7 @@
                             @click="confirmDeleteEmployee(props.row)"
                           >
                             <q-tooltip>Delete</q-tooltip>
-                          </q-btn>
+                          </q-btn> -->
                         </div>
                       </q-td>
                     </q-tr>
@@ -290,6 +288,16 @@
       :targetPeriod="currentTargetPeriod"
       :filteredDivisions="filteredRows"
       @close="closeUnitWorkPlanModal"
+    />
+  </q-dialog>
+
+  <!-- Edit Employee Modal -->
+  <q-dialog v-model="showEditModalOpen" full-width persistent>
+    <EditUWP
+      v-if="employeeToEdit"
+      :employee="employeeToEdit"
+      @close="closeEditModal"
+      @saved="handleEmployeeSaved"
     />
   </q-dialog>
 
@@ -360,6 +368,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useOrganizationStore } from 'src/stores/office/spmsStore'
 import { useUserStore } from 'src/stores/userStore'
 import unitWorkplan_report from 'src/components/unitworkplant_Report.vue'
+import EditUWP from 'src/components/EditUWPModal.vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import ipcr_Report from 'src/components/ipcr_Report.vue'
@@ -384,6 +393,10 @@ const show_ipcr_ModalOpen = ref(false)
 const uwpValidationDialog = ref(false)
 const uwpValidationMessage = ref('')
 const uwpIncompleteItems = ref([])
+
+// Edit Employee State
+const showEditModalOpen = ref(false)
+const employeeToEdit = ref(null)
 
 // Table columns
 const columns = ref([
@@ -531,7 +544,7 @@ const getNodeEmployees = (nodeId, nodes = orgStore.structure) => {
             if (child.type === 'employee') {
               employees.push({
                 id: child.id,
-                name: child.label,
+                label: child.label,
                 position: child.position,
                 rank: child.rank,
                 ipcrStatus: child.ipcrStatus,
@@ -663,6 +676,7 @@ const getCompletionColor = (nodeId) => {
   }
   return 'warning'
 }
+
 const getNodeCount = (nodeId) => {
   try {
     const node = orgStore._findNode(nodeId)
@@ -698,6 +712,7 @@ const countAllEmployees = (node) => {
 
   return total
 }
+
 const getLeafBadgeColor = (nodeId) => {
   const count = getNodeCount(nodeId)
   return count > 0 ? 'positive' : 'grey-5'
@@ -760,6 +775,31 @@ const show_ipcr_Modal = (employee) => {
 
 const close_ipcr_Modal = () => {
   show_ipcr_ModalOpen.value = false
+}
+
+const showEditModal = (employee) => {
+  employeeToEdit.value = employee
+  showEditModalOpen.value = true
+}
+
+const closeEditModal = () => {
+  showEditModalOpen.value = false
+  employeeToEdit.value = null
+}
+
+const handleEmployeeSaved = async () => {
+  try {
+    await refreshData()
+    $q.notify({
+      message: 'Employee updated successfully',
+      color: 'positive',
+    })
+  } catch {
+    $q.notify({
+      message: 'Failed to refresh data after edit',
+      color: 'negative',
+    })
+  }
 }
 
 const createUnitWorkPlan = () => {
@@ -834,17 +874,6 @@ const createUnitWorkPlan = () => {
       id: selectedNode.value.id,
     },
   })
-}
-
-const editEmployee = (employee) =>
-  router.push({
-    name: 'employee-edit',
-    params: { id: employee.employeeData?.id || employee.id.replace('emp_', '') },
-  })
-
-const confirmDeleteEmployee = (employee) => {
-  employeeToDelete.value = employee
-  confirmDeleteDialog.value = true
 }
 
 const performDeleteEmployee = async () => {

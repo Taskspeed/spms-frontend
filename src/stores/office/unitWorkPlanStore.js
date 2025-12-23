@@ -474,6 +474,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
       }
     },
 
+    // In your unitWorkPlanStore.js, update the transformPayload function:
     transformPayload(submissionData) {
       console.log('🔍 Building payload from submissionData:', submissionData)
 
@@ -515,7 +516,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             control_no: String(controlNo),
             employee_id: Number(employeeId),
             employee_name: String(employeeName),
-            semester: String(semester), // ✅ CRITICAL: Add semester at employee level
+            semester: String(semester),
             year: Number(year),
             office: String(officeData.label || officeData.name || ''),
             office2:
@@ -618,6 +619,8 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
                 // Build ratings array
                 const ratings = []
+                let defaultTimelinessValue = '' // Store a default timeliness value
+
                 if (standard.standardOutcomeRows && Array.isArray(standard.standardOutcomeRows)) {
                   standard.standardOutcomeRows.forEach((row) => {
                     if (row.rating) {
@@ -665,6 +668,11 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                         timelinessValue = row.timeliness || row.timelinessRange || ''
                       }
 
+                      // Store default timeliness value if not set yet
+                      if (!defaultTimelinessValue && timelinessValue) {
+                        defaultTimelinessValue = timelinessValue
+                      }
+
                       ratings.push({
                         rating: Number(row.rating) || 0,
                         quantity: String(row.quantity || ''),
@@ -680,29 +688,69 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
                 console.log(`   📈 Standard ${stdIndex} has ${ratings.length} ratings`)
 
-                // Build config object
+                // FIXED: Build the complete config object with all required fields
+                const quantityType = standard.quantityIndicatorType || 'numeric'
+                const timelinessType = standard.timelinessIndicatorType || 'beforeDeadline'
+                const timelinessInputs = standard.timelinessInputs || {
+                  range: true,
+                  date: false,
+                  description: false,
+                }
+
+                // Find the appropriate row for quantity and timeliness values
+                const quantityRow =
+                  standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
+                const timelinessRow =
+                  timelinessType === 'beforeDeadline'
+                    ? standard.standardOutcomeRows?.find((row) => row.rating === '3') || {}
+                    : standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
+
+                // Get required output - if empty, use a default
+                const requiredOutput =
+                  standard.requiredOutput?.trim() || standard.outputName?.trim() || 'N/A'
+
+                // Use default timeliness value if timelinessRow doesn't have one
+                const timelinessValue = timelinessRow.timeliness || defaultTimelinessValue || 'N/A'
+                const timelinessQuantity = timelinessRow.quantity || quantityRow.quantity || 'N/A'
+
                 const config = {
-                  quantity_indicator_type: String(standard.quantityIndicatorType || 'numeric'),
-                  timeliness_indicator_type: String(
-                    standard.timelinessIndicatorType || 'beforeDeadline',
-                  ),
-                  timeliness_inputs: standard.timelinessInputs || {
-                    range: true,
-                    date: false,
-                    description: false,
+                  quantity_indicator_type: {
+                    type: String(quantityType),
+                    quantity: String(quantityRow.quantity || 'N/A'),
+                    timeliness: String(timelinessValue),
                   },
-                  target_output: standard.targetOutput || {
-                    baseTarget:
-                      standard.quantityIndicatorType === 'B'
-                        ? standard.targetOutput?.baseTarget || 0
-                        : null,
-                    calculated:
-                      standard.standardOutcomeRows?.map((row) => ({
-                        rating: row.rating,
-                        quantity: row.quantity,
-                        quantityType: standard.quantityIndicatorType,
-                      })) || [],
+                  timeliness_indicator_type: {
+                    type: String(timelinessType),
+                    quantity: String(timelinessQuantity),
+                    timeliness: String(timelinessValue),
                   },
+                  timeliness_inputs: {
+                    type: 'object',
+                    quantity: String(timelinessQuantity),
+                    timeliness: String(timelinessValue),
+                  },
+                  target_output: {
+                    type: 'object',
+                    quantity: String(quantityRow.quantity || 'N/A'),
+                    timeliness: String(timelinessValue),
+                  },
+                }
+
+                // Add timeliness input types if they exist
+                if (timelinessInputs.range !== undefined) {
+                  config.timeliness_inputs.range = Boolean(timelinessInputs.range)
+                }
+                if (timelinessInputs.date !== undefined) {
+                  config.timeliness_inputs.date = Boolean(timelinessInputs.date)
+                }
+                if (timelinessInputs.description !== undefined) {
+                  config.timeliness_inputs.description = Boolean(timelinessInputs.description)
+                }
+
+                // Add target output details if available
+                if (standard.targetOutput) {
+                  config.target_output.baseTarget = standard.targetOutput.baseTarget || null
+                  config.target_output.calculated = standard.targetOutput.calculated || []
                 }
 
                 // Build the final standard object
@@ -721,15 +769,17 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                     : [],
                   success_indicator: String(standard.successIndicator || ''),
                   performance_indicator: String(performanceIndicator || ''),
-                  required_output: String(standard.requiredOutput || ''),
-                  ratings: ratings.length > 0 ? ratings : [], // Ensure it's always an array
+                  required_output: String(requiredOutput), // Fixed: Now has a value
+                  ratings: ratings.length > 0 ? ratings : [],
                   config: config,
                 }
 
                 console.log(`   ✅ Built standard ${stdIndex}:`, {
                   category: standardPayload.category,
+                  required_output: standardPayload.required_output,
                   ratingsCount: standardPayload.ratings.length,
                   hasConfig: !!standardPayload.config,
+                  configFields: standardPayload.config ? Object.keys(standardPayload.config) : [],
                 })
 
                 return standardPayload
@@ -754,8 +804,12 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           firstStandard: emp.performance_standards?.[0]
             ? {
                 category: emp.performance_standards[0].category,
+                required_output: emp.performance_standards[0].required_output,
                 hasRatings: emp.performance_standards[0].ratings?.length > 0,
                 hasConfig: !!emp.performance_standards[0].config,
+                configFields: emp.performance_standards[0].config
+                  ? Object.keys(emp.performance_standards[0].config)
+                  : [],
               }
             : null,
         })

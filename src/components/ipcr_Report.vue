@@ -1,4 +1,4 @@
-  <!-- ipcr_report.vue -->
+<!-- ipcr_report.vue -->
 <template>
   <!-- App Header -->
   <div class="app-container">
@@ -41,8 +41,13 @@
             <q-item-section>
               <q-item-label caption>Status</q-item-label>
               <q-item-label>
-                <q-badge :color="getStatusColor(employee?.status)" :text-color="getStatusTextColor(employee?.status)"
-                  align="middle" class="q-px-md q-py-xs" rounded>
+                <q-badge
+                  :color="getStatusColor(employee?.status)"
+                  :text-color="getStatusTextColor(employee?.status)"
+                  align="middle"
+                  class="q-px-md q-py-xs"
+                  rounded
+                >
                   <q-icon :name="getStatusIcon(employee?.status)" class="q-mr-xs" />
                   {{ employee?.status }}
                 </q-badge>
@@ -51,8 +56,13 @@
           </q-item>
           <q-separator class="q-my-md" />
           <q-item>
-            <q-btn color="positive" label="Approve" class="full-width" :disable="employee?.status === 'Approved'"
-              @click="$emit('approve')" />
+            <q-btn
+              color="positive"
+              label="Approve"
+              class="full-width"
+              :disable="employee?.status === 'Approved'"
+              @click="$emit('approve')"
+            />
           </q-item>
         </q-list>
       </div>
@@ -67,16 +77,35 @@
               <div class="text-subtitle2">Target Period: January - June 2025</div>
             </div>
             <div class="flex justify-end q-gutter-sm">
-              <q-btn color="green-9" icon="print" label="Print" @click="directPrint" :loading="isPrinting" />
-              <q-btn color="green-9" icon="download" label="Download" @click="downloadPdf" :loading="isGeneratingPdf" />
+              <q-btn
+                color="green-9"
+                icon="print"
+                label="Print"
+                @click="directPrint"
+                :loading="isPrinting"
+              />
+              <q-btn
+                color="green-9"
+                icon="download"
+                label="Download"
+                @click="downloadPdf"
+                :loading="isGeneratingPdf"
+              />
               <q-tooltip>Download as PDF</q-tooltip>
             </div>
           </div>
         </div>
 
         <!-- Tabs for different report types -->
-        <q-tabs v-model="activeTab" dense class="text-grey" active-color="green-8" indicator-color="green-8"
-          align="justify" narrow-indicator>
+        <q-tabs
+          v-model="activeTab"
+          dense
+          class="text-grey"
+          active-color="green-8"
+          indicator-color="green-8"
+          align="justify"
+          narrow-indicator
+        >
           <q-tab name="ipcr" label="IPCR" />
           <q-tab name="ps" label="Performance Standard" />
           <q-tab name="mpo" label="Monthly Performance Output" />
@@ -91,53 +120,93 @@
               <div class="report-content" id="print-section-ipcr">
                 <!-- Header with Logo -->
                 <div class="header">
-                  <img src="https://phshirt.com/wp-content/uploads/2021/11/City-of-Tagum-Logo.png"
-                    alt="City of Tagum Logo" class="logo">
+                  <img
+                    src="https://phshirt.com/wp-content/uploads/2021/11/City-of-Tagum-Logo.png"
+                    alt="City of Tagum Logo"
+                    class="logo"
+                  />
                   <div class="center-text">
                     <div class="title">INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR)</div>
                     <div class="title">CITY OF HUMAN RESOURCE MANAGEMENT OFFICE</div>
                   </div>
-                  <img src="/src/assets/RP.png" alt="City of Tagum Logo" class="logo">
+                  <img
+                    src="/src/assets/rotp.png"
+                    alt="Republic of the Philippines Logo"
+                    class="logo"
+                  />
                 </div>
 
                 <div>
-                  <div style="display: flex;">
+                  <div style="display: flex">
                     <!-- Left section (3/4 width) -->
-                    <div style="flex: 3; padding-right: 10px;">
-                      <div>I, <strong><u>{{ employee?.name }}</u></strong>, of <strong><u>{{
-                            employee?.division }}</u></strong>,
-                        commit to deliver and
-                        agree to be rated on the attainment of the following targets in
-                        accordance
-                        with the indicated measure for the period January - June 2025.
+                    <div style="flex: 3; padding-right: 10px">
+                      <div>
+                        I,
+                        <strong
+                          ><u>{{ employee?.name }}</u></strong
+                        >, of
+                        <strong
+                          ><u>{{ employee?.division }}</u></strong
+                        >, commit to deliver and agree to be rated on the attainment of the
+                        following targets in accordance with the indicated measure for the period
+                        January - June 2025.
                       </div>
-                      <div style="display: flex; justify-content: flex-end; padding-right: 80px;">
-                        <div style="padding-bottom: 10px; text-align: center;">
-                          <div style="padding-top: 30px;"><strong><u>{{ employee?.name
-                                }}</u></strong></div>
+                      <div style="display: flex; justify-content: flex-end; padding-right: 80px">
+                        <div style="padding-bottom: 10px; text-align: center">
+                          <div style="padding-top: 30px">
+                            <strong
+                              ><u>{{ employee?.name }}</u></strong
+                            >
+                          </div>
                           <div>{{ employee?.position }}</div>
-                          <div>Date:<strong><u>01/21/2025</u></strong></div>
+                          <div>
+                            Date:<strong><u>01/21/2025</u></strong>
+                          </div>
                         </div>
                       </div>
                       <div>
-                        <table style="width: 100%; border-collapse: collapse; border: 1px solid black;">
+                        <table
+                          style="width: 100%; border-collapse: collapse; border: 1px solid black"
+                        >
                           <thead>
                             <tr>
-                              <th style="border: 1px solid black; padding: 8px; text-align: left;">
-                                Reviewed by:</th>
-                              <th style="border: 1px solid black; padding: 8px; text-align: left;">
-                                Approved by:</th>
+                              <th style="border: 1px solid black; padding: 8px; text-align: left">
+                                Reviewed by:
+                              </th>
+                              <th style="border: 1px solid black; padding: 8px; text-align: left">
+                                Approved by:
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
-                              <td style="border: 1px solid black; padding-top: 30px; text-align: center;">
-                                <div><strong><u>{{ employee?.name }}</u></strong></div>
+                              <td
+                                style="
+                                  border: 1px solid black;
+                                  padding-top: 30px;
+                                  text-align: center;
+                                "
+                              >
+                                <div>
+                                  <strong
+                                    ><u>{{ employee?.name }}</u></strong
+                                  >
+                                </div>
                                 <div>{{ employee?.position }}</div>
                                 <div>Date:<u>01/21/2025</u></div>
                               </td>
-                              <td style="border: 1px solid black; padding-top: 30px; text-align: center;">
-                                <div><strong><u>{{ employee?.name }}</u></strong></div>
+                              <td
+                                style="
+                                  border: 1px solid black;
+                                  padding-top: 30px;
+                                  text-align: center;
+                                "
+                              >
+                                <div>
+                                  <strong
+                                    ><u>{{ employee?.name }}</u></strong
+                                  >
+                                </div>
                                 <div>{{ employee?.position }}</div>
                                 <div>Date:<u>01/21/2025</u></div>
                               </td>
@@ -148,101 +217,211 @@
                     </div>
 
                     <!-- Right section (1/4 width) -->
-                    <div style="flex: 1; align-items: flex-end; display: flex; flex-direction: column; gap: 30px;">
+                    <div
+                      style="
+                        flex: 1;
+                        align-items: flex-end;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 30px;
+                      "
+                    >
                       <!-- First Stamp -->
-                      <div style="border: 3px double navy; text-align: center; color: navy; width: 250px;">
-                        <div style="font-size: 10px; font-weight: bold;">LOCAL GOVERNMENT OF
-                          TAGUM CITY</div>
-                        <div style="font-size: 13px;">{{
-                          employee?.division }}</div>
-                        <div style="font-size: 13px;">
-                          IPCR Accomplishment
+                      <div
+                        style="
+                          border: 3px double navy;
+                          text-align: center;
+                          color: navy;
+                          width: 250px;
+                        "
+                      >
+                        <div style="font-size: 10px; font-weight: bold">
+                          LOCAL GOVERNMENT OF TAGUM CITY
                         </div>
-                        <div style="font-size: 13px; font-weight: bold;">RECEIVED</div>
-                        <div style="text-align: left; padding-left: 10px;">
-                          By: <span style="border-bottom: 1px solid #000; display: inline-block; width: 190px;"></span>
+                        <div style="font-size: 13px">{{ employee?.division }}</div>
+                        <div style="font-size: 13px">IPCR Accomplishment</div>
+                        <div style="font-size: 13px; font-weight: bold">RECEIVED</div>
+                        <div style="text-align: left; padding-left: 10px">
+                          By:
+                          <span
+                            style="
+                              border-bottom: 1px solid #000;
+                              display: inline-block;
+                              width: 190px;
+                            "
+                          ></span>
                         </div>
-                        <div style="text-align: left; padding-left: 10px;">
-                          Date & Time: <span
-                            style="border-bottom: 1px solid #000; display: inline-block; width: 120px;"></span>
+                        <div style="text-align: left; padding-left: 10px">
+                          Date & Time:
+                          <span
+                            style="
+                              border-bottom: 1px solid #000;
+                              display: inline-block;
+                              width: 120px;
+                            "
+                          ></span>
                         </div>
                       </div>
 
-                      <div style="border: 3px double navy; text-align: center; color: navy; width: 250px;">
-                        <div style="font-size: 10px; font-weight: bold;">LOCAL GOVERNMENT OF
-                          TAGUM CITY</div>
-                        <div style="font-size: 13px;">{{
-                          employee?.division }}</div>
-                        <div style="font-size: 13px;">
-                          IPCR Accomplishment
+                      <div
+                        style="
+                          border: 3px double navy;
+                          text-align: center;
+                          color: navy;
+                          width: 250px;
+                        "
+                      >
+                        <div style="font-size: 10px; font-weight: bold">
+                          LOCAL GOVERNMENT OF TAGUM CITY
                         </div>
-                        <div style="font-size: 13px; font-weight: bold;">RECEIVED</div>
-                        <div style="text-align: left; padding-left: 10px;">
-                          By: <span style="border-bottom: 1px solid #000; display: inline-block; width: 190px;"></span>
+                        <div style="font-size: 13px">{{ employee?.division }}</div>
+                        <div style="font-size: 13px">IPCR Accomplishment</div>
+                        <div style="font-size: 13px; font-weight: bold">RECEIVED</div>
+                        <div style="text-align: left; padding-left: 10px">
+                          By:
+                          <span
+                            style="
+                              border-bottom: 1px solid #000;
+                              display: inline-block;
+                              width: 190px;
+                            "
+                          ></span>
                         </div>
-                        <div style="text-align: left; padding-left: 10px;">
-                          Date & Time: <span
-                            style="border-bottom: 1px solid #000; display: inline-block; width: 120px;"></span>
+                        <div style="text-align: left; padding-left: 10px">
+                          Date & Time:
+                          <span
+                            style="
+                              border-bottom: 1px solid #000;
+                              display: inline-block;
+                              width: 120px;
+                            "
+                          ></span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div style="display: flex; gap: 20px; align-items: flex-start; margin-top: 20px;">
+                <div style="display: flex; gap: 20px; align-items: flex-start; margin-top: 20px">
                   <!-- Stamp Box -->
-                  <div style="border: 3px double navy; text-align: center; color: navy; width: 300px; padding: 10px;">
-                    <div style="font-size: 13px; font-weight: bold;">Performance Management Team
+                  <div
+                    style="
+                      border: 3px double navy;
+                      text-align: center;
+                      color: navy;
+                      width: 300px;
+                      padding: 10px;
+                    "
+                  >
+                    <div style="font-size: 13px; font-weight: bold">
+                      Performance Management Team
                     </div>
-                    <div style="text-align: left; padding-left: 10px; font-size:10px; margin-top: 15px;">
-                      Target Calibrated by: <span
-                        style="border-bottom: 1px solid #000; display: inline-block; width: 150px;"></span>
+                    <div
+                      style="
+                        text-align: left;
+                        padding-left: 10px;
+                        font-size: 10px;
+                        margin-top: 15px;
+                      "
+                    >
+                      Target Calibrated by:
+                      <span
+                        style="border-bottom: 1px solid #000; display: inline-block; width: 150px"
+                      ></span>
                     </div>
-                    <div style="text-align: left; padding-left: 10px; font-size:10px; margin-top: 10px;">
-                      Date: <span style="border-bottom: 1px solid #000; display: inline-block; width: 230px;"></span>
+                    <div
+                      style="
+                        text-align: left;
+                        padding-left: 10px;
+                        font-size: 10px;
+                        margin-top: 10px;
+                      "
+                    >
+                      Date:
+                      <span
+                        style="border-bottom: 1px solid #000; display: inline-block; width: 230px"
+                      ></span>
                     </div>
                   </div>
 
                   <!-- Rating Table -->
-                  <table style="border-collapse: collapse; border: 1px solid black; width: 250px;">
+                  <table style="border-collapse: collapse; border: 1px solid black; width: 250px">
                     <tbody>
                       <tr>
                         <td
-                          style="border: 1px solid black; text-align: center; width: 30px; padding: 5px; font-size: 10px;">
-                          5</td>
-                        <td style="border: 1px solid black; padding: 5px 10px; font-size: 10px;">
-                          Outstanding</td>
+                          style="
+                            border: 1px solid black;
+                            text-align: center;
+                            width: 30px;
+                            padding: 5px;
+                            font-size: 10px;
+                          "
+                        >
+                          5
+                        </td>
+                        <td style="border: 1px solid black; padding: 5px 10px; font-size: 10px">
+                          Outstanding
+                        </td>
                       </tr>
                       <tr>
-                        <td style="border: 1px solid black; text-align: center; padding: 5px; font-size: 10px;">
+                        <td
+                          style="
+                            border: 1px solid black;
+                            text-align: center;
+                            padding: 5px;
+                            font-size: 8px;
+                          "
+                        >
                           4
                         </td>
-                        <td style="border: 1px solid black; padding: 5px 10px; font-size: 10px;">
-                          Very
-                          Satisfactory</td>
+                        <td style="border: 1px solid black; padding: 5px 8px; font-size: 8px">
+                          Very Satisfactory
+                        </td>
                       </tr>
                       <tr>
-                        <td style="border: 1px solid black; text-align: center; padding: 5px; font-size: 10px;">
+                        <td
+                          style="
+                            border: 1px solid black;
+                            text-align: center;
+                            padding: 5px;
+                            font-size: 8px;
+                          "
+                        >
                           3
                         </td>
-                        <td style="border: 1px solid black; padding: 5px 10px; font-size: 10px;">
+                        <td style="border: 1px solid black; padding: 5px 8px; font-size: 8px">
                           Satisfactory
                         </td>
                       </tr>
                       <tr>
-                        <td style="border: 1px solid black; text-align: center; padding: 5px; font-size: 10px;">
+                        <td
+                          style="
+                            border: 1px solid black;
+                            text-align: center;
+                            padding: 5px;
+                            font-size: 8px;
+                          "
+                        >
                           2
                         </td>
-                        <td style="border: 1px solid black; padding: 5px 10px; font-size: 10px;">
+                        <td style="border: 1px solid black; padding: 5px 8px; font-size: 8px">
                           Unsatisfactory
                         </td>
                       </tr>
                       <tr>
-                        <td style="border: 1px solid black; text-align: center; padding: 5px; font-size: 10px;">
+                        <td
+                          style="
+                            border: 1px solid black;
+                            text-align: center;
+                            padding: 5px;
+                            font-size: 8px;
+                          "
+                        >
                           1
                         </td>
-                        <td style="border: 1px solid black; padding: 5px 10px; font-size: 10px;">
-                          Poor</td>
+                        <td style="border: 1px solid black; padding: 5px 8px; font-size: 8px">
+                          Poor
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -254,12 +433,9 @@
                     <table class="full-width main-table">
                       <thead class="no-repeat-header">
                         <tr>
-                          <th rowspan="2" class="text-center mfo-column">MAJOR FINAL OUTPUT
-                          </th>
-                          <th rowspan="2" class="text-center mfo-column">SUCCESS INDICATOR
-                          </th>
-                          <th rowspan="2" class="text-center mfo-column">ACTUAL ACCOMPLISHMENT
-                          </th>
+                          <th rowspan="2" class="text-center mfo-column">MAJOR FINAL OUTPUT</th>
+                          <th rowspan="2" class="text-center mfo-column">SUCCESS INDICATOR</th>
+                          <th rowspan="2" class="text-center mfo-column">ACTUAL ACCOMPLISHMENT</th>
                           <th colspan="4" class="text-center">RATING</th>
                           <th rowspan="2" class="text-center">REMARKS</th>
                         </tr>
@@ -274,11 +450,9 @@
                         <!-- Strategic Functions -->
                         <tr>
                           <td colspan="8" class="section-header">STRATEGIC FUNCTION</td>
-
                         </tr>
                         <tr>
                           <td colspan="8" class="section-mfo">MFO 1: controll panel</td>
-
                         </tr>
                         <tr>
                           <td>Outpot 1:Strategic Plan Implementation</td>
@@ -291,10 +465,10 @@
                           <td>Implements strategic initiatives on schedule</td>
                         </tr>
                         <tr>
-                          <td colspan="6" class="text-right text-weight-bold">Strategic
-                            Functions Average Rating</td>
-                          <td class="text-center text-weight-bold">{{
-                            employee?.rating }}</td>
+                          <td colspan="6" class="text-right text-weight-bold">
+                            Strategic Functions Average Rating
+                          </td>
+                          <td class="text-center text-weight-bold">{{ employee?.rating }}</td>
                           <td></td>
                         </tr>
 
@@ -326,8 +500,9 @@
                           <td>Implements training programs effectively</td>
                         </tr>
                         <tr>
-                          <td colspan="6" class="text-right text-weight-bold">Core
-                            Functions Average Rating</td>
+                          <td colspan="6" class="text-right text-weight-bold">
+                            Core Functions Average Rating
+                          </td>
                           <td class="text-center text-weight-bold">4</td>
                           <td></td>
                         </tr>
@@ -347,18 +522,17 @@
                           <td>Provides timely administrative support</td>
                         </tr>
                         <tr>
-                          <td colspan="6" class="text-right text-weight-bold">Support
-                            Functions Average
-                            Rating</td>
-                          <td class="text-center text-weight-bold">{{
-                            employee?.rating }}</td>
+                          <td colspan="6" class="text-right text-weight-bold">
+                            Support Functions Average Rating
+                          </td>
+                          <td class="text-center text-weight-bold">{{ employee?.rating }}</td>
                           <td></td>
                         </tr>
 
                         <!-- Final Rating -->
                         <tr>
-                          <td colspan="6" class="text-right text-weight-bold">Final Average
-                            Rating
+                          <td colspan="6" class="text-right text-weight-bold">
+                            Final Average Rating
                           </td>
                           <td class="text-center text-weight-bold">8</td>
                           <td></td>
@@ -367,49 +541,81 @@
                       <tfoot>
                         <tr>
                           <td>Core Function</td>
-                          <td colspan="4">3.50 = ((4 + 4.33 + 4.66 + 4.33 +4.66 + 4.33 + 5
-                            +3.66) / 8) *
-                            0.8</td>
+                          <td colspan="4">
+                            3.50 = ((4 + 4.33 + 4.66 + 4.33 +4.66 + 4.33 + 5 +3.66) / 8) * 0.8
+                          </td>
                           <td rowspan="4" colspan="3">
                             <div
-                              style="border: 3px double navy; text-align: center; color: navy; width: 300px; padding: 10px;">
-                              <div style="font-size: 13px; font-weight: bold;">Performance
-                                Management Team
+                              style="
+                                border: 3px double navy;
+                                text-align: center;
+                                color: navy;
+                                width: 300px;
+                                padding: 8px;
+                              "
+                            >
+                              <div style="font-size: 13px; font-weight: bold">
+                                Performance Management Team
                               </div>
-                              <div style="text-align: left; padding-left: 10px; font-size:10px; margin-top: 15px;">
-                                Target Calibrated by: <span
-                                  style="border-bottom: 1px solid #000; display: inline-block; width: 150px;"></span>
+                              <div
+                                style="
+                                  text-align: left;
+                                  padding-left: 8px;
+                                  font-size: 8px;
+                                  margin-top: 15px;
+                                "
+                              >
+                                Target Calibrated by:
+                                <span
+                                  style="
+                                    border-bottom: 1px solid #000;
+                                    display: inline-block;
+                                    width: 150px;
+                                  "
+                                ></span>
                               </div>
-                              <div style="text-align: left; padding-left: 10px; font-size:10px; margin-top: 10px;">
-                                Date: <span
-                                  style="border-bottom: 1px solid #000; display: inline-block; width: 230px;"></span>
+                              <div
+                                style="
+                                  text-align: left;
+                                  padding-left: 8px;
+                                  font-size: 8px;
+                                  margin-top: 10px;
+                                "
+                              >
+                                Date:
+                                <span
+                                  style="
+                                    border-bottom: 1px solid #000;
+                                    display: inline-block;
+                                    width: 230px;
+                                  "
+                                ></span>
                               </div>
                             </div>
                           </td>
                         </tr>
                         <tr>
                           <td>Support Function</td>
-                          <td colspan="4">3.50 = ((4 + 4.33 + 4.66 + 4.33 +4.66 + 4.33 + 5
-                            +3.66) / 8) *
-                            0.8</td>
+                          <td colspan="4">
+                            3.50 = ((4 + 4.33 + 4.66 + 4.33 +4.66 + 4.33 + 5 +3.66) / 8) * 0.8
+                          </td>
                         </tr>
                         <tr>
                           <td>Total</td>
                           <td colspan="4">4.22</td>
                         </tr>
                         <tr>
-                          <td>ADJECTIVAL RATING
-                          </td>
+                          <td>ADJECTIVAL RATING</td>
                           <td colspan="4">4 = VERY SATISFACTORY</td>
                         </tr>
                         <tr>
-                          <td colspan="8"><strong>Comments and Recommendations for
-                              Development
-                              Purposes</strong></td>
+                          <td colspan="8">
+                            <strong>Comments and Recommendations for Development Purposes</strong>
+                          </td>
                         </tr>
                         <tr>
                           <td colspan="8">
-                            <div style="height: 50px;"></div>
+                            <div style="height: 50px"></div>
                           </td>
                         </tr>
                         <tr>
@@ -421,20 +627,32 @@
                           <td><strong>Date:</strong></td>
                         </tr>
                         <tr>
-                          <td style="padding-top: 50px; text-align: center;">
-                            <div><strong><u>{{ employee?.name }}</u></strong></div>
+                          <td style="padding-top: 50px; text-align: center">
+                            <div>
+                              <strong
+                                ><u>{{ employee?.name }}</u></strong
+                              >
+                            </div>
                             <div>{{ employee?.position }}</div>
                             <div>Date:<u>01/21/2025</u></div>
                           </td>
                           <td></td>
-                          <td colspan="2" style="padding-top: 50px; text-align: center;">
-                            <div><strong><u>{{ employee?.name }}</u></strong></div>
+                          <td colspan="2" style="padding-top: 50px; text-align: center">
+                            <div>
+                              <strong
+                                ><u>{{ employee?.name }}</u></strong
+                              >
+                            </div>
                             <div>{{ employee?.position }}</div>
                             <div>Date:<u>01/21/2025</u></div>
                           </td>
                           <td></td>
-                          <td colspan="2" style="padding-top: 50px; text-align: center;">
-                            <div><strong><u>{{ employee?.name }}</u></strong></div>
+                          <td colspan="2" style="padding-top: 50px; text-align: center">
+                            <div>
+                              <strong
+                                ><u>{{ employee?.name }}</u></strong
+                              >
+                            </div>
                             <div>{{ employee?.position }}</div>
                             <div>Date:<u>01/21/2025</u></div>
                           </td>
@@ -470,14 +688,18 @@
               <div class="report-content" id="print-section-ps">
                 <!-- Header with Logo -->
                 <div class="header">
-                  <img src="https://phshirt.com/wp-content/uploads/2021/11/City-of-Tagum-Logo.png"
-                    alt="City of Tagum Logo" class="logo">
+                  <img
+                    src="https://phshirt.com/wp-content/uploads/2021/11/City-of-Tagum-Logo.png"
+                    alt="City of Tagum Logo"
+                    class="logo"
+                  />
                   <div class="center-text">
                     <div class="title">{{ employee?.division }}</div>
-                    <div class="title">PERFORMANCE STANDARDS FOR RATING PERIOD <u>January - June
-                        2025</u></div>
+                    <div class="title">
+                      PERFORMANCE STANDARDS FOR RATING PERIOD <u>January - June 2025</u>
+                    </div>
                   </div>
-                  <img src="/src/assets/RP.png" alt="City of Tagum Logo" class="logo">
+                  <img src="/src/assets/RP.png" alt="City of Tagum Logo" class="logo" />
                 </div>
 
                 <!-- Main Content -->
@@ -517,37 +739,36 @@
                         </tr>
                         <!-- Rating -->
                         <tr>
-                          <td style="text-align: center;">5</td>
-                          <td style="text-align: center;">25</td>
-                          <td style="text-align: center;">Without error</td>
-                          <td style="text-align: center;">6 months</td>
+                          <td style="text-align: center">5</td>
+                          <td style="text-align: center">25</td>
+                          <td style="text-align: center">Without error</td>
+                          <td style="text-align: center">6 months</td>
                           <td rowspan="5">VISUAL REPRESENTATION</td>
                           <td rowspan="5"></td>
-
                         </tr>
                         <tr>
-                          <td style="text-align: center;">4</td>
-                          <td style="text-align: center;">23</td>
-                          <td style="text-align: center;">1-5 errors</td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">4</td>
+                          <td style="text-align: center">23</td>
+                          <td style="text-align: center">1-5 errors</td>
+                          <td style="text-align: center"></td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">3</td>
-                          <td style="text-align: center;">20</td>
-                          <td style="text-align: center;">5-10 errors</td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">3</td>
+                          <td style="text-align: center">20</td>
+                          <td style="text-align: center">5-10 errors</td>
+                          <td style="text-align: center"></td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">2</td>
-                          <td style="text-align: center;">15</td>
-                          <td style="text-align: center;">More than 10 errors</td>
-                          <td style="text-align: center;">More than 6 months</td>
+                          <td style="text-align: center">2</td>
+                          <td style="text-align: center">15</td>
+                          <td style="text-align: center">More than 10 errors</td>
+                          <td style="text-align: center">More than 6 months</td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">1</td>
-                          <td style="text-align: center;">10</td>
-                          <td style="text-align: center;"></td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">1</td>
+                          <td style="text-align: center">10</td>
+                          <td style="text-align: center"></td>
+                          <td style="text-align: center"></td>
                         </tr>
 
                         <!-- Core Functions -->
@@ -560,37 +781,36 @@
                         </tr>
                         <!-- Rating -->
                         <tr>
-                          <td style="text-align: center;">5</td>
-                          <td style="text-align: center;">25</td>
-                          <td style="text-align: center;">Without error</td>
-                          <td style="text-align: center;">6 months</td>
+                          <td style="text-align: center">5</td>
+                          <td style="text-align: center">25</td>
+                          <td style="text-align: center">Without error</td>
+                          <td style="text-align: center">6 months</td>
                           <td rowspan="5">VISUAL REPRESENTATION</td>
                           <td rowspan="5"></td>
-
                         </tr>
                         <tr>
-                          <td style="text-align: center;">4</td>
-                          <td style="text-align: center;">23</td>
-                          <td style="text-align: center;">1-5 errors</td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">4</td>
+                          <td style="text-align: center">23</td>
+                          <td style="text-align: center">1-5 errors</td>
+                          <td style="text-align: center"></td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">3</td>
-                          <td style="text-align: center;">20</td>
-                          <td style="text-align: center;">5-10 errors</td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">3</td>
+                          <td style="text-align: center">20</td>
+                          <td style="text-align: center">5-10 errors</td>
+                          <td style="text-align: center"></td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">2</td>
-                          <td style="text-align: center;">15</td>
-                          <td style="text-align: center;">More than 10 errors</td>
-                          <td style="text-align: center;">More than 6 months</td>
+                          <td style="text-align: center">2</td>
+                          <td style="text-align: center">15</td>
+                          <td style="text-align: center">More than 10 errors</td>
+                          <td style="text-align: center">More than 6 months</td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">1</td>
-                          <td style="text-align: center;">10</td>
-                          <td style="text-align: center;"></td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">1</td>
+                          <td style="text-align: center">10</td>
+                          <td style="text-align: center"></td>
+                          <td style="text-align: center"></td>
                         </tr>
 
                         <!-- Support Functions -->
@@ -603,37 +823,36 @@
                         </tr>
                         <!-- Rating -->
                         <tr>
-                          <td style="text-align: center;">5</td>
-                          <td style="text-align: center;">25</td>
-                          <td style="text-align: center;">Without error</td>
-                          <td style="text-align: center;">6 months</td>
+                          <td style="text-align: center">5</td>
+                          <td style="text-align: center">25</td>
+                          <td style="text-align: center">Without error</td>
+                          <td style="text-align: center">6 months</td>
                           <td rowspan="5">VISUAL REPRESENTATION</td>
                           <td rowspan="5"></td>
-
                         </tr>
                         <tr>
-                          <td style="text-align: center;">4</td>
-                          <td style="text-align: center;">23</td>
-                          <td style="text-align: center;">1-5 errors</td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">4</td>
+                          <td style="text-align: center">23</td>
+                          <td style="text-align: center">1-5 errors</td>
+                          <td style="text-align: center"></td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">3</td>
-                          <td style="text-align: center;">20</td>
-                          <td style="text-align: center;">5-10 errors</td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">3</td>
+                          <td style="text-align: center">20</td>
+                          <td style="text-align: center">5-10 errors</td>
+                          <td style="text-align: center"></td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">2</td>
-                          <td style="text-align: center;">15</td>
-                          <td style="text-align: center;">More than 10 errors</td>
-                          <td style="text-align: center;">More than 6 months</td>
+                          <td style="text-align: center">2</td>
+                          <td style="text-align: center">15</td>
+                          <td style="text-align: center">More than 10 errors</td>
+                          <td style="text-align: center">More than 6 months</td>
                         </tr>
                         <tr>
-                          <td style="text-align: center;">1</td>
-                          <td style="text-align: center;">10</td>
-                          <td style="text-align: center;"></td>
-                          <td style="text-align: center;"></td>
+                          <td style="text-align: center">1</td>
+                          <td style="text-align: center">10</td>
+                          <td style="text-align: center"></td>
+                          <td style="text-align: center"></td>
                         </tr>
                       </tbody>
                     </table>
@@ -672,15 +891,21 @@
                 <!-- Header with Logo -->
                 <div class="header-container">
                   <div class="header-text">
-                    <div class="padded-text">Republic of the Philippinees
-                    </div>
-                    <div class="padded-text">Province of Davao del Norte
-                    </div>
-                    <div class="text-weight-bold padded-text">CITY OF TAGUM
-                    </div>
+                    <div class="padded-text">Republic of the Philippinees</div>
+                    <div class="padded-text">Province of Davao del Norte</div>
+                    <div class="text-weight-bold padded-text">CITY OF TAGUM</div>
 
-                    <div style="border: 3px double black; text-align: center; color: black; width: auto; padding: 5px;">
-                      <div class="text-weight-bold padded-text">MONTHLY PERFORMANCE OUTPUT REPORT
+                    <div
+                      style="
+                        border: 3px double black;
+                        text-align: center;
+                        color: black;
+                        width: auto;
+                        padding: 5px;
+                      "
+                    >
+                      <div class="text-weight-bold padded-text">
+                        MONTHLY PERFORMANCE OUTPUT REPORT
                       </div>
                     </div>
                   </div>
@@ -841,8 +1066,9 @@
                           <td>0</td>
                         </tr>
                         <tr>
-                          <td colspan="19">OBSERVATIONS/REMARKS: <div style="height: 50px;">
-                            </div>
+                          <td colspan="19">
+                            OBSERVATIONS/REMARKS:
+                            <div style="height: 50px"></div>
                           </td>
                         </tr>
                       </tbody>
@@ -855,26 +1081,21 @@
                         </tr>
                         <tr>
                           <td colspan="6">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                           <td colspan="3">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                           <td colspan="7">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                           <td colspan="3">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                         </tr>
                       </tfoot>
                     </table>
                   </div>
-
                 </div>
               </div>
             </q-tab-panel>
@@ -885,20 +1106,25 @@
                 <!-- Header with Logo -->
                 <div class="header-container">
                   <div class="header-text">
-                    <div class="padded-text">Republic of the Philippinees
-                    </div>
-                    <div class="padded-text">Province of Davao del Norte
-                    </div>
-                    <div class="text-weight-bold padded-text">CITY OF TAGUM
-                    </div>
+                    <div class="padded-text">Republic of the Philippinees</div>
+                    <div class="padded-text">Province of Davao del Norte</div>
+                    <div class="text-weight-bold padded-text">CITY OF TAGUM</div>
 
-                    <div style="border: 3px double black; text-align: center; color: black; width: auto; padding: 5px;">
-                      <div class="text-weight-bold padded-text">SUMMARY MONTHLY PERFORMANCE OUTPUT
-                        REPORT</div>
+                    <div
+                      style="
+                        border: 3px double black;
+                        text-align: center;
+                        color: black;
+                        width: auto;
+                        padding: 5px;
+                      "
+                    >
+                      <div class="text-weight-bold padded-text">
+                        SUMMARY MONTHLY PERFORMANCE OUTPUT REPORT
+                      </div>
                     </div>
                   </div>
                 </div>
-
 
                 <!-- Main Content -->
                 <div class="q-mt-md">
@@ -1041,8 +1267,9 @@
                           <td>0</td>
                         </tr>
                         <tr>
-                          <td colspan="25">OBSERVATIONS/REMARKS: <div style="height: 50px;">
-                            </div>
+                          <td colspan="25">
+                            OBSERVATIONS/REMARKS:
+                            <div style="height: 50px"></div>
                           </td>
                         </tr>
                       </tbody>
@@ -1057,34 +1284,27 @@
                         </tr>
                         <tr>
                           <td colspan="7">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                           <td colspan="2">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                           <td colspan="6">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                           <td colspan="2">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                           <td colspan="6">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                           <td colspan="2">
-                            <div style="height: 50px;">
-                            </div>
+                            <div style="height: 50px"></div>
                           </td>
                         </tr>
                       </tfoot>
                     </table>
                   </div>
-
                 </div>
               </div>
             </q-tab-panel>
@@ -1096,76 +1316,76 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useQuasar } from 'quasar';
-import { useIPCRStatus } from 'src/composables/ipcr_status';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import { ref } from 'vue'
+import { useQuasar } from 'quasar'
+import { useIPCRStatus } from 'src/composables/ipcr_status'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 
-const $q = useQuasar();
+const $q = useQuasar()
 
 // Props
 const props = defineProps({
-    employee: {
-        type: Object,
-        required: true
-    }
-});
+  employee: {
+    type: Object,
+    required: true,
+  },
+})
 
 // Emits
-defineEmits(['close', 'approve']);
+defineEmits(['close', 'approve'])
 
 // State
-const activeTab = ref('ipcr');
-const isPrinting = ref(false);
-const isGeneratingPdf = ref(false);
+const activeTab = ref('ipcr')
+const isPrinting = ref(false)
+const isGeneratingPdf = ref(false)
 
 // Status helpers
-const { getStatusColor, getStatusTextColor, getStatusIcon } = useIPCRStatus();
+const { getStatusColor, getStatusTextColor, getStatusIcon } = useIPCRStatus()
 
 // Print report
 const directPrint = () => {
-    isPrinting.value = true;
+  isPrinting.value = true
 
-    // Create a hidden iframe with proper styling for printing
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
+  // Create a hidden iframe with proper styling for printing
+  const printFrame = document.createElement('iframe')
+  printFrame.style.position = 'fixed'
+  printFrame.style.right = '0'
+  printFrame.style.bottom = '0'
+  printFrame.style.width = '0'
+  printFrame.style.height = '0'
+  printFrame.style.border = '0'
 
-    document.body.appendChild(printFrame);
+  document.body.appendChild(printFrame)
 
-    printFrame.onload = () => {
-        const printDocument = printFrame.contentWindow.document;
-        const printSectionId = `print-section-${activeTab.value}`;
-        const printSection = document.getElementById(printSectionId);
-        if (!printSection) {
-            console.error('Print section not found');
-            document.body.removeChild(printFrame);
-            isPrinting.value = false;
-            return;
-        }
+  printFrame.onload = () => {
+    const printDocument = printFrame.contentWindow.document
+    const printSectionId = `print-section-${activeTab.value}`
+    const printSection = document.getElementById(printSectionId)
+    if (!printSection) {
+      console.error('Print section not found')
+      document.body.removeChild(printFrame)
+      isPrinting.value = false
+      return
+    }
 
-        // Copy the CSS
-        const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
-        styles.forEach(style => {
-            printDocument.head.appendChild(style.cloneNode(true));
-        });
+    // Copy the CSS
+    const styles = document.querySelectorAll('style, link[rel="stylesheet"]')
+    styles.forEach((style) => {
+      printDocument.head.appendChild(style.cloneNode(true))
+    })
 
-        // Add print-specific stylesheet
-        const printStyle = document.createElement('style');
-        printStyle.textContent = `
+    // Add print-specific stylesheet
+    const printStyle = document.createElement('style')
+    printStyle.textContent = `
             @page {
                 size: legal landscape;
-                margin: 10mm;
+      
             }
             body {
                 font-family: Arial, sans-serif;
                 margin: 0;
-                padding: 20px;
+                padding: 5px;
             }
             .app-container,
             .report-container,
@@ -1175,7 +1395,7 @@ const directPrint = () => {
             }
             .report-content {
                 background-color: white !important;
-                padding: 20px !important;
+                padding: 5px !important;
                 margin: 0 !important;
                 width: 100% !important;
                 box-shadow: none !important;
@@ -1206,12 +1426,6 @@ const directPrint = () => {
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
                 page-break-after: avoid !important;
-            }
-            tfoot {
-                display: table-row-group !important;
-                break-inside: avoid !important;
-                page-break-after: avoid !important;
-                page-break-inside: avoid !important;
             }
             /* Prevent tfoot from repeating */
             tfoot tr {
@@ -1269,257 +1483,256 @@ const directPrint = () => {
             .indicator-column { width: 10%; }
             .output-column { width: 10%; }
             .standard-column { width: 8%; }
-        `;
-        printDocument.head.appendChild(printStyle);
+        `
+    printDocument.head.appendChild(printStyle)
 
-        // Copy the content
-        printDocument.body.innerHTML = printSection.innerHTML;
+    // Copy the content
+    printDocument.body.innerHTML = printSection.innerHTML
 
-        // Print and cleanup
-        setTimeout(() => {
-            printFrame.contentWindow.print();
-            setTimeout(() => {
-                document.body.removeChild(printFrame);
-                isPrinting.value = false;
-            }, 500);
-        }, 500);
-    };
+    // Print and cleanup
+    setTimeout(() => {
+      printFrame.contentWindow.print()
+      setTimeout(() => {
+        document.body.removeChild(printFrame)
+        isPrinting.value = false
+      }, 500)
+    }, 500)
+  }
 
-    // Set iframe source to trigger onload
-    printFrame.src = 'about:blank';
-};
+  // Set iframe source to trigger onload
+  printFrame.src = 'about:blank'
+}
 
 // PDF download functionality
 const downloadPdf = async () => {
-    isGeneratingPdf.value = true;
-    try {
-        const printSectionId = `print-section-${activeTab.value}`;
-        const element = document.getElementById(printSectionId);
-        if (!element) {
-            throw new Error('PDF section not found');
-        }
-
-        // Store original styles
-        const originalDisplayStyles = new Map();
-        document.querySelectorAll('.report-content').forEach(el => {
-            originalDisplayStyles.set(el, el.style.display);
-            el.style.display = 'none';
-        });
-
-        // Show only current tab content
-        element.style.display = 'block';
-
-        const canvas = await html2canvas(element, {
-            scale: 2,
-            logging: false,
-            useCORS: true,
-            allowTaint: true,
-            width: element.offsetWidth,
-            height: element.offsetHeight,
-            backgroundColor: '#ffffff'
-        });
-
-        // Restore original display styles
-        document.querySelectorAll('.report-content').forEach(el => {
-            el.style.display = originalDisplayStyles.get(el) || '';
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: 'legal'
-        });
-
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        const fileName = `${props.employee.name.replace(/\s+/g, '_')}_${activeTab.value.toUpperCase()}_Report.pdf`;
-        pdf.save(fileName);
-    } catch (error) {
-        console.error('Error generating PDF:', error);
-        $q.notify({
-            type: 'negative',
-            message: `Failed to generate PDF: ${error.message}`,
-            position: 'top'
-        });
-    } finally {
-        isGeneratingPdf.value = false;
+  isGeneratingPdf.value = true
+  try {
+    const printSectionId = `print-section-${activeTab.value}`
+    const element = document.getElementById(printSectionId)
+    if (!element) {
+      throw new Error('PDF section not found')
     }
-};
+
+    // Store original styles
+    const originalDisplayStyles = new Map()
+    document.querySelectorAll('.report-content').forEach((el) => {
+      originalDisplayStyles.set(el, el.style.display)
+      el.style.display = 'none'
+    })
+
+    // Show only current tab content
+    element.style.display = 'block'
+
+    const canvas = await html2canvas(element, {
+      scale: 5,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      width: element.offsetWidth,
+      height: element.offsetHeight,
+      backgroundColor: '#ffffff',
+    })
+
+    // Restore original display styles
+    document.querySelectorAll('.report-content').forEach((el) => {
+      el.style.display = originalDisplayStyles.get(el) || ''
+    })
+
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'legal',
+    })
+
+    const imgProps = pdf.getImageProperties(imgData)
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
+
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+    const fileName = `${props.employee.name.replace(/\s+/g, '_')}_${activeTab.value.toUpperCase()}_Report.pdf`
+    pdf.save(fileName)
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+    $q.notify({
+      type: 'negative',
+      message: `Failed to generate PDF: ${error.message}`,
+      position: 'top',
+    })
+  } finally {
+    isGeneratingPdf.value = false
+  }
+}
 </script>
 
 <style scoped>
 .app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    width: 100%;
-    overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
 }
 
 .app-header {
-    background-color: #00703C;
-    ;
-    color: white;
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  background-color: #00703c;
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .header-content {
-    flex-grow: 1;
+  flex-grow: 1;
 }
 
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .logo {
-    width: 100px;
-    height: auto;
-    padding: 10px;
+  width: 100px;
+  height: auto;
+  padding: 10px;
 }
 
 .center-text {
-    text-align: center;
-    flex-grow: 1;
-    font-weight: bold;
-    line-height: 1.5;
+  text-align: center;
+  flex-grow: 1;
+  font-weight: bold;
+  line-height: 1.5;
 }
 
 .title {
-    font-size: 16px;
-    margin-bottom: 5px;
+  font-size: 16px;
+  margin-bottom: 5px;
 }
 
 .main-content {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 .division-nav {
-    width: 300px;
-    background-color: #f5f5f5;
-    border-right: 1px solid #e0e0e0;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
+  width: 300px;
+  background-color: #f5f5f5;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .division-nav-header {
-    padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .employee-details {
-    padding: 16px;
+  padding: 16px;
 }
 
 .report-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background-color: #ebebeb;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #ebebeb;
 }
 
 .report-header {
-    padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
-    background-color: #fafafa;
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #fafafa;
 }
 
 .report-content-scroll {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 5px;
 }
 
 .report-content {
-    background-color: white;
-    padding: 20px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+  background-color: white;
+  padding: 20px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
 }
 
 .header-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
 .green-line {
-    width: 100%;
-    height: 5px;
-    background-color: #2e7d32;
-    margin-bottom: 10px;
+  width: 100%;
+  height: 5px;
+  background-color: #2e7d32;
+  margin-bottom: 10px;
 }
 
 .city-logo {
-    margin-bottom: 10px;
+  margin-bottom: 10px;
 }
 
 .header-text {
-    text-align: center;
-    margin-bottom: 20px;
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 .green-banner {
-    background-color: #2e7d32;
-    color: white;
-    padding: 5px 0;
-    margin-top: 10px;
+  background-color: #2e7d32;
+  color: white;
+  padding: 5px 0;
+  margin-top: 10px;
 }
 
 .padded-text {
-    padding: 2px 0;
+  padding: 2px 0;
 }
 
 .info-table {
-    margin-bottom: 20px;
-    border-collapse: collapse;
+  margin-bottom: 20px;
+  border-collapse: collapse;
 }
 
 .info-table td {
-    padding: 5px 10px;
-    border: none;
+  padding: 5px 10px;
+  border: none;
 }
 
 .table-container {
-    margin-top: 20px;
-    overflow-x: auto;
+  margin-top: 20px;
+  overflow-x: auto;
 }
 
 .main-table {
-    border-collapse: collapse;
-    width: 100%;
+  border-collapse: collapse;
+  width: 100%;
 }
 
 .main-table th,
 .main-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
 }
 
 .main-table th {
-    background-color: #f2f2f2;
-    text-align: center;
+  background-color: #f2f2f2;
+  text-align: center;
 }
 
 .section-header {
-    background-color: #e8f5e9;
-    font-weight: bold;
-    text-align: center;
-    padding: 8px;
+  background-color: #e8f5e9;
+  font-weight: bold;
+  text-align: center;
+  padding: 8px;
 }
 
 .section-mfo {
@@ -1529,102 +1742,102 @@ const downloadPdf = async () => {
   padding: 8px;
 }
 .mfo-column {
-    width: 40%;
+  width: 40%;
 }
 
 @media print {
-    @page {
-        size: legal;
-        margin: 10mm;
-    }
+  @page {
+    size: legal;
+    margin: 5mm;
+  }
 
-    body {
-        margin: 0;
-        padding: 20px;
-    }
+  body {
+    margin: 0 !important;
+    padding: 5px;
+  }
 
-    .app-container {
-        height: auto !important;
-        overflow: visible !important;
-    }
+  .app-container {
+    height: auto !important;
+    overflow: visible !important;
+  }
 
-    .report-content {
-        background-color: white !important;
-        padding: 20px !important;
-        margin: 0 !important;
-        width: 100% !important;
-    }
+  .report-content {
+    background-color: white !important;
+    padding: 20px !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
 
-    table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        page-break-inside: auto !important;
-    }
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+  }
 
-    tr {
-        page-break-inside: avoid !important;
-        page-break-after: auto !important;
-    }
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
 
-    thead {
-        display: table-row-group !important;
-        break-inside: avoid !important;
-        page-break-after: avoid !important;
-        page-break-inside: avoid !important;
-    }
+  thead {
+    display: table-row-group !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
 
-    /* Prevent thead from repeating */
-    thead tr {
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-        page-break-after: avoid !important;
-    }
+  /* Prevent thead from repeating */
+  thead tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
 
-    /* Prevent th from repeating */
-    th {
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-        page-break-after: avoid !important;
-    }
+  /* Prevent th from repeating */
+  th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
 
-    tfoot {
-        display: table-row-group !important;
-        break-inside: avoid !important;
-        page-break-after: avoid !important;
-        page-break-inside: avoid !important;
-    }
+  tfoot {
+    display: table-row-group !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
 
-    /* Prevent tfoot from repeating */
-    tfoot tr {
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-        page-break-after: avoid !important;
-    }
+  /* Prevent tfoot from repeating */
+  tfoot tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
 
-    th,
-    td {
-        border: 1px solid #000 !important;
-        padding: 8px !important;
-    }
+  th,
+  td {
+    border: 1px solid #000 !important;
+    padding: 8px !important;
+  }
 
-    img {
-        max-width: 100% !important;
-        page-break-inside: avoid !important;
-    }
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+  }
 
-    .no-print,
-    .q-dialog__backdrop,
-    .q-tabs,
-    .report-header,
-    .division-nav,
-    .app-header {
-        display: none !important;
-    }
+  .no-print,
+  .q-dialog__backdrop,
+  .q-tabs,
+  .report-header,
+  .division-nav,
+  .app-header {
+    display: none !important;
+  }
 
-    * {
-        color-scheme: exact !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
+  * {
+    color-scheme: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
 </style>
