@@ -6,9 +6,18 @@
     </div>
 
     <!-- Loading indicator -->
-    <div v-if="loading" class="flex justify-center q-pa-lg">
+    <!-- <div v-if="loading" class="flex justify-center q-pa-lg">
       <q-spinner-hourglass color="green" size="3em" />
+    </div> -->
+      <div v-if="loading" class="flex items-center justify-center q-pa-lg text-grey">
+        <q-spinner  size="3em" class="q-mr-sm" color="green" />
+        Loading...
     </div>
+    <!-- <template>
+      <div class="q-pa-md" v-if="loading" >
+        <q-btn color="teal" @click="showLoading" label="Show Loading" />
+      </div>
+    </template> -->
 
     <!-- Table inside a responsive card -->
     <q-card v-else flat bordered class="full-width shadow-1">

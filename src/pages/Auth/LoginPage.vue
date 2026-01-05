@@ -153,7 +153,7 @@ export default {
       isLoading.value = true
 
       try {
-        const response = await api.post('/user_login', {
+        const response = await api.post('/login', {
           name: username.value,
           password: password.value,
         })

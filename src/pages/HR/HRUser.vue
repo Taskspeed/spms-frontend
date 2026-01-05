@@ -476,8 +476,8 @@ export default {
           name: selectedEmployee.value.name4,
           password: `emp${selectedEmployee.value.ControlNo}`,
           designation: selectedEmployee.value.Designation,
-          // office_id: selectedOffice.value.id,
-           office_name: selectedOffice.value.name, // ✅ FIXED
+          office_id: selectedOffice.value.id,
+          office_name: selectedOffice.value.name, // ✅ FIXED
           role_id: selectedRole.value.value,
           permissions: selectedPermissions.value,
           control_no: selectedEmployee.value.ControlNo,

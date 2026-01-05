@@ -3,10 +3,15 @@
   <div class="employee-container">
     <!-- Organization Panel -->
     <div class="organization-panel">
-      <div v-if="loading" class="loading-container">
+      <!-- <div v-if="loading" class="loading-container">
         <q-spinner-gears color="cyan" />
         <span>Loading organization structure...</span>
-      </div>
+      </div> -->
+
+      <div v-if="loading" class="loading-container">
+        <q-spinner  size="2em" class="q-mr-sm" color="green" />
+      Loading organization structure...
+    </div>
       <q-tree
         v-else
         :nodes="treeNodes"
@@ -51,9 +56,14 @@
             :rows-per-page-options="[10, 20, 50]"
           >
             <template v-slot:loading>
-              <div class="loading-container">
+              <!-- <div class="loading-container">
                 <q-spinner-gears color="cyan" />
                 <span>Loading employees...</span>
+              </div> -->
+
+            <div class="loading-container">
+                  <q-spinner  size="2em" class="q-mr-sm" color="green" />
+                 <span>Loading employees...</span>
               </div>
             </template>
 
@@ -85,15 +95,21 @@
                   color="negative"
                   flat
                   dense
-                  @click="deleteEmployee(props.row.id)"
+               @click="confirmDeleteEmployee(props.row)"
                 />
               </q-td>
             </template>
           </q-table>
 
-          <div v-if="loading || employeeStore.loading" class="loading-container">
+          <!-- <div v-if="loading || employeeStore.loading" class="loading-container">
             <q-spinner-gears color="cyan" />
             <span>Loading employees...</span>
+          </div> -->
+
+
+         <div v-if="loading || employeeStore.loading" class="loading-container">
+              <q-spinner  size="2em" class="q-mr-sm" color="green" />
+           <span>Loading employees...</span>
           </div>
         </div>
       </div>
@@ -109,13 +125,18 @@ import { api } from 'src/boot/axios'
 import { useUserStore } from 'src/stores/userStore'
 import { useEmployeeStore } from 'src/stores/office/employee_Store'
 import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
+import { useMessage } from 'src/composables/message'
 
 export default {
   components: { AddEmployeeModal },
   setup() {
     const employeeStore = useEmployeeStore()
     const libraryStore = useLibraryStore()
-    return { employeeStore, libraryStore }
+    const { confirm, success, error } = useMessage()
+    return { employeeStore, libraryStore,
+    confirm,
+    success,
+    error, }
   },
   data() {
     return {
@@ -320,42 +341,73 @@ export default {
         this.$q.notify({ type: 'negative', message: 'Failed to load employees' })
       }
     },
-    async deleteEmployee(employeeId) {
-      this.$q
-        .dialog({
-          title: 'Confirm Delete',
-          message: 'Are you sure you want to delete this employee?',
-          cancel: true,
-          persistent: true,
+    // async deleteEmployee(employeeId) {
+    //   this.$q
+    //     .dialog({
+    //       title: 'Confirm Delete',
+    //       message: 'Are you sure you want to delete this employee?',
+    //       cancel: true,
+    //       persistent: true,
+    //     })
+    //     .onOk(async () => {
+    //       try {
+    //         const result = await this.employeeStore.softDeleteEmployee(employeeId)
+    //         if (result?.success) {
+    //           this.$q.notify({
+    //             type: 'positive',
+    //             message: 'Employee moved to trash',
+    //           })
+
+    //           this.employeeStore.employees = [...this.employeeStore.employees]
+    //           this.employeeStore.assignedEmployees = [...this.employeeStore.assignedEmployees]
+
+    //           this.updateTreeCounts()
+
+    //           this.$nextTick(() => {
+    //             this.$forceUpdate()
+    //           })
+    //         } else {
+    //           throw new Error('Failed to delete employee')
+    //         }
+    //       } catch (error) {
+    //         this.$q.notify({
+    //           type: 'negative',
+    //           message: error.message || 'Failed to delete employee',
+    //         })
+    //       }
+    //     })
+    // },
+        async confirmDeleteEmployee(employee) {
+        const confirmed = await this.confirm({
+          title: 'Delete Employee',
+          text: `Are you sure you want to delete ${employee.name}?`,
+          confirmText: 'Yes, delete',
+          cancelText: 'Cancel',
+          icon: 'warning',
         })
-        .onOk(async () => {
-          try {
-            const result = await this.employeeStore.softDeleteEmployee(employeeId)
-            if (result?.success) {
-              this.$q.notify({
-                type: 'positive',
-                message: 'Employee moved to trash',
-              })
 
-              this.employeeStore.employees = [...this.employeeStore.employees]
-              this.employeeStore.assignedEmployees = [...this.employeeStore.assignedEmployees]
+        if (!confirmed) return
 
-              this.updateTreeCounts()
+        try {
+          // Use the correct method from your store
+          const result = await this.employeeStore.deleteEmployee(employee.id)
 
-              this.$nextTick(() => {
-                this.$forceUpdate()
-              })
-            } else {
-              throw new Error('Failed to delete employee')
-            }
-          } catch (error) {
-            this.$q.notify({
-              type: 'negative',
-              message: error.message || 'Failed to delete employee',
-            })
+          if (result?.success) {
+            await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
+            this.updateTreeCounts()
+
+            await this.success('Employee deleted successfully')
+          } else {
+            throw new Error('Failed to delete employee')
           }
-        })
-    },
+        } catch (err) {
+          console.error(err)
+          await this.error(err.message || 'Failed to delete employee')
+        }
+      },
+
+
+
     async fetchOrganizationStructure() {
       this.loading = true
       try {
@@ -685,56 +737,111 @@ export default {
       }
       this.treeNodes.forEach((node) => updateNodeCounts(node))
     },
-
     async handleAddEmployees(selectedEmployees) {
-      try {
-        const userStore = useUserStore()
-        const officeId = userStore.user?.office_id
-        const officeName = userStore.user?.office?.Office
+  const confirmed = await this.confirm({
+    title: 'Confirm Add Employee',
+    text: 'Are you sure you want to add the selected employees?',
+    confirmText: 'Yes, add',
+  })
 
-        if (!officeId || !this.selectedNode) {
-          throw new Error(
-            !officeId
-              ? 'Unable to determine office.   Please make sure you are properly authenticated.'
-              : 'Please select an office, division, or section before adding employees.',
-          )
-        }
+  if (!confirmed) return
 
-        const employeesToAdd = selectedEmployees.map((emp) => ({
-          ControlNo: emp.ControlNo,
-          name: emp.name,
-          position: emp.position,
-          position_id: emp.position_id || emp.positionID,
-          positionID: emp.positionID || emp.position_id,
-          office_id: officeId,
-          office: officeName,
-          office2: this.getOffice2ForSelectedNode(),
-          group: this.getGroupForSelectedNode(),
-          division: this.getDivisionForSelectedNode(),
-          section: this.getSectionForSelectedNode(),
-          unit: this.getUnitForSelectedNode(),
-          tblStructureID: emp.tblStructureID,
-          sg: emp.sg,
-          level: emp.level,
-          itemNo: emp.itemNo,
-          pageNo: emp.pageNo,
-        }))
+  try {
+    const userStore = useUserStore()
+    const officeId = userStore.user?.office_id
+    const officeName = userStore.user?.office?.Office
 
-        await this.employeeStore.addEmployees({ employees: employeesToAdd })
+    if (!officeId || !this.selectedNode) {
+      throw new Error(
+        !officeId
+          ? 'Unable to determine office.'
+          : 'Please select an office, division, or section first.'
+      )
+    }
 
-        if (this.selectedNode) {
-          await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
-          this.updateTreeCounts()
-        }
+    const employeesToAdd = selectedEmployees.map((emp) => ({
+      ControlNo: emp.ControlNo,
+      name: emp.name,
+      position: emp.position,
+      position_id: emp.position_id || emp.positionID,
+      office_id: officeId,
+      office: officeName,
+      office2: this.getOffice2ForSelectedNode(),
+      group: this.getGroupForSelectedNode(),
+      division: this.getDivisionForSelectedNode(),
+      section: this.getSectionForSelectedNode(),
+      unit: this.getUnitForSelectedNode(),
+      tblStructureID: emp.tblStructureID,
+      sg: emp.sg,
+      level: emp.level,
+      itemNo: emp.itemNo,
+      pageNo: emp.pageNo,
+    }))
 
-        this.$q.notify({ type: 'positive', message: 'Employees added successfully' })
-      } catch (error) {
-        console.error('Error adding employees:', error)
-        this.$q.notify({ type: 'negative', message: error.message || 'Failed to add employees' })
-      } finally {
-        this.showAddModal = false
-      }
-    },
+    await this.employeeStore.addEmployees({ employees: employeesToAdd })
+
+    await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
+    this.updateTreeCounts()
+
+    await this.success('Employees added successfully')
+  } catch (err) {
+    console.error(err)
+    await this.error(err.message || 'Failed to add employees')
+  } finally {
+    this.showAddModal = false
+  }
+},
+
+
+    // async handleAddEmployees(selectedEmployees) {
+    //   try {
+    //     const userStore = useUserStore()
+    //     const officeId = userStore.user?.office_id
+    //     const officeName = userStore.user?.office?.Office
+
+    //     if (!officeId || !this.selectedNode) {
+    //       throw new Error(
+    //         !officeId
+    //           ? 'Unable to determine office.   Please make sure you are properly authenticated.'
+    //           : 'Please select an office, division, or section before adding employees.',
+    //       )
+    //     }
+
+    //     const employeesToAdd = selectedEmployees.map((emp) => ({
+    //       ControlNo: emp.ControlNo,
+    //       name: emp.name,
+    //       position: emp.position,
+    //       position_id: emp.position_id || emp.positionID,
+    //       positionID: emp.positionID || emp.position_id,
+    //       office_id: officeId,
+    //       office: officeName,
+    //       office2: this.getOffice2ForSelectedNode(),
+    //       group: this.getGroupForSelectedNode(),
+    //       division: this.getDivisionForSelectedNode(),
+    //       section: this.getSectionForSelectedNode(),
+    //       unit: this.getUnitForSelectedNode(),
+    //       tblStructureID: emp.tblStructureID,
+    //       sg: emp.sg,
+    //       level: emp.level,
+    //       itemNo: emp.itemNo,
+    //       pageNo: emp.pageNo,
+    //     }))
+
+    //     await this.employeeStore.addEmployees({ employees: employeesToAdd })
+
+    //     if (this.selectedNode) {
+    //       await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
+    //       this.updateTreeCounts()
+    //     }
+
+    //     this.$q.notify({ type: 'positive', message: 'Employees added successfully' })
+    //   } catch (error) {
+    //     console.error('Error adding employees:', error)
+    //     this.$q.notify({ type: 'negative', message: error.message || 'Failed to add employees' })
+    //   } finally {
+    //     this.showAddModal = false
+    //   }
+    // },
 
     getOffice2ForSelectedNode() {
       if (this.selectedNode.type === 'office2') return this.selectedNode.name
@@ -941,6 +1048,8 @@ export default {
 
       return false
     },
+
+
   },
 }
 </script>

@@ -56,14 +56,14 @@ export const useUserStore = defineStore('user', () => {
     }
 
     try {
-      const response = await api.get('/user_data', {
+      const response = await api.get('/user', {
         headers: { Authorization: `Bearer ${token}` },
       })
 
       const data = response.data
 
       // Debug:  inspect the raw response to understand shape when something goes wrong
-      console.debug('user_data response:', data)
+      // console.debug('user_data response:', data)
 
       // Unauthenticated handling (API may return this sentinel)
       if (data?.message === 'Unauthenticated.' || data?.data?.message === 'Unauthenticated.') {
@@ -187,7 +187,7 @@ export const useUserStore = defineStore('user', () => {
     if (!token) return
 
     try {
-      await api.post('/user_logout', {}, { headers: { Authorization: `Bearer ${token}` } })
+      await api.post('/user/logout', {}, { headers: { Authorization: `Bearer ${token}` } })
     } catch (error) {
       console.error('Logout failed (continuing to clear local state):', error)
     } finally {

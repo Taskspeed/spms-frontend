@@ -1,4 +1,4 @@
-import { defineStore } from '/node_modules/.q-cache/dev-spa/vite-spa/deps/pinia.js?v=33133cfe'
+import { defineStore } from 'pinia'
 import { api } from '/src/boot/axios.js'
 
 export const useMfoStore = defineStore('mfo', {

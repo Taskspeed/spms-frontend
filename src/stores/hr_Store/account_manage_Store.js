@@ -46,7 +46,7 @@ export const useUserManageStore = defineStore('userManage', {
     async fetchUserAccounts() {
       this.loading = true
       try {
-        const response = await api.get('/user_account')
+        const response = await api.get('/user/account')
         if (Array.isArray(response.data)) {
           this.users = response.data
         } else {
@@ -78,34 +78,34 @@ export const useUserManageStore = defineStore('userManage', {
       } finally {
         this.loading = false
       }
-    },  
+    },
 
-      async fetchEmployees(officeName) {
-        this.loading = true
-        try {
-          const encodedOffice = encodeURIComponent(officeName)
+async fetchEmployees(officeName) {
+  this.loading = true
+  try {
+    const response = await api.get('/employee/office-employee', {
+      params: {
+        office_name: officeName
+      }
+    })
 
-          const response = await api.get(
-            `/employee/office-employee/${encodedOffice}`
-          )
-
-          this.employees = response.data
-        } catch (error) {
-          console.error('Error fetching employees:', error)
-          Notify.create({
-            message: 'Failed to fetch employees. Please try again.',
-            color: 'negative',
-          })
-        } finally {
-          this.loading = false
-        }
-      },
+    this.employees = response.data
+  } catch (error) {
+    console.error('Error fetching employees:', error)
+    Notify.create({
+      message: 'Failed to fetch employees. Please try again.',
+      color: 'negative',
+    })
+  } finally {
+    this.loading = false
+  }
+},
 
 
     async createUser(userData) {
       this.saving = true
       try {
-        const response = await api.post('/user_assign', userData)
+        const response = await api.post('/user/register', userData)
         if (response.data) {
           Notify.create({
             message: 'User has been created successfully!',

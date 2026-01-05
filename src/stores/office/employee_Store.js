@@ -434,7 +434,7 @@ export const useEmployeeStore = defineStore('employee', {
       }
     },
 
-    async softDeleteEmployee(employeeId) {
+    async deleteEmployee(employeeId) {
       this.loading = true
       this.error = null
 
