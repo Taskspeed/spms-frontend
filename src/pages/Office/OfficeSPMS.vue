@@ -291,11 +291,14 @@
     />
   </q-dialog>
 
-  <!-- Edit Employee Modal -->
+  <!-- In your parent component template -->
   <q-dialog v-model="showEditModalOpen" full-width persistent>
     <EditUWP
       v-if="employeeToEdit"
       :employee="employeeToEdit"
+      :controlNo="employeeToEdit.controlNo"
+      :semester="employeeToEdit.semester || currentTargetPeriod?.semester"
+      :year="employeeToEdit.year || currentTargetPeriod?.year"
       @close="closeEditModal"
       @saved="handleEmployeeSaved"
     />
@@ -778,7 +781,46 @@ const close_ipcr_Modal = () => {
 }
 
 const showEditModal = (employee) => {
-  employeeToEdit.value = employee
+  const controlNo = employee.employeeData?.ControlNo || employee.ControlNo || employee.control_no
+
+  // Get current target period - ensure it exists
+  const currentPeriod = currentTargetPeriod.value
+
+  // Log for debugging
+  console.log('🔍 Current period from store:', currentPeriod)
+  console.log('🔍 Selected semester in store:', orgStore.selectedSemester)
+  console.log('🔍 Selected year in store:', orgStore.selectedYear)
+
+  // If currentPeriod is empty, try to get from store directly
+  const semester = currentPeriod?.semester || orgStore.selectedSemester
+  const year = currentPeriod?.year || orgStore.selectedYear
+
+  console.log('🔍 Final values for edit modal:', {
+    employeeName: employee.label,
+    controlNo: controlNo,
+    semester: semester,
+    year: year,
+    hasSemester: !!semester,
+    hasYear: !!year,
+  })
+
+  // Validate we have all required data
+  if (!semester || !year) {
+    $q.notify({
+      message: 'Cannot open edit mode: Semester or Year is not selected',
+      color: 'negative',
+      position: 'top',
+    })
+    return
+  }
+
+  // Pass all necessary data including semester and year
+  employeeToEdit.value = {
+    ...employee,
+    controlNo: controlNo,
+    semester: semester, // Pass semester explicitly
+    year: year, // Pass year explicitly
+  }
   showEditModalOpen.value = true
 }
 

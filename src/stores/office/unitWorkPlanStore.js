@@ -2,183 +2,185 @@ import { defineStore } from 'pinia'
 import { api } from 'src/boot/axios'
 import { v4 as uuidv4 } from 'uuid'
 
+/* -------------------------------------------------------------------------- */
+/* Helpers & constants                                                        */
+/* -------------------------------------------------------------------------- */
+
+const sortedDefaultRows = () => [
+  {
+    rating: '5',
+    quantity: '',
+    effectiveness: '',
+    timeliness: '',
+    timelinessRange: '',
+    timelinessDate: '',
+    timelinessText: '',
+    timelinessDeadline: '',
+  },
+  {
+    rating: '4',
+    quantity: '',
+    effectiveness: '',
+    timeliness: '',
+    timelinessRange: '',
+    timelinessDate: '',
+    timelinessText: '',
+    timelinessDeadline: '',
+  },
+  {
+    rating: '3',
+    quantity: '',
+    effectiveness: '',
+    timeliness: '',
+    timelinessRange: '',
+    timelinessDate: '',
+    timelinessText: '',
+    timelinessDeadline: '',
+  },
+  {
+    rating: '2',
+    quantity: '',
+    effectiveness: '',
+    timeliness: '',
+    timelinessRange: '',
+    timelinessDate: '',
+    timelinessText: '',
+    timelinessDeadline: '',
+  },
+  {
+    rating: '1',
+    quantity: '',
+    effectiveness: '',
+    timeliness: '',
+    timelinessRange: '',
+    timelinessDate: '',
+    timelinessText: '',
+    timelinessDeadline: '',
+  },
+]
+
+const currentSemester = () => {
+  const month = new Date().getMonth() + 1
+  return month >= 1 && month <= 6 ? 'January-June' : 'July-December'
+}
+
+const nextSemester = () => (currentSemester() === 'January-June' ? 'July-December' : 'January-June')
+const currentYear = () => new Date().getFullYear()
+
+/* -------------------------------------------------------------------------- */
+/* Store                                                                      */
+/* -------------------------------------------------------------------------- */
+
 export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
   state: () => ({
     uwpData: null,
     formData: null,
     employeeData: [],
+    filteredEmployeesData: [],
+    savedUWPs: [],
     loading: false,
     error: null,
-    savedUWPs: [],
     officeLibraryIndicatorStore: null,
-    filteredEmployeesData: [],
-    // ✅ NEW: Default standard rows for fallback
-    defaultStandardRows: [
-      { rating: '5', quantity: '', effectiveness: '', timeliness: '' },
-      { rating: '4', quantity: '', effectiveness: '', timeliness: '' },
-      { rating: '3', quantity: '', effectiveness: '', timeliness: '' },
-      { rating: '2', quantity: '', effectiveness: '', timeliness: '' },
-      { rating: '1', quantity: '', effectiveness: '', timeliness: '' },
-    ],
   }),
 
   getters: {
-    getCurrentSemester: () => {
-      const month = new Date().getMonth() + 1
-      return month >= 1 && month <= 6 ? 'January-June' : 'July-December'
-    },
-
-    getCurrentYear: () => {
-      return new Date().getFullYear()
-    },
-
-    getSemesterOptions(state) {
-      const current = state.getCurrentSemester
-      return [current, current === 'January-June' ? 'July-December' : 'January-June']
-    },
-
-    getYearOptions(state) {
-      const currentYear = state.getCurrentYear
-      return [currentYear, currentYear + 1]
-    },
-
-    getFilteredEmployeesData(state) {
-      return state.filteredEmployeesData
-    },
+    getCurrentSemester: () => currentSemester(),
+    getCurrentYear: () => currentYear(),
+    getSemesterOptions: () => [currentSemester(), nextSemester()],
+    getYearOptions: () => [currentYear(), currentYear() + 1],
+    getFilteredEmployeesData: (state) => state.filteredEmployeesData,
   },
 
   actions: {
-    // Initialize UWP data from session storage
+    /* ----------------------------- label resolvers ----------------------------- */
+    resolveCategoryLabel(category) {
+      if (!category) return ''
+      if (category.name || category.label) return category.name || category.label
+      const id = typeof category === 'object' ? category.id : category
+      return this.officeLibraryIndicatorStore?.categories?.find((c) => c.id === id)?.name || ''
+    },
+
+    resolveMfoLabel(mfo) {
+      if (!mfo) return ''
+      if (mfo.name || mfo.label) return mfo.name || mfo.label
+      const id = typeof mfo === 'object' ? mfo.id : mfo
+      return this.officeLibraryIndicatorStore?.mfos?.find((m) => m.id === id)?.name || ''
+    },
+
+    resolveOutputLabel(output, categoryId, mfoId) {
+      if (!output) return ''
+      if (output.name || output.label) return output.name || output.label
+      const id = typeof output === 'object' ? output.id : output
+
+      const isSupport =
+        this.officeLibraryIndicatorStore?.categories?.find((c) => c.id === categoryId)?.name ===
+        'C.  SUPPORT FUNCTION'
+
+      if (isSupport) {
+        return (
+          this.officeLibraryIndicatorStore?.category_outputs?.find((o) => o.id === id)?.name || ''
+        )
+      }
+
+      return (
+        this.officeLibraryIndicatorStore?.outputs?.find(
+          (o) => o.id === id && (!mfoId || o.mfo_id === mfoId),
+        )?.name || ''
+      )
+    },
+
+    resolveVerbLabel(idOrText) {
+      if (!idOrText) return ''
+      if (typeof idOrText === 'string' && isNaN(Number(idOrText))) return idOrText
+      const verbId = Number(idOrText)
+      const verb = this.officeLibraryIndicatorStore?.verbs?.find((v) => v.id === verbId) || null
+      return verb?.indicator_name || verb?.name || ''
+    },
+
+    /* ----------------------------- session helpers ----------------------------- */
     initializeUWPData() {
       try {
         const stored = sessionStorage.getItem('uwpData')
         if (stored) {
           this.uwpData = JSON.parse(stored)
-          console.log('✅ UWP Data loaded from sessionStorage:', this.uwpData)
           return this.uwpData
         }
       } catch (error) {
-        console.error('❌ Failed to load UWP data:', error)
         this.error = error.message
       }
       return null
     },
 
-    // Set UWP data
     setUWPData(data) {
       this.uwpData = data
       sessionStorage.setItem('uwpData', JSON.stringify(data))
-      console.log('✅ UWP Data saved to sessionStorage')
     },
 
-    // Set form data
     setFormData(data) {
-      this.formData = {
-        semester: data.semester,
-        year: data.year,
-      }
-      console.log('✅ Form data set:', this.formData)
+      this.formData = { semester: data.semester, year: data.year }
     },
 
-    // Set employee data
     setEmployeeData(employees) {
       this.employeeData = employees
-      console.log('✅ Employee data set:', this.employeeData.length, 'employees')
     },
 
-    // Build payload
-    buildPayload(submissionData) {
-      return {
-        uwpData: this.uwpData,
-        formData: this.formData,
-        employeeData: this.employeeData,
-        submissionData: submissionData,
-        timestamp: new Date().toISOString(),
-      }
+    clearAllData() {
+      this.uwpData = null
+      this.formData = null
+      this.employeeData = []
+      this.filteredEmployeesData = []
+      this.error = null
+      sessionStorage.removeItem('uwpData')
     },
 
-    // ✅ UPDATED: Extract ControlNo from filtered available employees
-    extractFilteredEmployeeControlNos() {
-      if (!this.uwpData) {
-        console.warn('⚠️ No UWP data found')
-        return []
-      }
-
-      // Debug: Log all possible employee sources
-      console.log('🔍 Checking UWP data structure:', {
-        hasFilteredAvailableEmployees: !!this.uwpData.filteredAvailableEmployees,
-        filteredAvailableEmployeesCount: this.uwpData.filteredAvailableEmployees?.length || 0,
-        hasAvailableEmployees: !!this.uwpData.availableEmployees,
-        availableEmployeesCount: this.uwpData.availableEmployees?.length || 0,
-        hasEmployeesWithoutTargetPeriod: !!this.uwpData.employeesWithoutTargetPeriod,
-        employeesWithoutTargetPeriodCount: this.uwpData.employeesWithoutTargetPeriod?.length || 0,
-      })
-
-      // Check multiple possible sources for filtered employees
-      const employees =
-        this.uwpData.filteredAvailableEmployees ||
-        this.uwpData.availableEmployees ||
-        this.uwpData.employeesWithoutTargetPeriod ||
-        []
-
-      console.log('🔍 Total employees found:', employees.length)
-
-      if (employees.length === 0) {
-        console.warn('⚠️ No employees found in any data source')
-        return []
-      }
-
-      const controlNos = employees
-        .map((emp, index) => {
-          console.log(`🔍 Employee ${index}:`, {
-            name: emp.name,
-            hasEmployeeData: !!emp.employeeData,
-            directControlNo: emp.ControlNo,
-            employeeDataControlNo: emp.employeeData?.ControlNo,
-            id: emp.id,
-            fullData: emp,
-          })
-
-          // Try to get ControlNo from different possible locations
-          const controlNo =
-            emp.employeeData?.ControlNo ||
-            emp.ControlNo ||
-            emp.controlNo ||
-            emp.control_no ||
-            emp.id || // Fallback to ID if ControlNo not available
-            null
-
-          console.log(`🔍 Employee ${index} ControlNo/ID:`, controlNo)
-          return controlNo
-        })
-        .filter((controlNo) => controlNo !== null && controlNo !== undefined && controlNo !== '')
-
-      console.log('✅ Final extracted ControlNos/IDs:', controlNos)
-      return controlNos
-    },
-
-    // ✅ UPDATED: Build endpoint string from filtered employees
-    buildFilteredEmployeeEndpoint() {
-      const identifiers = this.extractFilteredEmployeeControlNos()
-
-      if (identifiers.length === 0) {
-        console.warn('⚠️ No identifiers found for filtered employees')
-        return null
-      }
-
-      const endpoint = `/spms/employee/${identifiers.join(',')}`
-      console.log('📍 Built endpoint:', endpoint)
-      return endpoint
-    },
-
-    // Also update the createDefaultPerformanceStandard function to use sorted rows:
+    /* ----------------------------- transformations ----------------------------- */
     createDefaultPerformanceStandard(standard = {}) {
       return {
         id: uuidv4(),
         expanded: true,
         categoryName: standard.category || '',
         mfoName: standard.mfo || '',
-        outputName: standard.output_name || standard.output || '',
+        outputName: standard.output_name || '',
         indicatorName: standard.performance_indicator || '',
         successIndicator: standard.success_indicator || '',
         requiredOutput: standard.required_output || '',
@@ -186,69 +188,89 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         rows: {
           category: standard.category_id || standard.category || null,
           mfo: standard.mfo_id || standard.mfo || null,
-          output: standard.output_id || standard.output || null,
+          output: standard.output || null,
         },
-        // ✅ Ensure these configuration fields are included
         quantityIndicatorType: standard.quantity_indicator_type || 'numeric',
         timelinessIndicatorType: standard.timeliness_indicator_type || 'beforeDeadline',
         timelinessInputs: { range: true, date: false, description: false },
         activeTimelinessInputs: { range: true, date: false, description: false },
-        // ✅ Include target output data if available
-        targetOutput: standard.target_output || {
-          baseTarget: null,
-          calculated: [],
-        },
+        targetOutput: standard.target_output || { baseTarget: null, calculated: [] },
         coreCompetencies: standard.core || [],
         technicalCompetencies: standard.technical || [],
         leadershipCompetencies: standard.leadership || [],
-        standardOutcomeRows: this.createSortedDefaultRows(),
+        standardOutcomeRows: sortedDefaultRows(),
       }
     },
 
-    // In your unitWorkPlanStore.js, update the transformApiResponseToForm function:
-    transformApiResponseToForm(employeesData) {
-      if (!employeesData || !Array.isArray(employeesData) || employeesData.length === 0) {
-        console.warn('⚠️ No employees data to transform')
-        return []
-      }
+    mapStandardOutcomesToRows(standardOutcomes) {
+      if (!standardOutcomes || standardOutcomes.length === 0) return sortedDefaultRows()
 
-      console.log('🔄 Transforming employees data:', employeesData.length, 'employees')
+      const outcomesByRating = {}
+      standardOutcomes.forEach((outcome) => {
+        if (outcome.rating) {
+          outcomesByRating[outcome.rating] = {
+            rating: outcome.rating.toString(),
+            quantity: outcome.quantity_target || '',
+            effectiveness: outcome.effectiveness_criteria || '',
+            timeliness: outcome.timeliness_range || '',
+            timelinessRange: outcome.timeliness_range || '',
+            timelinessDate: outcome.timeliness_date || '',
+            timelinessText: outcome.timeliness_description || '',
+          }
+        }
+      })
+
+      return [5, 4, 3, 2, 1].map((rating) => {
+        const o = outcomesByRating[rating] || {}
+        return {
+          rating: rating.toString(),
+          quantity: o.quantity || '',
+          effectiveness: o.effectiveness || '',
+          timeliness: o.timeliness || '',
+          timelinessRange: o.timelinessRange || '',
+          timelinessDate: o.timelinessDate || '',
+          timelinessText: o.timelinessText || '',
+          timelinessDeadline: '',
+        }
+      })
+    },
+
+    transformApiResponseToForm(employeesData) {
+      if (!Array.isArray(employeesData) || employeesData.length === 0) return []
 
       return employeesData.map((emp) => {
-        // Get the first target period (should match the selected semester/year)
         const targetPeriod = emp.target_periods?.[0]
-
-        // Get performance standards from target period
         const performanceStandards = targetPeriod?.performance_standards || []
-
-        // Get standard outcomes from target period
         const standardOutcomes = targetPeriod?.standard_outcomes || []
 
-        console.log(`🔄 Employee ${emp.name} data:`, {
-          name: emp.name,
-          rank: emp.rank,
-          position: emp.position,
-          performanceStandards: performanceStandards.length,
-          standardOutcomes: standardOutcomes.length,
-        })
-
-        // Transform performance standards with their corresponding standard outcomes
-        const transformedStandards = performanceStandards.map((standard, stdIndex) => {
-          // Find standard outcomes for this standard (if any)
-          const standardRows = this.mapStandardOutcomesToRows(standardOutcomes, stdIndex)
-
-          console.log(`🔄 Standard ${stdIndex} outcomes mapped:`, standardRows)
-
-          // Create the performance standard with proper data
+        const transformedStandards = performanceStandards.map((standard) => {
           const perfStandard = this.createDefaultPerformanceStandard(standard)
+          const standardRows = this.mapStandardOutcomesToRows(standardOutcomes)
+          perfStandard.standardOutcomeRows = standardRows
 
-          // Update the standard outcome rows with actual data from API
-          if (standardRows.length > 0) {
-            perfStandard.standardOutcomeRows = standardRows
+          perfStandard.rows = {
+            category: standard.category
+              ? {
+                  id: standard.category,
+                  name: standard.category,
+                  label: standard.category,
+                  value: standard.category,
+                }
+              : null,
+            mfo: standard.mfo
+              ? { id: standard.mfo, name: standard.mfo, label: standard.mfo, value: standard.mfo }
+              : null,
+            output: standard.output
+              ? {
+                  id: standard.output,
+                  name: standard.output,
+                  label: standard.output,
+                  value: standard.output,
+                }
+              : null,
           }
 
-          // Set other properties from API
-          perfStandard.outputName = standard.output_name || standard.output || ''
+          perfStandard.outputName = standard.output_name || ''
           perfStandard.indicatorName = standard.performance_indicator || ''
           perfStandard.successIndicator = standard.success_indicator || ''
           perfStandard.requiredOutput = standard.required_output || ''
@@ -256,229 +278,61 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           return perfStandard
         })
 
-        // If no performance standards from API, create a default one
-        if (transformedStandards.length === 0) {
+        if (transformedStandards.length === 0)
           transformedStandards.push(this.createDefaultPerformanceStandard())
-        }
 
         return {
-          id: uuidv4(), // Generate new ID for the tab
+          id: uuidv4(),
           name: emp.name || '',
-          employeeId: emp.id, // This should be the employee ID (18)
-          employeeData: emp, // The full employee object from API
+          employeeId: emp.id,
+          employeeData: emp,
           performanceStandards: transformedStandards,
-          // Store the rank for quick access
           rank: emp.rank || '',
           position: emp.position || '',
+          sg: emp.sg || '',
+          level: emp.level || '',
         }
       })
     },
 
-    // In unitWorkPlanStore.js, update the mapStandardOutcomesToRows function:
-    mapStandardOutcomesToRows(standardOutcomes) {
-      if (!standardOutcomes || standardOutcomes.length === 0) {
-        console.log('⚠️ No standard outcomes found')
-        return this.createSortedDefaultRows()
-      }
-
-      try {
-        // Group outcomes by rating
-        const outcomesByRating = {}
-
-        standardOutcomes.forEach((outcome) => {
-          if (outcome.rating) {
-            outcomesByRating[outcome.rating] = {
-              rating: outcome.rating.toString(),
-              quantity: outcome.quantity_target || '',
-              effectiveness: outcome.effectiveness_criteria || '',
-              timeliness: outcome.timeliness_range || '',
-              timelinessRange: outcome.timeliness_range || '',
-              timelinessDate: outcome.timeliness_date || '',
-              timelinessText: outcome.timeliness_description || '',
-            }
-          }
-        })
-
-        console.log('📊 Mapped outcomes by rating:', outcomesByRating)
-
-        // Create rows in descending order: 5, 4, 3, 2, 1
-        const rows = [5, 4, 3, 2, 1].map((rating) => {
-          const ratingStr = rating.toString()
-          const outcome = outcomesByRating[ratingStr] || {}
-
-          return {
-            rating: ratingStr,
-            quantity: outcome.quantity || '',
-            effectiveness: outcome.effectiveness || '',
-            timeliness: outcome.timeliness || '',
-            timelinessRange: outcome.timelinessRange || '',
-            timelinessDate: outcome.timelinessDate || '',
-            timelinessText: outcome.timelinessText || '',
-            timelinessDeadline: '',
-          }
-        })
-
-        console.log('📊 Final rows in descending order:', rows)
-        return rows
-      } catch (error) {
-        console.error('❌ Error mapping standard outcomes:', error)
-        return this.createSortedDefaultRows()
+    buildPayload(submissionData) {
+      return {
+        uwpData: this.uwpData,
+        formData: this.formData,
+        employeeData: this.employeeData,
+        submissionData,
+        timestamp: new Date().toISOString(),
       }
     },
 
-    // Add this helper method to create default rows in descending order
-    createSortedDefaultRows() {
-      return [
-        {
-          rating: '5',
-          quantity: '',
-          effectiveness: '',
-          timeliness: '',
-          timelinessRange: '',
-          timelinessDate: '',
-          timelinessText: '',
-          timelinessDeadline: '',
-        },
-        {
-          rating: '4',
-          quantity: '',
-          effectiveness: '',
-          timeliness: '',
-          timelinessRange: '',
-          timelinessDate: '',
-          timelinessText: '',
-          timelinessDeadline: '',
-        },
-        {
-          rating: '3',
-          quantity: '',
-          effectiveness: '',
-          timeliness: '',
-          timelinessRange: '',
-          timelinessDate: '',
-          timelinessText: '',
-          timelinessDeadline: '',
-        },
-        {
-          rating: '2',
-          quantity: '',
-          effectiveness: '',
-          timeliness: '',
-          timelinessRange: '',
-          timelinessDate: '',
-          timelinessText: '',
-          timelinessDeadline: '',
-        },
-        {
-          rating: '1',
-          quantity: '',
-          effectiveness: '',
-          timeliness: '',
-          timelinessRange: '',
-          timelinessDate: '',
-          timelinessText: '',
-          timelinessDeadline: '',
-        },
-      ]
+    extractFilteredEmployeeControlNos() {
+      if (!this.uwpData) return []
+      const employees =
+        this.uwpData.filteredAvailableEmployees ||
+        this.uwpData.availableEmployees ||
+        this.uwpData.employeesWithoutTargetPeriod ||
+        []
+
+      return employees
+        .map(
+          (emp) =>
+            emp.employeeData?.ControlNo ||
+            emp.ControlNo ||
+            emp.controlNo ||
+            emp.control_no ||
+            emp.id,
+        )
+        .filter((controlNo) => controlNo !== null && controlNo !== undefined && controlNo !== '')
     },
 
-    async fetchFilteredEmployeesData() {
-      this.loading = true
-      this.error = null
-
-      try {
-        console.log('🚀 Starting fetchFilteredEmployeesData')
-
-        const token = localStorage.getItem('token')
-        const endpoint = this.buildFilteredEmployeeEndpoint()
-
-        if (!endpoint) {
-          console.log('⚠️ No endpoint built, returning empty array')
-          this.filteredEmployeesData = []
-          return []
-        }
-
-        console.log('📤 Fetching employee data from:', endpoint)
-
-        const response = await api.get(endpoint, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        console.log('📥 API Response received:', response.data)
-
-        // The data is an array directly in response.data
-        if (Array.isArray(response.data)) {
-          console.log('✅ Data found as array:', response.data.length)
-          const transformedData = this.transformApiResponseToForm(response.data)
-          console.log('✅ Transformed employees:', transformedData)
-          this.filteredEmployeesData = transformedData
-          return transformedData
-        }
-
-        console.log('⚠️ Unexpected response structure:', response.data)
-        return []
-      } catch (error) {
-        console.error('❌ Error fetching filtered employees data:', error)
-        console.error('❌ Error response:', error.response?.data)
-        this.error = error.message || 'Failed to fetch filtered employees data'
-        this.filteredEmployeesData = []
-        return []
-      } finally {
-        this.loading = false
-      }
+    buildFilteredEmployeeEndpoint() {
+      const identifiers = this.extractFilteredEmployeeControlNos()
+      if (identifiers.length === 0) return null
+      return `/spms/employee/${identifiers.join(',')}`
     },
 
-    async saveUWP(submissionData, officeLibraryIndicatorStore) {
-      this.loading = true
-      this.error = null
-
-      try {
-        const token = localStorage.getItem('token')
-
-        // ✅ STORE THE REFERENCE
-        this.officeLibraryIndicatorStore = officeLibraryIndicatorStore
-        console.log('📚 Store reference set:', this.officeLibraryIndicatorStore)
-
-        // ✅ IMPORTANT: Pass the submissionData directly, not wrapped
-        const payload = this.transformPayload(submissionData)
-
-        console.log('📤 Saving UWP with payload:', JSON.stringify(payload, null, 2))
-
-        const response = await api.post('/unit_work_plan/store', payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        if (response.data.success) {
-          console.log('✅ UWP saved successfully:', response.data)
-
-          this.savedUWPs.push({
-            id: response.data.data?.id,
-            semester: submissionData.form.semester, // Use from submissionData
-            year: submissionData.form.year, // Use from submissionData
-            savedAt: new Date().toISOString(),
-          })
-
-          sessionStorage.removeItem('uwpData')
-          this.uwpData = null
-
-          return response.data
-        }
-
-        throw new Error(response.data.message || 'Failed to save UWP')
-      } catch (error) {
-        console.error('❌ Error saving UWP:', error)
-        this.error = error.message || 'Failed to save UWP'
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // In your unitWorkPlanStore.js, update the transformPayload function:
+    /* ----------------------------- payload builders ----------------------------- */
     transformPayload(submissionData) {
-      console.log('🔍 Building payload from submissionData:', submissionData)
-
-      // Ensure we have the form data with semester and year
       const semester =
         submissionData.form?.semester || submissionData.uwpData?.targetPeriod?.semester || ''
       const year =
@@ -486,20 +340,10 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         submissionData.uwpData?.targetPeriod?.year ||
         new Date().getFullYear()
 
-      console.log('📅 Using semester/year:', { semester, year })
+      return {
+        employees: submissionData.employees.map((emp) => {
+          const officeData = submissionData.uwpData?.hierarchy || {}
 
-      const payload = {
-        employees: submissionData.employees.map((emp, empIndex) => {
-          console.log(`👤 Processing employee ${empIndex}:`, emp.name || emp.employeeId)
-
-          const officeData = submissionData.uwpData?.hierarchy?.office || {}
-          const office2Data = submissionData.uwpData?.hierarchy?.office2 || {}
-          const groupData = submissionData.uwpData?.hierarchy?.group || {}
-          const divisionData = submissionData.uwpData?.hierarchy?.division || {}
-          const sectionData = submissionData.uwpData?.hierarchy?.section || {}
-          const unitData = submissionData.uwpData?.hierarchy?.unit || {}
-
-          // Get employee data - ensure we have values
           const controlNo =
             emp.employeeData?.employeeData?.ControlNo ||
             emp.employeeData?.ControlNo ||
@@ -518,382 +362,349 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             employee_name: String(employeeName),
             semester: String(semester),
             year: Number(year),
-            office: String(officeData.label || officeData.name || ''),
-            office2:
-              office2Data.label || office2Data.name
-                ? String(office2Data.label || office2Data.name)
-                : null,
-            group:
-              groupData.label || groupData.name ? String(groupData.label || groupData.name) : null,
-            division:
-              divisionData.label || divisionData.name
-                ? String(divisionData.label || divisionData.name)
-                : null,
-            section:
-              sectionData.label || sectionData.name
-                ? String(sectionData.label || sectionData.name)
-                : null,
-            unit: unitData.label || unitData.name ? String(unitData.label || unitData.name) : null,
+            office: String(officeData.office?.label || officeData.office?.name || ''),
+            office2: officeData.office2
+              ? String(officeData.office2.label || officeData.office2.name)
+              : null,
+            group: officeData.group
+              ? String(officeData.group.label || officeData.group.name)
+              : null,
+            division: officeData.division
+              ? String(officeData.division.label || officeData.division.name)
+              : null,
+            section: officeData.section
+              ? String(officeData.section.label || officeData.section.name)
+              : null,
+            unit: officeData.unit ? String(officeData.unit.label || officeData.unit.name) : null,
             performance_standards: [],
           }
 
-          console.log(`📝 Employee ${empIndex} base data:`, {
-            semester: employeePayload.semester,
-            year: employeePayload.year,
-            control_no: employeePayload.control_no,
-          })
+          if (Array.isArray(emp.performanceStandards)) {
+            employeePayload.performance_standards = emp.performanceStandards.map((standard) => {
+              const categoryId = standard.rows?.category?.id ?? standard.rows?.category
+              const mfoId = standard.rows?.mfo?.id ?? standard.rows?.mfo
+              const outputId = standard.rows?.output?.id ?? standard.rows?.output
 
-          // Process performance standards
-          if (emp.performanceStandards && Array.isArray(emp.performanceStandards)) {
-            employeePayload.performance_standards = emp.performanceStandards.map(
-              (standard, stdIndex) => {
-                console.log(`   📋 Processing standard ${stdIndex} for employee ${empIndex}`)
+              const categoryValue = this.resolveCategoryLabel(standard.rows?.category || categoryId)
+              const mfoValue = this.resolveMfoLabel(standard.rows?.mfo || mfoId)
+              const outputValue = this.resolveOutputLabel(outputId, categoryId, mfoId)
+              const performanceIndicator = this.resolveVerbLabel(standard.indicatorName)
 
-                // Resolve category, mfo, output as strings
-                let categoryValue = ''
-                let mfoValue = ''
-                let outputValue = ''
+              const requiredOutput =
+                (standard.outputName && standard.outputName.trim()) ||
+                (standard.requiredOutput && standard.requiredOutput.trim()) ||
+                (outputValue && outputValue.trim()) ||
+                'N/A'
 
-                // Try multiple sources for category
-                if (standard.rows?.category?.name) {
-                  categoryValue = standard.rows.category.name
-                } else if (standard.categoryName) {
-                  categoryValue = standard.categoryName
-                } else if (standard.rows?.category) {
-                  categoryValue = String(standard.rows.category)
-                } else if (standard.category) {
-                  categoryValue = String(standard.category)
-                }
+              const ratings = []
+              let defaultTimelinessValue = ''
 
-                // Try multiple sources for MFO
-                if (standard.rows?.mfo?.name) {
-                  mfoValue = standard.rows.mfo.name
-                } else if (standard.mfoName) {
-                  mfoValue = standard.mfoName
-                } else if (standard.rows?.mfo) {
-                  mfoValue = String(standard.rows.mfo)
-                } else if (standard.mfo) {
-                  mfoValue = String(standard.mfo)
-                }
+              if (Array.isArray(standard.standardOutcomeRows)) {
+                standard.standardOutcomeRows.forEach((row) => {
+                  if (!row.rating) return
 
-                // Try multiple sources for output
-                if (standard.rows?.output?.name) {
-                  outputValue = standard.rows.output.name
-                } else if (standard.outputName) {
-                  outputValue = standard.outputName
-                } else if (standard.rows?.output) {
-                  outputValue = String(standard.rows.output)
-                } else if (standard.output) {
-                  outputValue = String(standard.output)
-                }
+                  let timelinessValue = ''
 
-                console.log(`   📊 Standard ${stdIndex} values:`, {
-                  category: categoryValue,
-                  mfo: mfoValue,
-                  output: outputValue,
-                })
+                  const useBeforeDeadline =
+                    standard.timelinessIndicatorType === 'beforeDeadline' && row.rating === '3'
+                  const useOnDeadline =
+                    standard.timelinessIndicatorType === 'onDeadline' && row.rating === '5'
 
-                // Resolve performance indicator
-                let performanceIndicator = ''
-                if (standard.indicatorName) {
-                  if (
-                    typeof standard.indicatorName === 'number' ||
-                    !isNaN(standard.indicatorName)
-                  ) {
-                    const verbId = Number(standard.indicatorName)
-                    if (
-                      this.officeLibraryIndicatorStore?.verbs &&
-                      Array.isArray(this.officeLibraryIndicatorStore.verbs)
-                    ) {
-                      const foundVerb = this.officeLibraryIndicatorStore.verbs.find(
-                        (v) => v.id === verbId,
-                      )
-                      if (foundVerb) {
-                        performanceIndicator = foundVerb.indicator_name || foundVerb.name || ''
-                      }
+                  if (useBeforeDeadline || useOnDeadline) {
+                    if (standard.timelinessInputs?.range && row.timelinessRange) {
+                      timelinessValue = row.timelinessRange
                     }
-                  } else {
-                    performanceIndicator = String(standard.indicatorName).trim()
+                    if (standard.timelinessInputs?.date && row.timelinessDate) {
+                      timelinessValue = timelinessValue
+                        ? `${timelinessValue} by ${row.timelinessDate}`
+                        : `by ${row.timelinessDate}`
+                    }
+                    if (standard.timelinessInputs?.description && row.timelinessText) {
+                      timelinessValue = timelinessValue
+                        ? `${timelinessValue} ${row.timelinessText}`
+                        : row.timelinessText
+                    }
                   }
-                }
 
-                // Build ratings array
-                const ratings = []
-                let defaultTimelinessValue = '' // Store a default timeliness value
+                  if (!timelinessValue)
+                    timelinessValue = row.timeliness || row.timelinessRange || ''
+                  if (!defaultTimelinessValue && timelinessValue)
+                    defaultTimelinessValue = timelinessValue
 
-                if (standard.standardOutcomeRows && Array.isArray(standard.standardOutcomeRows)) {
-                  standard.standardOutcomeRows.forEach((row) => {
-                    if (row.rating) {
-                      // Determine timeliness
-                      let timelinessValue = ''
-
-                      if (
-                        standard.timelinessIndicatorType === 'beforeDeadline' &&
-                        row.rating === '3'
-                      ) {
-                        if (standard.timelinessInputs?.range && row.timelinessRange) {
-                          timelinessValue = row.timelinessRange
-                        }
-                        if (standard.timelinessInputs?.date && row.timelinessDate) {
-                          timelinessValue = timelinessValue
-                            ? `${timelinessValue} by ${row.timelinessDate}`
-                            : `by ${row.timelinessDate}`
-                        }
-                        if (standard.timelinessInputs?.description && row.timelinessText) {
-                          timelinessValue = timelinessValue
-                            ? `${timelinessValue} ${row.timelinessText}`
-                            : row.timelinessText
-                        }
-                      } else if (
-                        standard.timelinessIndicatorType === 'onDeadline' &&
-                        row.rating === '5'
-                      ) {
-                        if (standard.timelinessInputs?.range && row.timelinessRange) {
-                          timelinessValue = row.timelinessRange
-                        }
-                        if (standard.timelinessInputs?.date && row.timelinessDate) {
-                          timelinessValue = timelinessValue
-                            ? `${timelinessValue} by ${row.timelinessDate}`
-                            : `by ${row.timelinessDate}`
-                        }
-                        if (standard.timelinessInputs?.description && row.timelinessText) {
-                          timelinessValue = timelinessValue
-                            ? `${timelinessValue} ${row.timelinessText}`
-                            : row.timelinessText
-                        }
-                      }
-
-                      // Fallback
-                      if (!timelinessValue) {
-                        timelinessValue = row.timeliness || row.timelinessRange || ''
-                      }
-
-                      // Store default timeliness value if not set yet
-                      if (!defaultTimelinessValue && timelinessValue) {
-                        defaultTimelinessValue = timelinessValue
-                      }
-
-                      ratings.push({
-                        rating: Number(row.rating) || 0,
-                        quantity: String(row.quantity || ''),
-                        effectiveness: String(row.effectiveness || ''),
-                        timeliness: String(timelinessValue),
-                        timeliness_range: String(row.timelinessRange || ''),
-                        timeliness_date: String(row.timelinessDate || ''),
-                        timeliness_description: String(row.timelinessText || ''),
-                      })
-                    }
+                  ratings.push({
+                    rating: Number(row.rating) || 0,
+                    quantity: String(row.quantity || ''),
+                    effectiveness: String(row.effectiveness || ''),
+                    timeliness: String(timelinessValue),
+                    timeliness_range: String(row.timelinessRange || ''),
+                    timeliness_date: String(row.timelinessDate || ''),
+                    timeliness_description: String(row.timelinessText || ''),
                   })
-                }
-
-                console.log(`   📈 Standard ${stdIndex} has ${ratings.length} ratings`)
-
-                // FIXED: Build the complete config object with all required fields
-                const quantityType = standard.quantityIndicatorType || 'numeric'
-                const timelinessType = standard.timelinessIndicatorType || 'beforeDeadline'
-                const timelinessInputs = standard.timelinessInputs || {
-                  range: true,
-                  date: false,
-                  description: false,
-                }
-
-                // Find the appropriate row for quantity and timeliness values
-                const quantityRow =
-                  standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
-                const timelinessRow =
-                  timelinessType === 'beforeDeadline'
-                    ? standard.standardOutcomeRows?.find((row) => row.rating === '3') || {}
-                    : standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
-
-                // Get required output - if empty, use a default
-                const requiredOutput =
-                  standard.requiredOutput?.trim() || standard.outputName?.trim() || 'N/A'
-
-                // Use default timeliness value if timelinessRow doesn't have one
-                const timelinessValue = timelinessRow.timeliness || defaultTimelinessValue || 'N/A'
-                const timelinessQuantity = timelinessRow.quantity || quantityRow.quantity || 'N/A'
-
-                const config = {
-                  quantity_indicator_type: {
-                    type: String(quantityType),
-                    quantity: String(quantityRow.quantity || 'N/A'),
-                    timeliness: String(timelinessValue),
-                  },
-                  timeliness_indicator_type: {
-                    type: String(timelinessType),
-                    quantity: String(timelinessQuantity),
-                    timeliness: String(timelinessValue),
-                  },
-                  timeliness_inputs: {
-                    type: 'object',
-                    quantity: String(timelinessQuantity),
-                    timeliness: String(timelinessValue),
-                  },
-                  target_output: {
-                    type: 'object',
-                    quantity: String(quantityRow.quantity || 'N/A'),
-                    timeliness: String(timelinessValue),
-                  },
-                }
-
-                // Add timeliness input types if they exist
-                if (timelinessInputs.range !== undefined) {
-                  config.timeliness_inputs.range = Boolean(timelinessInputs.range)
-                }
-                if (timelinessInputs.date !== undefined) {
-                  config.timeliness_inputs.date = Boolean(timelinessInputs.date)
-                }
-                if (timelinessInputs.description !== undefined) {
-                  config.timeliness_inputs.description = Boolean(timelinessInputs.description)
-                }
-
-                // Add target output details if available
-                if (standard.targetOutput) {
-                  config.target_output.baseTarget = standard.targetOutput.baseTarget || null
-                  config.target_output.calculated = standard.targetOutput.calculated || []
-                }
-
-                // Build the final standard object
-                const standardPayload = {
-                  category: String(categoryValue || ''),
-                  mfo: String(mfoValue || ''),
-                  output: String(outputValue || ''),
-                  core_competency: Array.isArray(standard.coreCompetencies)
-                    ? standard.coreCompetencies
-                    : [],
-                  technical_competency: Array.isArray(standard.technicalCompetencies)
-                    ? standard.technicalCompetencies
-                    : [],
-                  leadership_competency: Array.isArray(standard.leadershipCompetencies)
-                    ? standard.leadershipCompetencies
-                    : [],
-                  success_indicator: String(standard.successIndicator || ''),
-                  performance_indicator: String(performanceIndicator || ''),
-                  required_output: String(requiredOutput), // Fixed: Now has a value
-                  ratings: ratings.length > 0 ? ratings : [],
-                  config: config,
-                }
-
-                console.log(`   ✅ Built standard ${stdIndex}:`, {
-                  category: standardPayload.category,
-                  required_output: standardPayload.required_output,
-                  ratingsCount: standardPayload.ratings.length,
-                  hasConfig: !!standardPayload.config,
-                  configFields: standardPayload.config ? Object.keys(standardPayload.config) : [],
                 })
+              }
 
-                return standardPayload
-              },
-            )
+              const quantityType = standard.quantityIndicatorType || 'numeric'
+              const timelinessType = standard.timelinessIndicatorType || 'beforeDeadline'
+              const timelinessInputs = standard.timelinessInputs || {
+                range: true,
+                date: false,
+                description: false,
+              }
+
+              const quantityRow =
+                standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
+              const timelinessRow =
+                timelinessType === 'beforeDeadline'
+                  ? standard.standardOutcomeRows?.find((row) => row.rating === '3') || {}
+                  : standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
+
+              const timelinessValue = timelinessRow.timeliness || defaultTimelinessValue || 'N/A'
+              const timelinessQuantity = timelinessRow.quantity || quantityRow.quantity || 'N/A'
+
+              const config = {
+                quantity_indicator_type: {
+                  type: String(quantityType),
+                  quantity: String(quantityRow.quantity || 'N/A'),
+                  timeliness: String(timelinessValue),
+                },
+                timeliness_indicator_type: {
+                  type: String(timelinessType),
+                  quantity: String(timelinessQuantity),
+                  timeliness: String(timelinessValue),
+                },
+                timeliness_inputs: {
+                  type: 'object',
+                  quantity: String(timelinessQuantity),
+                  timeliness: String(timelinessValue),
+                  range: Boolean(timelinessInputs.range),
+                  date: Boolean(timelinessInputs.date),
+                  description: Boolean(timelinessInputs.description),
+                },
+                target_output: {
+                  type: 'object',
+                  quantity: String(quantityRow.quantity || 'N/A'),
+                  timeliness: String(timelinessValue),
+                  baseTarget: standard.targetOutput?.baseTarget || null,
+                  calculated: standard.targetOutput?.calculated || [],
+                },
+              }
+
+              return {
+                category: String(categoryValue || ''),
+                mfo: String(mfoValue || ''),
+                output: String(outputValue || ''), // dropdown selection
+                output_name: String(standard.outputName || ''), // free text
+                core_competency: Array.isArray(standard.coreCompetencies)
+                  ? standard.coreCompetencies
+                  : [],
+                technical_competency: Array.isArray(standard.technicalCompetencies)
+                  ? standard.technicalCompetencies
+                  : [],
+                leadership_competency: Array.isArray(standard.leadershipCompetencies)
+                  ? standard.leadershipCompetencies
+                  : [],
+                success_indicator: String(standard.successIndicator || ''),
+                performance_indicator: String(performanceIndicator || ''),
+                required_output: String(requiredOutput),
+                ratings: ratings.length > 0 ? ratings : [],
+                config,
+              }
+            })
           }
 
-          console.log(
-            `✅ Employee ${empIndex} payload ready with ${employeePayload.performance_standards.length} standards`,
-          )
           return employeePayload
         }),
       }
+    },
 
-      // Final validation
-      console.log('🔍 Final payload validation:')
-      payload.employees.forEach((emp, idx) => {
-        console.log(`  Employee ${idx}:`, {
-          hasSemester: !!emp.semester,
-          semester: emp.semester,
-          standards: emp.performance_standards?.length || 0,
-          firstStandard: emp.performance_standards?.[0]
-            ? {
-                category: emp.performance_standards[0].category,
-                required_output: emp.performance_standards[0].required_output,
-                hasRatings: emp.performance_standards[0].ratings?.length > 0,
-                hasConfig: !!emp.performance_standards[0].config,
-                configFields: emp.performance_standards[0].config
-                  ? Object.keys(emp.performance_standards[0].config)
-                  : [],
+    transformUpdatePayload(updateData) {
+      const semester = updateData.form?.semester || ''
+      const year = updateData.form?.year || new Date().getFullYear()
+      const employee = updateData.employee
+
+      const base = {
+        control_no: employee.controlNo || employee.employeeData?.ControlNo || '',
+        employee_id: employee.employeeId || 0,
+        employee_name: employee.name || '',
+        semester,
+        year,
+        office: updateData.uwpData?.hierarchy?.office?.label || '',
+        office2: updateData.uwpData?.hierarchy?.office2?.label || null,
+        group: updateData.uwpData?.hierarchy?.group?.label || null,
+        division: updateData.uwpData?.hierarchy?.division?.label || null,
+        section: updateData.uwpData?.hierarchy?.section?.label || null,
+        unit: updateData.uwpData?.hierarchy?.unit?.label || null,
+        performance_standards: [],
+      }
+
+      if (Array.isArray(employee.performanceStandards)) {
+        base.performance_standards = employee.performanceStandards.map((standard) => {
+          const categoryId = standard.rows?.category?.id ?? standard.rows?.category
+          const mfoId = standard.rows?.mfo?.id ?? standard.rows?.mfo
+          const outputId = standard.rows?.output?.id ?? standard.rows?.output
+
+          const categoryName = this.resolveCategoryLabel(standard.rows?.category || categoryId)
+          const mfoName = this.resolveMfoLabel(standard.rows?.mfo || mfoId)
+          const outputName = this.resolveOutputLabel(outputId, categoryId, mfoId)
+          const performanceIndicator = this.resolveVerbLabel(standard.indicatorName)
+
+          const ratings = []
+          if (Array.isArray(standard.standardOutcomeRows)) {
+            standard.standardOutcomeRows.forEach((row) => {
+              if (!row.rating) return
+
+              let timelinessValue = ''
+              const beforeDeadline =
+                standard.timelinessIndicatorType === 'beforeDeadline' && row.rating === '3'
+              const onDeadline =
+                standard.timelinessIndicatorType === 'onDeadline' && row.rating === '5'
+
+              if (beforeDeadline || onDeadline) {
+                if (standard.activeTimelinessInputs?.range && row.timelinessRange) {
+                  timelinessValue = row.timelinessRange
+                }
+                if (standard.activeTimelinessInputs?.date && row.timelinessDate) {
+                  timelinessValue = timelinessValue
+                    ? `${timelinessValue} by ${row.timelinessDate}`
+                    : `by ${row.timelinessDate}`
+                }
+                if (standard.activeTimelinessInputs?.description && row.timelinessText) {
+                  timelinessValue = timelinessValue
+                    ? `${timelinessValue} ${row.timelinessText}`
+                    : row.timelinessText
+                }
               }
-            : null,
-        })
-      })
 
-      return payload
+              ratings.push({
+                rating: Number(row.rating) || 0,
+                quantity: String(row.quantity || ''),
+                effectiveness: String(row.effectiveness || ''),
+                timeliness: String(timelinessValue || row.timeliness || ''),
+                timeliness_range: String(row.timelinessRange || ''),
+                timeliness_date: String(row.timelinessDate || ''),
+                timeliness_description: String(row.timelinessText || ''),
+              })
+            })
+          }
+
+          const config = {
+            quantity_indicator_type: {
+              type: String(standard.quantityIndicatorType || 'numeric'),
+              quantity: standard.standardOutcomeRows?.find((r) => r.rating === '5')?.quantity || '',
+            },
+            timeliness_indicator_type: {
+              type: String(standard.timelinessIndicatorType || 'beforeDeadline'),
+            },
+            timeliness_inputs: {
+              range: Boolean(standard.activeTimelinessInputs?.range || false),
+              date: Boolean(standard.activeTimelinessInputs?.date || false),
+              description: Boolean(standard.activeTimelinessInputs?.description || false),
+            },
+          }
+
+          return {
+            category: categoryName,
+            mfo: mfoName,
+            output: outputName,
+            output_name: standard.outputName || '',
+            core_competency: standard.coreCompetencies || [],
+            technical_competency: standard.technicalCompetencies || [],
+            leadership_competency: standard.leadershipCompetencies || [],
+            success_indicator: standard.successIndicator || '',
+            performance_indicator: performanceIndicator,
+            required_output: standard.requiredOutput || '',
+            ratings,
+            config,
+          }
+        })
+      }
+
+      return base
     },
-    // Fetch saved UWPs
-    async fetchSavedUWPs() {
+
+    /* ----------------------------- API actions ----------------------------- */
+    async fetchFilteredEmployeesData() {
       this.loading = true
       this.error = null
-
       try {
-        const token = localStorage.getItem('token')
+        const endpoint = this.buildFilteredEmployeeEndpoint()
+        if (!endpoint) {
+          this.filteredEmployeesData = []
+          return []
+        }
 
-        const response = await api.get('/unit_work_plan', {
+        const token = localStorage.getItem('token')
+        const response = await api.get(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
-        if (response.data.success) {
-          this.savedUWPs = response.data.data || []
-          console.log('✅ Fetched saved UWPs:', this.savedUWPs)
-          return this.savedUWPs
+        if (Array.isArray(response.data)) {
+          const transformed = this.transformApiResponseToForm(response.data)
+          this.filteredEmployeesData = transformed
+          return transformed
         }
 
-        throw new Error(response.data.message || 'Failed to fetch UWPs')
+        this.filteredEmployeesData = []
+        return []
       } catch (error) {
-        console.error('❌ Error fetching UWPs:', error)
-        this.error = error.message || 'Failed to fetch UWPs'
-        throw error
+        this.error = error.message || 'Failed to fetch filtered employees data'
+        this.filteredEmployeesData = []
+        return []
       } finally {
         this.loading = false
       }
     },
 
-    // Get UWP by ID
-    async getUWPById(id) {
+    async saveUWP(submissionData, officeLibraryIndicatorStore) {
       this.loading = true
       this.error = null
 
       try {
-        const token = localStorage.getItem('token')
+        this.officeLibraryIndicatorStore = officeLibraryIndicatorStore
+        const payload = this.transformPayload(submissionData)
 
-        const response = await api.get(`/unit_work_plan/${id}`, {
+        const token = localStorage.getItem('token')
+        const response = await api.post('/unit_work_plan/store', payload, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
         if (response.data.success) {
-          console.log('✅ Fetched UWP:', response.data.data)
-          return response.data.data
-        }
-
-        throw new Error(response.data.message || 'Failed to fetch UWP')
-      } catch (error) {
-        console.error('❌ Error fetching UWP:', error)
-        this.error = error.message || 'Failed to fetch UWP'
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // Update UWP
-    async updateUWP(id, submissionData) {
-      this.loading = true
-      this.error = null
-
-      try {
-        const token = localStorage.getItem('token')
-
-        const payload = this.buildPayload(submissionData)
-
-        const response = await api.put(`/unit_work_plan/${id}`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        if (response.data.success) {
-          console.log('✅ UWP updated successfully:', response.data)
+          this.savedUWPs.push({
+            id: response.data.data?.id,
+            semester: submissionData.form.semester,
+            year: submissionData.form.year,
+            savedAt: new Date().toISOString(),
+          })
+          sessionStorage.removeItem('uwpData')
+          this.uwpData = null
           return response.data
         }
 
+        throw new Error(response.data.message || 'Failed to save UWP')
+      } catch (error) {
+        this.error = error.message || 'Failed to save UWP'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateUWP(updateData, officeLibraryIndicatorStore) {
+      this.loading = true
+      this.error = null
+
+      try {
+        this.officeLibraryIndicatorStore = officeLibraryIndicatorStore
+        const payload = this.transformUpdatePayload(updateData)
+
+        const token = localStorage.getItem('token')
+        const response = await api.put('/unit_work_plan/update', payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (response.data.success) return response.data
         throw new Error(response.data.message || 'Failed to update UWP')
       } catch (error) {
-        console.error('❌ Error updating UWP:', error)
         this.error = error.message || 'Failed to update UWP'
         throw error
       } finally {
@@ -901,46 +712,160 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
       }
     },
 
-    // Delete UWP
-    async deleteUWP(id) {
+    async fetchEmployeeByControlNo(controlNo, semester, year) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get(`spms/employee/${controlNo}/${semester}/${year}`)
+        const employeeData = response.data
+        if (!employeeData) return []
+
+        const transformedEmployee = {
+          id: `emp_${employeeData.id}`,
+          name: employeeData.name || 'Unknown Employee',
+          employeeId: employeeData.id,
+          controlNo: employeeData.ControlNo || controlNo,
+          sg: employeeData.sg || '',
+          level: employeeData.level || '',
+          rank: employeeData.rank || 'Employee',
+          position: employeeData.position || '',
+          performanceStandards: [],
+          employeeData,
+        }
+
+        if (employeeData.target_periods?.length) {
+          const targetPeriod = employeeData.target_periods[0]
+          const standardOutcomes = targetPeriod.standard_outcomes || []
+          const configurations = targetPeriod.configurations || []
+
+          if (
+            Array.isArray(targetPeriod.performance_standards) &&
+            targetPeriod.performance_standards.length
+          ) {
+            transformedEmployee.performanceStandards = targetPeriod.performance_standards.map(
+              (ps) => {
+                const relatedConfigs = configurations.filter(
+                  (config) => config.performance_standard_id === ps.id.toString(),
+                )
+
+                return {
+                  id: `ps_${ps.id}`,
+                  expanded: true,
+                  outputName: ps.output_name || '',
+                  indicatorName: ps.performance_indicator || '',
+                  successIndicator: ps.success_indicator || '',
+                  requiredOutput: ps.required_output || '',
+                  modeOfVerification: '',
+                  rows: {
+                    category: ps.category || null,
+                    mfo: ps.mfo || null,
+                    output: ps.output || null,
+                  },
+                  quantityIndicatorType: 'numeric',
+                  timelinessIndicatorType: 'beforeDeadline',
+                  timelinessInputs: { range: true, date: false, description: false },
+                  activeTimelinessInputs: { range: true, date: false, description: false },
+                  apiData: {
+                    ...ps,
+                    standardOutcomes,
+                    configurations: relatedConfigs,
+                  },
+                }
+              },
+            )
+          }
+
+          transformedEmployee.hierarchy = {
+            office: targetPeriod.office,
+            office2: targetPeriod.office2,
+            group: targetPeriod.group,
+            division: targetPeriod.division,
+            section: targetPeriod.section,
+            unit: targetPeriod.unit,
+          }
+
+          transformedEmployee.targetPeriod = {
+            semester: targetPeriod.semester,
+            year: targetPeriod.year,
+            status: targetPeriod.status,
+          }
+        }
+
+        return [transformedEmployee]
+      } catch (error) {
+        this.error = error.message || 'Failed to fetch employee data'
+        throw new Error(`Failed to fetch employee data: ${error.message || 'Unknown error'}`)
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchSavedUWPs() {
       this.loading = true
       this.error = null
 
       try {
         const token = localStorage.getItem('token')
-
-        const response = await api.delete(`/unit_work_plan/${id}`, {
+        const response = await api.get('/unit_work_plan', {
           headers: { Authorization: `Bearer ${token}` },
         })
 
         if (response.data.success) {
-          console.log('✅ UWP deleted successfully')
-
-          // Remove from saved list
-          this.savedUWPs = this.savedUWPs.filter((uwp) => uwp.id !== id)
-
-          return response.data
+          this.savedUWPs = response.data.data || []
+          return this.savedUWPs
         }
 
-        throw new Error(response.data.message || 'Failed to delete UWP')
+        throw new Error(response.data.message || 'Failed to fetch UWPs')
       } catch (error) {
-        console.error('❌ Error deleting UWP:', error)
-        this.error = error.message || 'Failed to delete UWP'
+        this.error = error.message || 'Failed to fetch UWPs'
         throw error
       } finally {
         this.loading = false
       }
     },
 
-    // Clear all data
-    clearAllData() {
-      this.uwpData = null
-      this.formData = null
-      this.employeeData = []
-      this.filteredEmployeesData = []
+    async getUWPById(id) {
+      this.loading = true
       this.error = null
-      sessionStorage.removeItem('uwpData')
-      console.log('✅ All UWP data cleared')
+
+      try {
+        const token = localStorage.getItem('token')
+        const response = await api.get(`/unit_work_plan/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (response.data.success) return response.data.data
+        throw new Error(response.data.message || 'Failed to fetch UWP')
+      } catch (error) {
+        this.error = error.message || 'Failed to fetch UWP'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteUWP(id) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const token = localStorage.getItem('token')
+        const response = await api.delete(`/unit_work_plan/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (response.data.success) {
+          this.savedUWPs = this.savedUWPs.filter((uwp) => uwp.id !== id)
+          return response.data
+        }
+
+        throw new Error(response.data.message || 'Failed to delete UWP')
+      } catch (error) {
+        this.error = error.message || 'Failed to delete UWP'
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
   },
 })
