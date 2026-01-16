@@ -1,10 +1,9 @@
-<!--UnitWorkplanReport.vue-->
 <template>
   <div class="app-container">
     <!-- App Header -->
     <div class="app-header">
       <div class="header-content">
-        <div class="text-h6 text-white">{{ userStore.officeName }}</div>
+        <div class="text-h6 text-white">{{ staticUserData.officeName }}</div>
       </div>
       <div class="col-auto">
         <q-btn flat round dense text-color="white" icon="close" @click="$emit('close')" />
@@ -16,54 +15,75 @@
       <!-- Fixed Left Navigation -->
       <div class="division-nav">
         <div class="division-nav-header">
-          <div class="text-h6">Divisions</div>
+          <div class="text-h6">Level</div>
         </div>
 
+        <!-- Use firstSubLevel if provided, otherwise use divisions -->
         <q-list padding class="division-list">
-          <q-item v-for="(division, index) in store.divisions" :key="index" clickable v-ripple
-            :active="store.selectedDivision === division.division"
-            @click="selectDivision(division.division, division.target_period)" active-class="active-division">
+          <q-item
+            v-for="(division, index) in navigationItems || []"
+            :key="division?.id || index"
+            clickable
+            v-ripple
+            :active="selectedDivision === (division?.id || '')"
+            @click="selectDivision(division)"
+            active-class="active-division"
+          >
             <q-item-section>
-              <q-item-label>{{ division.division }}</q-item-label>
-              <!-- <q-item-label caption>{{ division.target_period }}</q-item-label> -->
+              <q-item-label>{{ division?.label || `Division ${index + 1}` }}</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
+
+        <!-- Loading State for Navigation -->
+        <div v-if="store?.loading && !currentDivisionData" class="q-pa-md text-center">
+          <q-spinner color="primary" size="2em" />
+          <div class="q-mt-sm text-caption">Loading divisions...</div>
+        </div>
+
         <!-- Approved Button at the bottom -->
         <div v-if="showApprovedButton" class="row justify-center q-mt-lg q-pb-lg">
           <q-btn label="Approve" color="green" class="q-mt-md" />
         </div>
       </div>
 
-
       <!-- Report Content Area - Single Scrollable Container -->
       <div class="report-container">
         <!-- Loading State -->
-        <div v-if="store.loading" class="full-width row flex-center q-pa-xl">
-          <q-spinner color="primary" size="3em" />
-          <div class="q-ml-sm">Loading division data...</div>
+        <div v-if="store?.loading && selectedDivision" class="full-height flex flex-center">
+          <div class="text-center">
+            <q-spinner color="primary" size="3em" />
+            <div class="q-mt-md">Loading report data...</div>
+          </div>
         </div>
 
         <!-- Error State -->
-        <div v-else-if="store.error" class="full-width row flex-center q-pa-xl text-negative">
-          <q-icon name="error" size="2em" class="q-mr-sm" />
-          <div>{{ store.error }}</div>
+        <div v-else-if="store?.hasError" class="full-height flex flex-center">
+          <div class="text-center">
+            <q-icon name="error" color="negative" size="3em" />
+            <div class="q-mt-md text-negative">Error loading data</div>
+            <div class="q-mt-sm text-caption">{{ store?.getError || 'Unknown error' }}</div>
+            <q-btn color="primary" label="Retry" @click="retryFetch" class="q-mt-md" />
+          </div>
         </div>
 
         <!-- Content when data is loaded -->
-        <template v-else-if="currentDivisionData">
+        <template v-else-if="currentDivisionData && Array.isArray(currentDivisionData.employees)">
           <!-- Fixed Report Header -->
           <div class="report-header">
             <div class="row items-center no-wrap">
               <div class="col">
-                <div class="text-h6">{{ currentDivisionData.name }}</div>
-                <div class="text-subtitle2">Target Period: {{ store.selectedTargetPeriod }}</div>
+                <div class="text-h6">{{ currentDivisionData?.name || 'Division Report' }}</div>
+                <div class="text-subtitle2">
+                  Target Period: {{ targetPeriod?.semester || '' }} {{ targetPeriod?.year || '' }}
+                </div>
+                <!-- Show hierarchy path -->
+                <div v-if="currentDivisionPath" class="text-caption text-grey-7">
+                  Path: {{ currentDivisionPath }}
+                </div>
               </div>
               <div class="flex justify-end q-gutter-sm">
-                <q-btn color="green-9" icon="print" label="Print" @click="directPrint" :loading="isPrinting" />
-                <q-btn color="green-9" icon="download" label="Download PDF" @click="downloadPdf"
-                  :loading="isGeneratingPdf" />
-                <q-tooltip>Download</q-tooltip>
+                <q-btn color="green-9" icon="print" label="Print" />
               </div>
             </div>
           </div>
@@ -77,16 +97,23 @@
                   <div class="line"></div>
                 </div>
                 <div class="city-logo">
-                  <img class="logo" alt="City of Tagum Logo"
-                    src="https://phshirt.com/wp-content/uploads/2021/11/City-of-Tagum-Logo.png" />
+                  <img
+                    class="logo"
+                    alt="City of Tagum Logo"
+                    src="https://phshirt.com/wp-content/uploads/2021/11/City-of-Tagum-Logo.png"
+                  />
                 </div>
                 <div class="header-text">
-                  <div class="text-green-9 text-caption padded-text">REPUBLIC OF THE PHILIPPINES</div>
-                  <div class="text-green-9 text-caption padded-text">PROVINCE OF DAVAO DEL NORTE</div>
+                  <div class="text-green-9 text-caption padded-text">
+                    REPUBLIC OF THE PHILIPPINES
+                  </div>
+                  <div class="text-green-9 text-caption padded-text">
+                    PROVINCE OF DAVAO DEL NORTE
+                  </div>
                   <div class="text-green-9 text-h5 text-weight-bold padded-text">CITY OF TAGUM</div>
 
                   <div class="green-banner">
-                    <div class="padded-text">{{ userStore.officeName }}</div>
+                    <div class="padded-text">{{ staticUserData.officeName }}</div>
                   </div>
                 </div>
               </div>
@@ -94,85 +121,156 @@
               <!-- Main Content -->
               <div class="q-mt-md">
                 <h2 class="text-center text-weight-bold text-h4">UNIT WORK PLAN</h2>
-                <table class="full-width info-table">
-                  <tbody>
-                    <tr>
-                      <td><strong>Division:</strong> {{ currentDivisionData.name }}</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Target Period:</strong> {{ store.selectedTargetPeriod }}</td>
-                    </tr>
-                  </tbody>
-                </table>
 
-                <!-- Main Table -->
-                <div class="table-container">
-                  <table class="full-width main-table">
-                    <thead class="no-repeat-header">
-                      <tr>
-                        <th class="text-center mfo-column">MFO</th>
-                        <th colspan="3" class="text-center competency-header">REQUIRED COMPETENCY & PROFICIENCY LEVEL
-                        </th>
-                        <th rowspan="2" class="text-center indicator-column">SUCCESS INDICATOR</th>
-                        <th rowspan="2" class="text-center output-column">REQUIRED OUTPUT</th>
-                        <th class="text-center standards-header" colspan="5">STANDARDS PER OUTPUT/SUCCESS INDICATOR</th>
-                      </tr>
-                      <tr>
-                        <th class="text-left">CORE FUNCTIONS</th>
-                        <th class="text-left competency-column">CORE</th>
-                        <th class="text-left competency-column">TECHNICAL</th>
-                        <th class="text-left competency-column">LEADERSHIP</th>
-                        <th class="text-center standard-column">5</th>
-                        <th class="text-center standard-column">4</th>
-                        <th class="text-center standard-column">3</th>
-                        <th class="text-center standard-column">2</th>
-                        <th class="text-center standard-column">1</th>
-                      </tr>
-                    </thead>
+                <!-- Show message if no employees found -->
+                <div
+                  v-if="
+                    !currentDivisionData.employees || currentDivisionData.employees.length === 0
+                  "
+                  class="text-center q-py-xl"
+                >
+                  <q-icon name="info" size="2em" color="grey" />
+                  <div class="q-mt-md">No work plan data available for this division.</div>
+                </div>
+
+                <template v-else>
+                  <table class="full-width info-table">
                     <tbody>
-                      <template v-for="(employee, empIndex) in currentDivisionData.employees" :key="empIndex">
-                        <tr>
-                          <td>Employee:</td>
-                          <td colspan="10">{{ employee.name }}</td>
-                        </tr>
-                        <tr>
-                          <td>Position/SG:</td>
-                          <td colspan="10">{{ employee.position }}</td>
-                        </tr>
-                        <tr>
-                          <td>Employee Rank:</td>
-                          <td colspan="10">{{ employee.rank }}</td>
-                        </tr>
-                        <!-- <tr v-for="(output, outIndex) in employee.outputs" :key="`${empIndex}-${outIndex}`">
-                          <td class="mfo-cell" v-html="output.name"></td>
-                          <td v-html="output.core"></td>
-                          <td v-html="output.technical"></td>
-                          <td v-html="output.leadership"></td>
-                          <td v-html="output.indicator"></td>
-                          <td v-html="output.required"></td>
-                          <td v-html="output.standard5"></td>
-                          <td v-html="output.standard4"></td>
-                          <td v-html="output.standard3"></td>
-                          <td v-html="output.standard2"></td>
-                          <td v-html="output.standard1"></td>
-                        </tr> -->
-                        <tr v-for="(output, outIndex) in employee.outputs" :key="`${empIndex}-${outIndex}`">
-                          <td class="mfo-cell" v-html="output.name || 'N/A'"></td>
-                          <td v-html="output.core || 'N/A'"></td>
-                          <td v-html="output.technical || 'N/A'"></td>
-                          <td v-html="output.leadership || 'N/A'"></td>
-                          <td v-html="output.indicator || 'N/A'"></td>
-                          <td v-html="output.required || 'N/A'"></td>
-                          <td v-html="output.standard5 || 'N/A'"></td>
-                          <td v-html="output.standard4 || 'N/A'"></td>
-                          <td v-html="output.standard3 || 'N/A'"></td>
-                          <td v-html="output.standard2 || 'N/A'"></td>
-                          <td v-html="output.standard1 || 'N/A'"></td>
-                        </tr>
-                      </template>
+                      <tr>
+                        <td><strong>Division:</strong> {{ currentDivisionData?.name || 'N/A' }}</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Target Period:</strong> {{ targetPeriod?.semester || '' }}
+                          {{ targetPeriod?.year || '' }}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
-                </div>
+
+                  <!-- Main Table -->
+                  <div class="table-container">
+                    <table class="full-width main-table">
+                      <thead class="no-repeat-header">
+                        <tr>
+                          <th class="text-center mfo-column">MFO</th>
+                          <th colspan="3" class="text-center competency-header">
+                            REQUIRED COMPETENCY & PROFICIENCY LEVEL
+                          </th>
+                          <th rowspan="2" class="text-center indicator-column">
+                            SUCCESS INDICATOR
+                          </th>
+                          <th rowspan="2" class="text-center output-column">REQUIRED OUTPUT</th>
+                          <th class="text-center standards-header" colspan="5">
+                            STANDARDS PER OUTPUT/SUCCESS INDICATOR
+                          </th>
+                        </tr>
+                        <tr>
+                          <th class="text-left">CORE FUNCTIONS</th>
+                          <th class="text-left competency-column">CORE</th>
+                          <th class="text-left competency-column">TECHNICAL</th>
+                          <th class="text-left competency-column">LEADERSHIP</th>
+                          <th class="text-center standard-column">5</th>
+                          <th class="text-center standard-column">4</th>
+                          <th class="text-center standard-column">3</th>
+                          <th class="text-center standard-column">2</th>
+                          <th class="text-center standard-column">1</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template
+                          v-for="(mfoSection, sectionIndex) in getOrganizedData()"
+                          :key="sectionIndex"
+                        >
+                          <!-- Office Head Section for this MFO -->
+                          <tr>
+                            <td>Employee:</td>
+                            <td colspan="10">{{ mfoSection.officeHead.name || 'N/A' }}</td>
+                          </tr>
+                          <tr>
+                            <td>Position/SG:</td>
+                            <td colspan="10">{{ mfoSection.officeHead.position || 'N/A' }}</td>
+                          </tr>
+                          <tr>
+                            <td>Employee Rank:</td>
+                            <td colspan="10">{{ mfoSection.officeHead.rank || 'N/A' }}</td>
+                          </tr>
+
+                          <!-- Office Head MFO Output -->
+                          <tr v-if="mfoSection.officeOutput">
+                            <td>{{ mfoSection.mfoName || 'N/A' }}</td>
+                            <td>{{ mfoSection.officeOutput.core || 'N/A' }}</td>
+                            <td>{{ mfoSection.officeOutput.technical || 'N/A' }}</td>
+                            <td>{{ mfoSection.officeOutput.leadership || 'N/A' }}</td>
+                            <td>{{ mfoSection.officeOutput.indicator || 'N/A' }}</td>
+                            <td>{{ mfoSection.officeOutput.required || 'N/A' }}</td>
+                            <td class="standard-cell">
+                              {{ mfoSection.officeOutput.standard5 || 'N/A' }}
+                            </td>
+                            <td class="standard-cell">
+                              {{ mfoSection.officeOutput.standard4 || 'N/A' }}
+                            </td>
+                            <td class="standard-cell">
+                              {{ mfoSection.officeOutput.standard3 || 'N/A' }}
+                            </td>
+                            <td class="standard-cell">
+                              {{ mfoSection.officeOutput.standard2 || 'N/A' }}
+                            </td>
+                            <td class="standard-cell">
+                              {{ mfoSection.officeOutput.standard1 || 'N/A' }}
+                            </td>
+                          </tr>
+
+                          <!-- Organization Employees for this MFO -->
+                          <template
+                            v-for="(orgEmployee, empIndex) in mfoSection.orgEmployees"
+                            :key="empIndex"
+                          >
+                            <!-- Only show employee header if different from previous -->
+                            <template
+                              v-if="
+                                empIndex === 0 ||
+                                orgEmployee.name !== mfoSection.orgEmployees[empIndex - 1]?.name
+                              "
+                            >
+                              <tr>
+                                <td>Employee:</td>
+                                <td colspan="10">{{ orgEmployee.name || 'N/A' }}</td>
+                              </tr>
+                              <tr>
+                                <td>Position/SG:</td>
+                                <td colspan="10">{{ orgEmployee.position || 'N/A' }}</td>
+                              </tr>
+                              <tr>
+                                <td>Employee Rank:</td>
+                                <td colspan="10">{{ orgEmployee.rank || 'N/A' }}</td>
+                              </tr>
+                            </template>
+
+                            <!-- Organization Employee Outputs -->
+                            <tr
+                              v-for="(output, outIndex) in orgEmployee.outputs"
+                              :key="`${empIndex}-${outIndex}`"
+                            >
+                              <!-- Show output name in CORE FUNCTIONS column for organization employees -->
+                              <td>{{ output?.name || 'N/A' }}</td>
+                              <td>{{ output?.core || 'N/A' }}</td>
+                              <td>{{ output?.technical || 'N/A' }}</td>
+                              <td>{{ output?.leadership || 'N/A' }}</td>
+                              <td>{{ output?.indicator || 'N/A' }}</td>
+                              <td>{{ output?.required || 'N/A' }}</td>
+                              <td class="standard-cell">{{ output?.standard5 || 'N/A' }}</td>
+                              <td class="standard-cell">{{ output?.standard4 || 'N/A' }}</td>
+                              <td class="standard-cell">{{ output?.standard3 || 'N/A' }}</td>
+                              <td class="standard-cell">{{ output?.standard2 || 'N/A' }}</td>
+                              <td class="standard-cell">{{ output?.standard1 || 'N/A' }}</td>
+                            </tr>
+                          </template>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
 
                 <!-- Signature Section -->
                 <div class="q-mt-xl row">
@@ -196,10 +294,13 @@
           </div>
         </template>
 
-        <!-- Empty State -->
-        <div v-else class="full-width row flex-center q-pa-xl text-grey-7">
-          <q-icon name="info" size="2em" class="q-mr-sm" />
-          <div>Loading division data...</div>
+        <!-- Initial state when no division selected -->
+        <div v-else-if="!selectedDivision" class="full-height flex flex-center">
+          <div class="text-center text-grey">
+            <q-icon name="description" size="4em" />
+            <div class="q-mt-md text-h6">Select a division to view report</div>
+            <div class="q-mt-sm text-caption">Choose a division from the left navigation</div>
+          </div>
         </div>
       </div>
     </div>
@@ -207,255 +308,295 @@
 </template>
 
 <script>
-import { jsPDF } from 'jspdf'
-import html2canvas from 'html2canvas'
-import { useUnitWorkPlanStore } from 'src/stores/office/unit_work_plantStore'
-import { onMounted, ref, watch } from 'vue'
-import { useUserStore } from 'src/stores/userStore'
-
+import { onMounted, ref, computed, watch } from 'vue'
+import { useUnitWorkPlanReportStore } from 'src/stores/office/uwpDataStore'
 
 export default {
   name: 'UnitWorkPlanReport',
 
   props: {
-    targetPeriod: String,
-    filteredDivisions: Array
+    targetPeriod: {
+      type: Object,
+      default: () => ({
+        semester: '',
+        year: '',
+      }),
+    },
+    filteredDivisions: {
+      type: Array,
+      default: () => [],
+    },
+    officeStructure: {
+      type: Array,
+      default: () => [],
+    },
+    firstSubLevel: {
+      type: Array,
+      default: () => [],
+    },
+    selectedNodeLabel: {
+      type: String,
+      default: '',
+    },
+    showApprovedButton: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   setup(props) {
-    const store = useUnitWorkPlanStore()
+    const store = useUnitWorkPlanReportStore()
     const currentDivisionData = ref(null)
-    const isGeneratingPdf = ref(false)
-    const isPrinting = ref(false)
-    const userStore = useUserStore()
+    const selectedDivision = ref('')
+    const currentDivisionPath = ref('')
 
-    onMounted(() => {
-      userStore.loadUserData();
-    });
-
-    // Function to select the first division automatically
-    const selectFirstDivisionAvailable = async () => {
-      if (store.divisions && store.divisions.length > 0) {
-        const firstDivision = store.divisions[0]
-        await selectDivision(firstDivision.division, firstDivision.target_period)
-      }
+    // Static user data
+    const staticUserData = {
+      officeName: 'City Human Resource Management Office',
     }
 
-    onMounted(async () => {
-      try {
-        // Fetch divisions with work plans for the selected target period
-        await store.fetchDivisionsWithWorkPlans(props.targetPeriod)
-
-        // Select the first division automatically after divisions are loaded
-        await selectFirstDivisionAvailable()
-      } catch (error) {
-        console.error('Error initializing component:', error)
+    // Navigation items
+    const navigationItems = computed(() => {
+      if (props.firstSubLevel && Array.isArray(props.firstSubLevel)) {
+        return props.firstSubLevel.map((node) => ({
+          id: node?.id || '',
+          label: node?.label || '',
+          type: node?.type || '',
+          children: node?.children || [],
+        }))
+      } else if (props.filteredDivisions && Array.isArray(props.filteredDivisions)) {
+        return props.filteredDivisions
+      } else {
+        return [
+          {
+            id: 'hr-development',
+            label: 'Human Resource Development',
+            type: 'division',
+          },
+          {
+            id: 'personnel-management',
+            label: 'Personnel Management',
+            type: 'division',
+          },
+          {
+            id: 'records-management',
+            label: 'Records Management',
+            type: 'division',
+          },
+        ]
       }
     })
 
-    // Also watch for changes in the divisions array
-    watch(() => store.divisions, async (newDivisions) => {
-      if (newDivisions && newDivisions.length > 0 && !store.selectedDivision) {
-        await selectFirstDivisionAvailable()
-      }
-    }, { deep: true })
+    // Function to get hierarchy path
+    const getHierarchyPath = (nodeId, nodes = props.officeStructure) => {
+      if (!nodeId || !nodes || !Array.isArray(nodes)) return ''
 
-    const selectDivision = async (division, targetPeriod) => {
-      try {
-        store.setSelectedDivision(division)
-        store.setTargetPeriod(targetPeriod || props.targetPeriod)
-        store.selectedTargetPeriod = targetPeriod || props.targetPeriod
+      const path = []
 
-        // Use the filtered divisions if available
-        if (props.filteredDivisions && props.filteredDivisions.length > 0) {
-          const filteredDivision = props.filteredDivisions.find(d => d.division === division)
-          if (filteredDivision) {
-            currentDivisionData.value = await store.fetchDivisionDetails(division, filteredDivision.targetPeriod)
-            return
+      const findPath = (targetId, currentNodes, currentPath) => {
+        if (!currentNodes || !Array.isArray(currentNodes)) return false
+
+        for (const node of currentNodes) {
+          if (!node) continue
+
+          const newPath = [...currentPath, node?.label || '']
+
+          if (node?.id === targetId) {
+            path.push(...newPath)
+            return true
+          }
+
+          if (node?.children && findPath(targetId, node.children, newPath)) {
+            return true
           }
         }
+        return false
+      }
 
-        // Fallback to API call if filtered divisions not available
-        currentDivisionData.value = await store.fetchDivisionDetails(division, targetPeriod || props.targetPeriod)
-      } catch (error) {
-        console.error('Error loading division data:', error)
-        // Use Quasar notification if available
-        if (typeof store.$q !== 'undefined') {
-          store.$q.notify({
-            type: 'negative',
-            message: 'Failed to load division data. Please try again.'
+      findPath(nodeId, nodes, [])
+      return path.filter(Boolean).join(' / ')
+    }
+
+    // In your Vue component, add debugging to getOrganizedData:
+    const getOrganizedData = () => {
+      if (!currentDivisionData.value || !Array.isArray(currentDivisionData.value.employees)) {
+        console.log('⚠️ No current division data or employees array')
+        return []
+      }
+
+      const employees = currentDivisionData.value.employees
+      console.log('🔧 Employees data for organization:', JSON.stringify(employees, null, 2))
+
+      const organized = []
+      let currentSection = null
+
+      // Group employees by MFO
+      employees.forEach((employee, index) => {
+        console.log(`🔧 Processing employee ${index}:`, {
+          name: employee.name,
+          isMfoHeader: employee.isMfoHeader,
+          isOfficeHead: employee.isOfficeHead,
+          outputs: employee.outputs,
+        })
+
+        if (employee.isMfoHeader && employee.outputs && employee.outputs[0]) {
+          // Start a new MFO section
+          currentSection = {
+            mfoName: employee.mfoName || employee.outputs[0].name || 'Unnamed MFO',
+            officeHead: {
+              name: employee.name || 'N/A',
+              position: employee.position || 'N/A',
+              rank: employee.rank || 'N/A',
+            },
+            officeOutput: employee.outputs[0],
+            orgEmployees: [],
+          }
+          console.log('🔧 Created new MFO section:', currentSection)
+          organized.push(currentSection)
+        } else if (!employee.isOfficeHead && currentSection) {
+          // Add org employee to current MFO section
+          console.log('🔧 Adding org employee to current section:', {
+            name: employee.name,
+            outputs: employee.outputs,
           })
+          currentSection.orgEmployees.push({
+            name: employee.name || 'N/A',
+            position: employee.position || 'N/A',
+            rank: employee.rank || 'N/A',
+            outputs: employee.outputs || [],
+          })
+        }
+      })
+
+      console.log('✅ Final organized data:', JSON.stringify(organized, null, 2))
+      return organized
+    }
+
+    // Retry function
+    const retryFetch = async () => {
+      if (selectedDivision.value) {
+        const currentDivision = navigationItems.value?.find(
+          (div) => div?.id === selectedDivision.value,
+        )
+        if (currentDivision) {
+          await fetchCurrentDivisionData(currentDivision)
         }
       }
     }
 
-    const directPrint = () => {
-      isPrinting.value = true
-      // Create a hidden iframe with proper styling for printing
-      const printFrame = document.createElement('iframe')
-      printFrame.style.position = 'fixed'
-      printFrame.style.right = '0'
-      printFrame.style.bottom = '0'
-      printFrame.style.width = '0'
-      printFrame.style.height = '0'
-      printFrame.style.border = '0'
-
-      document.body.appendChild(printFrame)
-
-      printFrame.onload = () => {
-        const printDocument = printFrame.contentWindow.document
-        const printSection = document.getElementById('print-section')
-
-        // Copy the CSS
-        const styles = document.querySelectorAll('style, link[rel="stylesheet"]')
-        styles.forEach(style => {
-          printDocument.head.appendChild(style.cloneNode(true))
-        })
-
-        // Add print-specific stylesheet
-        const printStyle = document.createElement('style')
-        printStyle.textContent = `
-          @page {
-            size: legal landscape;
-            margin: 10mm;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-          }
-          .logo {
-            width: 120px;
-            height: auto;
-          }
-          .main-table {
-            table-layout: fixed;
-            width: 100%;
-          }
-          .main-table tr {
-            page-break-inside: avoid; /* Prevent rows from breaking across pages */
-          }
-          /* Force headers to NOT repeat */
-          .no-repeat-header {
-            display: table-header-group !important;
-            break-inside: avoid !important;
-            page-break-after: avoid !important;
-            page-break-before: avoid !important;
-          }
-          /* Explicit override for print browsers that repeat headers */
-          thead.no-repeat-header {
-            display: table-header-group !important;
-          }
-          @media print {
-            thead.no-repeat-header { display: table-row-group !important; }
-          }
-          .main-table tbody {
-            display: table-row-group; /* Keep body rows together */
-          }
-          table {
-            page-break-inside: auto; /* Allow page breaks between rows if needed */
-          }
-          .header-container {
-            display: flex;
-            align-items: center;
-          }
-          .header-text {
-            margin-left: 20px;
-          }
-          .green-banner {
-            background-color: #00703C;
-            color: white;
-            font-weight: bold;
-            padding: 8px 0;
-            text-align: center;
-            width: 100%;
-          }
-          .mfo-column { width: 10%; }
-          .competency-column { width: 10%; }
-          .indicator-column { width: 10%; }
-          .output-column { width: 10%; }
-          .standard-column { width: 8%; }
-        `
-        printDocument.head.appendChild(printStyle)
-
-        // Copy the content
-        printDocument.body.innerHTML = printSection.innerHTML
-
-        // Print and cleanup
-        setTimeout(() => {
-          printFrame.contentWindow.print()
-          setTimeout(() => {
-            document.body.removeChild(printFrame)
-            isPrinting.value = false
-          }, 500)
-        }, 500)
-      }
-
-      // Set iframe source to trigger onload
-      printFrame.src = 'about:blank'
-    }
-
-    const downloadPdf = async () => {
+    // Fetch data from store
+    const fetchCurrentDivisionData = async (division) => {
       try {
-        isGeneratingPdf.value = true
+        if (!division || !division.id) {
+          console.warn('No valid division provided')
+          return
+        }
 
-        const printSection = document.getElementById('print-section')
-        const canvas = await html2canvas(printSection, {
-          scale: 2, // Higher scale for better quality
-          useCORS: true,
-          logging: false,
-          allowTaint: true
-        })
+        console.log('Fetching data for division:', division)
 
-        // Create PDF in landscape orientation
-        const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'mm',
-          format: 'legal'
-        })
+        // Clear previous data
+        currentDivisionData.value = null
 
-        const imgData = canvas.toDataURL('image/png')
-        const pdfWidth = pdf.internal.pageSize.getWidth()
-        const pdfHeight = pdf.internal.pageSize.getHeight()
-        const imgWidth = canvas.width
-        const imgHeight = canvas.height
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-        const imgX = (pdfWidth - imgWidth * ratio) / 2
-        const imgY = 10 // Small margin from top
+        // Set hierarchy path
+        currentDivisionPath.value = getHierarchyPath(division.id)
 
-        pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio)
+        // Prepare filters for the store
+        const filters = {
+          organization: division.label || '',
+          semester: props.targetPeriod?.semester || '',
+          year: props.targetPeriod?.year || '',
+          nodeId: division.id || '',
+          nodeType: division.type || '',
+          hierarchyPath: currentDivisionPath.value || '',
+        }
 
-        // Save PDF with division name
-        const divisionName = currentDivisionData.value.name.replace(/\s+/g, '_')
-        pdf.save(`Unit_Work_Plan_${divisionName}.pdf`)
-      } catch (error) {
-        console.error('PDF generation error:', error)
-        if (typeof store.$q !== 'undefined') {
-          store.$q.notify({
-            color: 'negative',
-            message: 'Failed to generate PDF. Please try again.',
-            icon: 'error'
-          })
+        console.log('Using filters:', filters)
+
+        // Fetch data from store
+        await store.fetchUnitWorkPlan(filters)
+
+        // Get transformed data from store
+        const reportData = store.getReportData
+        console.log('Received report data:', reportData)
+
+        if (reportData && Array.isArray(reportData.employees)) {
+          currentDivisionData.value = {
+            name: reportData.name || division.label || 'Division Report',
+            employees: reportData.employees || [],
+          }
         } else {
-          alert('Failed to generate PDF. Please try again.')
+          // Fallback if no data returned
+          currentDivisionData.value = {
+            name: division.label || 'Division Report',
+            employees: [],
+          }
         }
-      } finally {
-        isGeneratingPdf.value = false
+
+        console.log('Current division data:', currentDivisionData.value)
+      } catch (error) {
+        console.error('Error in fetchCurrentDivisionData:', error)
+        // Set empty data to prevent rendering errors
+        currentDivisionData.value = {
+          name: division?.label || 'Division Report',
+          employees: [],
+        }
       }
     }
+
+    const selectDivision = async (division) => {
+      try {
+        selectedDivision.value = division?.id || ''
+        await fetchCurrentDivisionData(division)
+      } catch (error) {
+        console.error('Error in selectDivision:', error)
+      }
+    }
+
+    onMounted(() => {
+      try {
+        // Select first division by default
+        if (navigationItems.value && navigationItems.value.length > 0) {
+          const firstDivision = navigationItems.value[0]
+          selectDivision(firstDivision)
+        }
+      } catch (error) {
+        console.error('Error in onMounted:', error)
+      }
+    })
+
+    // Watch for target period changes
+    watch(
+      () => props.targetPeriod,
+      () => {
+        try {
+          if (selectedDivision.value) {
+            const currentDivision = navigationItems.value?.find(
+              (div) => div?.id === selectedDivision.value,
+            )
+            if (currentDivision) {
+              fetchCurrentDivisionData(currentDivision)
+            }
+          }
+        } catch (error) {
+          console.error('Error watching target period:', error)
+        }
+      },
+      { deep: true },
+    )
 
     return {
       store,
       currentDivisionData,
-      isGeneratingPdf,
-      isPrinting,
-      directPrint,
-      downloadPdf,
+      selectedDivision,
+      currentDivisionPath,
+      navigationItems,
+      staticUserData,
+      getOrganizedData,
       selectDivision,
-      selectFirstDivisionAvailable,
-      userStore
+      fetchCurrentDivisionData,
+      retryFetch,
     }
-  }
+  },
 }
 </script>
 

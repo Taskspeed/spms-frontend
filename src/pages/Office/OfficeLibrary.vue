@@ -9,9 +9,9 @@
     <!-- <div v-if="loading" class="flex justify-center q-pa-lg">
       <q-spinner-hourglass color="green" size="3em" />
     </div> -->
-      <div v-if="loading" class="flex items-center justify-center q-pa-lg text-grey">
-        <q-spinner  size="3em" class="q-mr-sm" color="green" />
-        Loading...
+    <div v-if="loading" class="flex items-center justify-center q-pa-lg text-grey">
+      <q-spinner size="3em" class="q-mr-sm" color="green" />
+      Loading...
     </div>
     <!-- <template>
       <div class="q-pa-md" v-if="loading" >
@@ -75,7 +75,7 @@
           <tr>
             <td class="category-cell">
               <ul class="mfo-list">
-                <li v-for="(mfo, index) in strategicMfos" :key="mfo.id" class="mfo-item">
+                <li v-for="mfo in strategicMfos" :key="mfo.id" class="mfo-item">
                   <div class="mfo-content">
                     <q-btn
                       size="xs"
@@ -83,13 +83,11 @@
                       round
                       dense
                       color="grey-7"
-                      @click.
-                      stop="toggleMfoExpansion(mfo.id)"
+                      @click.stop="toggleMfoExpansion(mfo.id)"
                       :icon="expandedMfos.includes(mfo.id) ? 'expand_less' : 'expand_more'"
                       class="q-mr-xs"
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
-                      <div class="mfo-number">{{ `MFO ${index + 1}. ` }}</div>
                       <span class="mfo-name">{{ mfo.name }}</span>
                     </div>
                     <div class="mfo-actions">
@@ -117,12 +115,11 @@
                     <div v-show="expandedMfos.includes(mfo.id)">
                       <ul class="output-list">
                         <li
-                          v-for="(output, outputIndex) in mfoStore.getOutputsForMfo(mfo.id)"
+                          v-for="output in mfoStore.getOutputsForMfo(mfo.id)"
                           :key="output.id"
                           class="output-item"
                         >
                           <div class="output-content">
-                            <div class="output-number">{{ `OUTPUT ${outputIndex + 1}.` }}</div>
                             <span class="output-name">{{ output.name }}</span>
                             <div class="output-actions">
                               <q-btn
@@ -169,7 +166,7 @@
 
             <td class="category-cell">
               <ul class="mfo-list">
-                <li v-for="(mfo, index) in coreMfos" :key="mfo.id" class="mfo-item">
+                <li v-for="mfo in coreMfos" :key="mfo.id" class="mfo-item">
                   <div class="mfo-content">
                     <q-btn
                       size="xs"
@@ -182,7 +179,6 @@
                       class="q-mr-xs"
                     />
                     <div class="mfo-title" @click="toggleMfoExpansion(mfo.id)">
-                      <div class="mfo-number">{{ `MFO ${index + 1}.` }}</div>
                       <span class="mfo-name">{{ mfo.name }}</span>
                     </div>
                     <div class="mfo-actions">
@@ -210,12 +206,11 @@
                     <div v-show="expandedMfos.includes(mfo.id)">
                       <ul class="output-list">
                         <li
-                          v-for="(output, outputIndex) in mfoStore.getOutputsForMfo(mfo.id)"
+                          v-for="output in mfoStore.getOutputsForMfo(mfo.id)"
                           :key="output.id"
                           class="output-item"
                         >
                           <div class="output-content">
-                            <div class="output-number">{{ `OUTPUT ${outputIndex + 1}.` }}</div>
                             <span class="output-name">{{ output.name }}</span>
                             <div class="output-actions">
                               <q-btn
@@ -262,10 +257,9 @@
 
             <td class="category-cell">
               <ul class="mfo-list">
-                <li v-for="(output, index) in supportOutputs" :key="output.id" class="mfo-item">
+                <li v-for="output in supportOutputs" :key="output.id" class="mfo-item">
                   <div class="mfo-content">
                     <div class="mfo-title">
-                      <div class="output-number">{{ `OUTPUT ${index + 1}.` }}</div>
                       <span class="output-name">{{ output.name }}</span>
                     </div>
                     <div class="mfo-actions">

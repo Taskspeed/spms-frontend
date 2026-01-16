@@ -380,7 +380,7 @@ export default {
 
     // Selection helper functions for Office
     const selectOffice = (row) => {
-        console.log('Selected office:', row)
+      console.log('Selected office:', row)
       selectedOffice.value = { ...row }
     }
 
@@ -408,13 +408,13 @@ export default {
     // }
 
     const filterOffices = () => {
-  const offices = store.offices || []
-  const searchTerm = (officeSearch.value ?? '').toLowerCase().trim()
+      const offices = store.offices || []
+      const searchTerm = (officeSearch.value ?? '').toLowerCase().trim()
 
-  filteredOffices.value = offices.filter((office) =>
-    (office.name ?? '').toLowerCase().includes(searchTerm)
-  )
-}
+      filteredOffices.value = offices.filter((office) =>
+        (office.name ?? '').toLowerCase().includes(searchTerm),
+      )
+    }
 
     const filterEmployees = () => {
       const employees = store.employees || []
@@ -474,7 +474,8 @@ export default {
       try {
         const userData = {
           name: selectedEmployee.value.name4,
-          password: `emp${selectedEmployee.value.ControlNo}`,
+          // password: `emp${selectedEmployee.value.ControlNo}`,
+          password: 'admin123',
           designation: selectedEmployee.value.Designation,
           office_id: selectedOffice.value.id,
           office_name: selectedOffice.value.name, // ✅ FIXED
@@ -574,18 +575,18 @@ export default {
     //     filteredEmployees.value = []
     //   }
     // })
-watch(selectedOffice, async (newOffice) => {
-  if (newOffice) {
-    loading.value = true
-    selectedEmployee.value = null
-    try {
-      await store.fetchEmployees(newOffice.name)
-      filteredEmployees.value = store.employees || []
-    } finally {
-      loading.value = false
-    }
-  }
-})
+    watch(selectedOffice, async (newOffice) => {
+      if (newOffice) {
+        loading.value = true
+        selectedEmployee.value = null
+        try {
+          await store.fetchEmployees(newOffice.name)
+          filteredEmployees.value = store.employees || []
+        } finally {
+          loading.value = false
+        }
+      }
+    })
 
     return {
       store,

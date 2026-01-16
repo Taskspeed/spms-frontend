@@ -282,11 +282,15 @@
     </q-page-container>
   </q-layout>
 
-  <!-- Unit Work Plan Modal -->
+  <!-- Unit Work Plan Report -->
   <q-dialog v-model="showUnitWorkPlanModalOpen" full-width>
     <unitWorkplan_report
       :targetPeriod="currentTargetPeriod"
-      :filteredDivisions="filteredRows"
+      :filteredDivisions="filteredRow"
+      :officeStructure="officeStructure"
+      :firstSubLevel="firstSubLevel"
+      :selectedNodeId="selectedNodeId"
+       :selectedNodeLabel="selectedNode?.label || ''"
       @close="closeUnitWorkPlanModal"
     />
   </q-dialog>
@@ -441,6 +445,76 @@ const availableSemesters = computed(() => orgStore.getAvailableSemesters)
 const availableYears = computed(() => orgStore.getAvailableYears)
 const currentTargetPeriod = computed(() => orgStore.getCurrentTargetPeriod)
 const organizationTree = computed(() => orgStore.structure)
+
+// Add these computed properties to your parent component
+const officeStructure = computed(() => {
+  const structure = orgStore.structure || []
+
+  // Find the office node that matches the user's office
+  const findUserOffice = (nodes) => {
+    if (!nodes) return null
+
+    for (const node of nodes) {
+      if (node.type === 'office') {
+        // Check if this is the user's office
+        const userOffice = userStore.officeData?.Office || ''
+        if (node.label.includes(userOffice) || userOffice.includes(node.label)) {
+          return node
+        }
+      }
+      const found = findUserOffice(node.children)
+      if (found) return found
+    }
+    return null
+  }
+
+  const userOfficeNode = findUserOffice(structure)
+
+  // If we found the user's office, return that as the root
+  // Otherwise return the full structure
+  return userOfficeNode ? [userOfficeNode] : structure
+})
+
+// Get the first sub-level nodes under the office
+const firstSubLevel = computed(() => {
+  if (!selectedNode.value) return []
+
+  // Get the office node (root or selected)
+  const getOfficeNode = (nodes) => {
+    if (!nodes) return null
+    for (const node of nodes) {
+      if (node.type === 'office') return node
+      const found = getOfficeNode(node.children)
+      if (found) return found
+    }
+    return null
+  }
+
+  const officeNode = getOfficeNode(orgStore.structure)
+  if (!officeNode || !officeNode.children) return []
+
+  return officeNode.children.filter(
+    (child) =>
+      child.type !== 'employee' &&
+      ['office2', 'group', 'division', 'section', 'unit'].includes(child.type),
+  )
+})
+
+
+const filteredRow = computed(() => {
+  if (!selectedNode.value) return []
+
+  const getSubNodes = (node) => {
+    if (!node.children) return []
+    return node.children.filter(
+      (child) =>
+        child.type !== 'employee' &&
+        ['office2', 'group', 'division', 'section', 'unit'].includes(child.type),
+    )
+  }
+
+  return getSubNodes(selectedNode.value)
+})
 
 const selectedNode = computed(() => {
   const findNode = (nodes) => {
