@@ -281,7 +281,7 @@ export default {
     officeName() {
       const userStore = useUserStore()
       // FIX: Use office.Office instead of officeName
-      return userStore.user?.office?.Office || 'Unknown Office'
+      return userStore.user?.office?.name || 'Unknown Office'
     },
   },
   async created() {
@@ -417,7 +417,7 @@ export default {
 
         // FIX: Get the correct office name from userStore
         const userStore = useUserStore()
-        const currentOfficeName = userStore.user?.office?.Office
+        const currentOfficeName = userStore.user?.office?.name
 
         console.log('Looking for office:', currentOfficeName) // DEBUG
 
@@ -749,7 +749,7 @@ export default {
   try {
     const userStore = useUserStore()
     const officeId = userStore.user?.office_id
-    const officeName = userStore.user?.office?.Office
+    const officeName = userStore.user?.office?.name
 
     if (!officeId || !this.selectedNode) {
       throw new Error(
@@ -797,7 +797,7 @@ export default {
     //   try {
     //     const userStore = useUserStore()
     //     const officeId = userStore.user?.office_id
-    //     const officeName = userStore.user?.office?.Office
+    //     const officeName = userStore.user?.office?.name
 
     //     if (!officeId || !this.selectedNode) {
     //       throw new Error(

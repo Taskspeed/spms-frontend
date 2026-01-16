@@ -22,7 +22,7 @@ export const useUserStore = defineStore('user', () => {
   })
 
   // FIX: Changed from office?. name to office?. Office
-  const officeName = computed(() => user.value?.office?.Office || 'Unknown Office')
+  const officeName = computed(() => user.value?.office?.name || 'Unknown Office')
 
   const groupedMfos = computed(() => {
     const grouped = {}
