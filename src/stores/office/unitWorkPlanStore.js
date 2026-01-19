@@ -728,17 +728,17 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             unit: officeData.unit ? String(officeData.unit.label || officeData.unit.name) : null,
 
             // ADD COMPETENCIES TO PAYLOAD
-            core_competencies: coreCompetencies.map((comp) => ({
+            core_competency: coreCompetencies.map((comp) => ({
               code: comp.code,
               level: comp.value,
               description: comp.description || '',
             })),
-            technical_competencies: technicalCompetencies.map((comp) => ({
+            technical_competency: technicalCompetencies.map((comp) => ({
               code: comp.code,
               level: comp.value,
               description: comp.description || '',
             })),
-            leadership_competencies: leadershipCompetencies.map((comp) => ({
+            leadership_competency: leadershipCompetencies.map((comp) => ({
               code: comp.code,
               level: comp.value,
               description: comp.description || '',
@@ -786,7 +786,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         section: getHierarchyValue('section'),
         unit: getHierarchyValue('unit'),
 
-        core_competencies: employee.coreCompetencies || [],
+        core_competenc: employee.coreCompetencies || [],
         technical_competencies: employee.technicalCompetencies || [],
         leadership_competencies: employee.leadershipCompetencies || [],
 

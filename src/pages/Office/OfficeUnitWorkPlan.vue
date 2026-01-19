@@ -1125,7 +1125,7 @@
 
         <q-card-actions align="right" class="modal-actions">
           <q-btn flat label="Cancel" color="grey-7" v-close-popup @click="cancelQuantityInput" />
-          <q-btn label="Calculate" color="green" unelevated @click="computeQuantities" />
+          <q-btn label="Calculate" color="green" unelevated @click="() => computeQuantities('B')" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1404,7 +1404,6 @@ export default {
       return !!(employee?.sg && employee?.level)
     })
 
-    // Simplify the updateEmployeeCompetencies function
     const updateEmployeeCompetencies = (employee) => {
       console.log('Updating competencies for employee:', employee)
 
@@ -1415,18 +1414,19 @@ export default {
 
       // Check if we have valid SG and Level
       if (!employee || !employee.sg || !employee.level) {
-        console.warn('Missing SG or Level for employee:', {
+        console.log('No valid SG or Level yet for employee:', {
           sg: employee?.sg,
           level: employee?.level,
+          employeeId: employee?.employeeId,
         })
-        return
+        return // Just return, no warning needed
       }
 
       const levelText = getLevelText(employee.level)
       console.log('Level Text:', levelText)
 
       if (!levelText) {
-        console.error('Could not determine level text from:', employee.level)
+        console.log('Could not determine level text from:', employee.level)
         return
       }
 
@@ -1434,13 +1434,13 @@ export default {
       console.log('SG Range:', sgRange)
 
       if (!sgRange) {
-        console.error('Could not determine SG range from:', employee.sg)
+        console.log('Could not determine SG range from:', employee.sg)
         return
       }
 
       // Ensure competency store is initialized
       if (!competencyStore.isInitialized) {
-        console.error('Competency store not initialized')
+        console.log('Competency store not initialized')
         return
       }
 
@@ -1448,7 +1448,7 @@ export default {
       console.log('Competency Row:', competencyRow)
 
       if (!competencyRow) {
-        console.error('No competency row found for:', { levelText, sgRange })
+        console.log('No competency row found for:', { levelText, sgRange })
         return
       }
 
@@ -2078,13 +2078,13 @@ export default {
 
       if (standard.quantityIndicatorType === 'numeric') {
         // Type A: Get value from rating row 5
-        return standard.standardOutcomeRows.find((row) => row.rating === '5')?.quantity || ''
+        const row5 = standard.standardOutcomeRows.find((row) => row.rating === '5')
+        return row5?.quantity || ''
       }
 
       if (standard.quantityIndicatorType === 'B') {
-        // Type B: Use computed target output value
-        // This should be stored separately in the standard object
-        return standard.targetOutputValue?.toString() || quantityValue.value?.toString() || ''
+        // Type B: Get the target output value from the standard
+        return standard.targetOutputValue?.toString() || ''
       }
 
       if (standard.quantityIndicatorType === 'C') {
@@ -2381,41 +2381,66 @@ export default {
 
       if (currentType === 'B') {
         if (!quantityValue.value || isNaN(quantityValue.value)) {
-          return $q.notify({
+          $q.notify({
             message: 'Please enter a valid number',
             color: 'negative',
             position: 'top',
           })
+          return
         }
 
         const base = Number(quantityValue.value)
+
         // Store the target output value for Type B
         standard.targetOutputValue = base.toString()
 
-        standard.standardOutcomeRows[0].quantity = `${Math.ceil(base * 1.3)} and above`
-        standard.standardOutcomeRows[1].quantity = `${Math.ceil(base * 1.15)}-${Math.floor(base * 1.3) - 1}`
-        standard.standardOutcomeRows[2].quantity = `${base}-${Math.floor(base * 1.15) - 1}`
-        standard.standardOutcomeRows[3].quantity = `${Math.ceil(base * 0.51)}-${Math.floor(base * 0.99)}`
-        standard.standardOutcomeRows[4].quantity = `${Math.floor(base * 0.5)} and below`
+        // Calculate values
+        const above130 = Math.ceil(base * 1.3)
+        const between115and130Min = Math.ceil(base * 1.15)
+        const between115and130Max = Math.floor(base * 1.3) - 1
+        const between100and115Min = base
+        const between100and115Max = Math.floor(base * 1.15) - 1
+        const between51and99Min = Math.ceil(base * 0.51)
+        const between51and99Max = Math.floor(base * 0.99)
+        const below51 = Math.floor(base * 0.5)
+
+        // Assign values to rows - make sure we have valid ranges
+        standard.standardOutcomeRows[0].quantity = `${above130} and above`
+        standard.standardOutcomeRows[1].quantity =
+          between115and130Max >= between115and130Min
+            ? `${between115and130Min}-${between115and130Max}`
+            : `${between115and130Min}`
+        standard.standardOutcomeRows[2].quantity =
+          between100and115Max >= base ? `${between100and115Min}-${between100and115Max}` : `${base}`
+        standard.standardOutcomeRows[3].quantity =
+          between51and99Max >= between51and99Min
+            ? `${between51and99Min}-${between51and99Max}`
+            : `${between51and99Min}`
+        standard.standardOutcomeRows[4].quantity = `${below51} and below`
+
+        // Update the success indicator
+        generateSuccessIndicator(idx)
 
         $q.notify({
           message: 'Quantities calculated successfully',
           color: 'positive',
           position: 'top',
         })
-      } else if (currentType === 'C') {
-        // Store the target output value for Type C
-        standard.targetOutputValue = '100%'
 
+        // Close modal and reset value
+        showQuantityModal.value = false
+        quantityValue.value = null
+      } else if (currentType === 'C') {
+        // Type C logic remains the same
+        standard.targetOutputValue = '100%'
         standard.standardOutcomeRows[0].quantity = '100% and above'
         standard.standardOutcomeRows[1].quantity = '88%-99%'
         standard.standardOutcomeRows[2].quantity = '77%-87%'
         standard.standardOutcomeRows[3].quantity = '38%-76%'
         standard.standardOutcomeRows[4].quantity = '37% and below'
-      }
 
-      showQuantityModal.value = false
-      generateSuccessIndicator(idx)
+        generateSuccessIndicator(idx)
+      }
     }
 
     const cancelQuantityInput = () => {
@@ -2623,27 +2648,27 @@ export default {
       { deep: true },
     )
 
-    // Add this watcher after your existing watchers
+    // Update your watch to be more specific
     watch(
-      () => currentEmployee.value,
-      (newEmployee, oldEmployee) => {
+      () => ({
+        employeeId: currentEmployee.value?.employeeId,
+        sg: currentEmployee.value?.sg,
+        level: currentEmployee.value?.level,
+      }),
+      (newVal, oldVal) => {
         console.log('Employee changed:', {
-          old: oldEmployee?.employeeId,
-          new: newEmployee?.employeeId,
-          sg: newEmployee?.sg,
-          level: newEmployee?.level,
+          old: oldVal?.employeeId,
+          new: newVal?.employeeId,
+          sg: newVal?.sg,
+          level: newVal?.level,
         })
 
-        // Only update if SG or Level actually changed
-        if (
-          newEmployee?.sg !== oldEmployee?.sg ||
-          newEmployee?.level !== oldEmployee?.level ||
-          newEmployee?.employeeId !== oldEmployee?.employeeId
-        ) {
-          updateEmployeeCompetencies(newEmployee)
+        // Only update if we have a valid employee ID AND valid SG/Level
+        if (newVal?.employeeId && newVal?.sg && newVal?.level) {
+          updateEmployeeCompetencies(currentEmployee.value)
         }
       },
-      { deep: true, immediate: true },
+      { deep: true, immediate: false }, // Set immediate to false to avoid initial warning
     )
 
     // Lifecycle
