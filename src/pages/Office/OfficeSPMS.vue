@@ -1,3 +1,4 @@
+//Office-SPMS
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-page-container>
@@ -231,6 +232,17 @@
                             class="neu-button"
                             flat
                             round
+                            color="red"
+                            icon="assignment_ind"
+                            size="md"
+                            @click="show_opcr_Modal(props.row)"
+                          >
+                            <q-tooltip>OPCR</q-tooltip>
+                          </q-btn>
+                          <q-btn
+                            class="neu-button"
+                            flat
+                            round
                             color="blue"
                             icon="assignment_ind"
                             size="md"
@@ -290,7 +302,7 @@
       :officeStructure="officeStructure"
       :firstSubLevel="firstSubLevel"
       :selectedNodeId="selectedNodeId"
-       :selectedNodeLabel="selectedNode?.label || ''"
+      :selectedNodeLabel="selectedNode?.label || ''"
       @close="closeUnitWorkPlanModal"
     />
   </q-dialog>
@@ -322,12 +334,23 @@
     </q-card>
   </q-dialog>
 
-  <!-- IPCR Modal -->
   <q-dialog v-model="show_ipcr_ModalOpen" full-width>
     <ipcr_Report
       :employee="selectedEmployee"
       :targetPeriod="currentTargetPeriod"
+      :levels="selectedEmployee?.levels"
+      :supervisorySignatory="selectedEmployee?.supervisorySignatory"
+      :managerialSignatory="selectedEmployee?.managerialSignatory"
       @close="close_ipcr_Modal"
+    />
+  </q-dialog>
+
+  <!-- OPCR Modal -->
+  <q-dialog v-model="show_opcr_ModalOpen">
+    <OPCRModal
+      :employee="selectedEmployee"
+      :targetPeriod="currentTargetPeriod"
+      @close="close_opcr_Modal"
     />
   </q-dialog>
 
@@ -380,6 +403,7 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import ipcr_Report from 'src/components/ipcr_Report.vue'
 import { api } from 'boot/axios'
+import OPCRModal from 'src/pages/Office/TestPage.vue'
 
 const $q = useQuasar()
 const orgStore = useOrganizationStore()
@@ -397,6 +421,7 @@ const employeeToDelete = ref(null)
 const showUnitWorkPlanModalOpen = ref(false)
 const filteredRows = ref([])
 const show_ipcr_ModalOpen = ref(false)
+const show_opcr_ModalOpen = ref(false)
 const uwpValidationDialog = ref(false)
 const uwpValidationMessage = ref('')
 const uwpIncompleteItems = ref([])
@@ -499,7 +524,6 @@ const firstSubLevel = computed(() => {
       ['office2', 'group', 'division', 'section', 'unit'].includes(child.type),
   )
 })
-
 
 const filteredRow = computed(() => {
   if (!selectedNode.value) return []
@@ -642,6 +666,49 @@ const getNodeEmployees = (nodeId, nodes = orgStore.structure) => {
   }
 
   traverse(nodes, nodeId)
+  return employees
+}
+
+// Helper function to recursively collect all employees under a node
+const getAllEmployeesUnderNode = (nodeId, nodes = orgStore.structure) => {
+  const employees = []
+
+  const collectEmployees = (node) => {
+    if (!node) return
+
+    if (node.type === 'employee') {
+      employees.push({
+        id: node.id,
+        label: node.label,
+        position: node.position,
+        rank: node.rank,
+        ipcrStatus: node.ipcrStatus,
+        isHead: node.isHead,
+        hasTargetPeriod: node.hasTargetPeriod,
+        employeeData: node.employeeData,
+      })
+    } else if (node.children) {
+      node.children.forEach((child) => collectEmployees(child))
+    }
+  }
+
+  const findAndCollect = (currentNodes, targetId) => {
+    if (!currentNodes) return false
+
+    for (const node of currentNodes) {
+      if (node.id === targetId) {
+        collectEmployees(node)
+        return true
+      }
+
+      if (node.children && findAndCollect(node.children, targetId)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  findAndCollect(nodes, nodeId)
   return employees
 }
 
@@ -807,6 +874,236 @@ const filterMethod = (node, filter) => {
   return node.children?.some((child) => filterMethod(child, filter))
 }
 
+// Helper method to extract hierarchy levels from employee data
+const getEmployeeLevels = (employee) => {
+  if (!employee) {
+    return {
+      office: null,
+      office2: null,
+      group: null,
+      division: null,
+      section: null,
+      unit: null,
+    }
+  }
+
+  return {
+    office: employee.employeeData?.office || employee.office || null,
+    office2: employee.employeeData?.office2 || employee.office2 || null,
+    group: employee.employeeData?.group || employee.group || null,
+    division: employee.employeeData?.division || employee.division || null,
+    section: employee.employeeData?.section || employee.section || null,
+    unit: employee.employeeData?.unit || employee.unit || null,
+  }
+}
+
+// Helper to get parent organizational node for an employee
+const getParentOrgNode = (employeeNode) => {
+  if (!employeeNode || employeeNode.type !== 'employee') {
+    return selectedNode.value
+  }
+
+  // Get the employee's organizational levels
+  const levels = getEmployeeLevels(employeeNode)
+
+  console.log('🔍 Finding parent org node for levels:', levels)
+
+  // Find the lowest-level organizational unit this employee belongs to
+  // Priority: unit > section > division > group > office2 > office
+  if (levels.unit) {
+    const nodeId = `unit_${orgStore.slugify(levels.unit)}`
+    console.log('🔍 Looking for unit node:', nodeId)
+    const node = orgStore._findNode(nodeId)
+    if (node) {
+      console.log('✅ Found unit node:', node.label)
+      return node
+    }
+  }
+
+  if (levels.section) {
+    const nodeId = `section_${orgStore.slugify(levels.section)}`
+    console.log('🔍 Looking for section node:', nodeId)
+    const node = orgStore._findNode(nodeId)
+    if (node) {
+      console.log('✅ Found section node:', node.label)
+      return node
+    }
+  }
+
+  if (levels.division) {
+    const nodeId = `division_${orgStore.slugify(levels.division)}`
+    console.log('🔍 Looking for division node:', nodeId)
+    const node = orgStore._findNode(nodeId)
+    if (node) {
+      console.log('✅ Found division node:', node.label)
+      return node
+    }
+  }
+
+  if (levels.group) {
+    const nodeId = `group_${orgStore.slugify(levels.group)}`
+    console.log('🔍 Looking for group node:', nodeId)
+    const node = orgStore._findNode(nodeId)
+    if (node) {
+      console.log('✅ Found group node:', node.label)
+      return node
+    }
+  }
+
+  if (levels.office2) {
+    const nodeId = `office2_${orgStore.slugify(levels.office2)}`
+    console.log('🔍 Looking for office2 node:', nodeId)
+    const node = orgStore._findNode(nodeId)
+    if (node) {
+      console.log('✅ Found office2 node:', node.label)
+      return node
+    }
+  }
+
+  if (levels.office) {
+    const nodeId = `office_${orgStore.slugify(levels.office)}`
+    console.log('🔍 Looking for office node:', nodeId)
+    const node = orgStore._findNode(nodeId)
+    if (node) {
+      console.log('✅ Found office node:', node.label)
+      return node
+    }
+  }
+
+  console.log('❌ No parent org node found')
+  return null
+}
+
+// Updated method to find supervisory signatory at the same level
+const getSupervisoryAtSameLevel = (employee, levels, allEmployees) => {
+  if (!employee || !levels || !allEmployees) {
+    console.log('❌ Missing required parameters for supervisory search')
+    return null
+  }
+
+  const employeeRank = employee.rank?.toLowerCase()
+  console.log('📋 Employee rank:', employeeRank)
+
+  // If employee is already supervisory/managerial, they don't need a supervisory signatory
+  if (
+    employeeRank === 'supervisory' ||
+    employeeRank === 'managerial' ||
+    employeeRank?.includes('supervisory') ||
+    employeeRank?.includes('managerial')
+  ) {
+    console.log('⚠️ Employee is already supervisory/managerial')
+    return null
+  }
+
+  console.log('👥 Searching through employees:', allEmployees.length)
+
+  // Find supervisory employee at the same level
+  const supervisoryEmployee = allEmployees.find((emp) => {
+    // Skip if same employee
+    if (emp.id === employee.id) {
+      console.log('⏭️ Skipping same employee')
+      return false
+    }
+
+    const empRank = emp.rank?.toLowerCase()
+    console.log(`🔍 Checking employee ${emp.label} with rank ${empRank}`)
+
+    // Check if this employee has supervisory rank
+    const isSupervisory =
+      empRank === 'supervisory' ||
+      empRank?.includes('supervisory') ||
+      empRank?.includes('head') ||
+      (empRank?.includes('supervisor') && !empRank?.includes('non-supervisory'))
+
+    if (!isSupervisory) {
+      console.log(`❌ ${emp.label} is not supervisory`)
+      return false
+    }
+
+    console.log(`✅ ${emp.label} is supervisory, checking levels...`)
+
+    // Get this employee's levels
+    const empLevels = getEmployeeLevels(emp)
+
+    // Check if they're at the same level (start from lowest level)
+    if (levels.unit && empLevels.unit === levels.unit) {
+      console.log(`✅ Same unit: ${levels.unit}`)
+      return true
+    }
+    if (levels.section && empLevels.section === levels.section) {
+      console.log(`✅ Same section: ${levels.section}`)
+      return true
+    }
+    if (levels.division && empLevels.division === levels.division) {
+      console.log(`✅ Same division: ${levels.division}`)
+      return true
+    }
+    if (levels.group && empLevels.group === levels.group) {
+      console.log(`✅ Same group: ${levels.group}`)
+      return true
+    }
+    if (levels.office2 && empLevels.office2 === levels.office2) {
+      console.log(`✅ Same office2: ${levels.office2}`)
+      return true
+    }
+    if (levels.office && empLevels.office === levels.office) {
+      console.log(`✅ Same office: ${levels.office}`)
+      return true
+    }
+
+    console.log(`❌ ${emp.label} is not at same level`)
+    return false
+  })
+
+  console.log('🔍 Final supervisory employee found:', supervisoryEmployee)
+  return supervisoryEmployee
+}
+
+// Updated method to find managerial signatory at office level
+const getManagerialInOffice = (levels, allEmployees) => {
+  if (!levels.office || !allEmployees) {
+    console.log('❌ No office level specified or no employees provided')
+    return null
+  }
+
+  console.log(`👥 Searching through employees for managerial: ${allEmployees.length}`)
+
+  const managerialEmployee = allEmployees.find((emp) => {
+    const empRank = emp.rank?.toLowerCase()
+    console.log(`🔍 Checking ${emp.label} with rank ${empRank}`)
+
+    // Check if this employee has managerial rank
+    const isManagerial =
+      empRank === 'managerial' ||
+      empRank?.includes('managerial') ||
+      empRank?.includes('manager') ||
+      empRank?.includes('department head') ||
+      empRank?.includes('office head')
+
+    if (!isManagerial) {
+      console.log(`❌ ${emp.label} is not managerial`)
+      return false
+    }
+
+    console.log(`✅ ${emp.label} is managerial, checking office...`)
+
+    // Get employee's office
+    const empLevels = getEmployeeLevels(emp)
+
+    // Check if in the same office
+    if (empLevels.office === levels.office) {
+      console.log(`✅ Same office: ${levels.office}`)
+      return true
+    }
+
+    console.log(`❌ ${emp.label} is not in same office`)
+    return false
+  })
+
+  console.log('🔍 Final managerial employee found:', managerialEmployee)
+  return managerialEmployee
+}
+
 // Event handlers
 const onNodeSelect = (nodeId) => {
   selectedNodeId.value = nodeId
@@ -845,8 +1142,94 @@ const closeUnitWorkPlanModal = () => {
   showUnitWorkPlanModalOpen.value = false
 }
 
-const show_ipcr_Modal = (employee) => {
+const show_opcr_Modal = (employee) => {
   selectedEmployee.value = employee
+  show_opcr_ModalOpen.value = true
+}
+
+const close_opcr_Modal = () => {
+  show_opcr_ModalOpen.value = false
+}
+
+// FIXED: Updated show_ipcr_Modal method with proper parent org node search
+const show_ipcr_Modal = (employee) => {
+  console.log('🔍 Selected employee for IPCR:', employee)
+
+  // Get employee hierarchy levels
+  const levels = getEmployeeLevels(employee)
+  console.log('📊 Employee levels:', levels)
+
+  // FIXED: Get the parent organizational node, not the employee node itself
+  const parentOrgNode = getParentOrgNode(employee)
+  console.log('🏢 Parent organizational node:', parentOrgNode)
+
+  if (!parentOrgNode) {
+    console.error('❌ Could not find parent organizational node')
+    $q.notify({
+      message: 'Could not determine organizational hierarchy',
+      color: 'negative',
+      position: 'top',
+    })
+    return
+  }
+
+  // Get all employees in the parent organizational unit (direct children only)
+  const directEmployees = getNodeEmployees(parentOrgNode.id)
+  console.log('👥 Direct employees in parent org unit:', directEmployees.length)
+
+  // Also get ALL employees under this node (including nested units) for managerial search
+  const allEmployees = getAllEmployeesUnderNode(parentOrgNode.id)
+  console.log('👥 All employees under parent org unit:', allEmployees.length)
+  console.log(
+    '👥 All employees:',
+    allEmployees.map((e) => ({ name: e.label, rank: e.rank })),
+  )
+
+  // Find supervisory signatory (same level - search in direct employees)
+  const supervisory = getSupervisoryAtSameLevel(employee, levels, directEmployees)
+  console.log('👨‍💼 Supervisory signatory found:', supervisory)
+
+  // Find managerial signatory (office level) - need to search at office level
+  let managerialAllEmployees = allEmployees
+
+  // If we're in a lower-level unit, we need to search at the office level for managerial
+  if (levels.office) {
+    const officeNodeId = `office_${orgStore.slugify(levels.office)}`
+    const officeNode = orgStore._findNode(officeNodeId)
+    if (officeNode) {
+      managerialAllEmployees = getAllEmployeesUnderNode(officeNode.id)
+      console.log(
+        '👥 Searching for managerial in office-level employees:',
+        managerialAllEmployees.length,
+      )
+    }
+  }
+
+  const managerial = getManagerialInOffice(levels, managerialAllEmployees)
+  console.log('👩‍💼 Managerial signatory found:', managerial)
+
+  // Build the employee data with signatories
+  selectedEmployee.value = {
+    ...employee,
+    levels: levels,
+    supervisorySignatory: supervisory
+      ? {
+          name: supervisory.label || supervisory.name,
+          position: supervisory.position,
+          rank: supervisory.rank,
+        }
+      : null,
+    managerialSignatory: managerial
+      ? {
+          name: managerial.label || managerial.name,
+          position: managerial.position,
+          rank: managerial.rank,
+        }
+      : null,
+  }
+
+  console.log('✅ Final employee data with signatories:', selectedEmployee.value)
+
   show_ipcr_ModalOpen.value = true
 }
 

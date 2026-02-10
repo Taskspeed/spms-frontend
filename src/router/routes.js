@@ -132,6 +132,7 @@ export const routes = [
         component: officeSpms,
         meta: { role: 'office-admin' },
       },
+
       {
         path: 'office/profile',
         component: officeProfile,

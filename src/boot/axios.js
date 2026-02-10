@@ -8,7 +8,7 @@ const api = axios.create({
   // baseURL: ' http://10.0.1.35:3000/api',
   // baseURL: 'http://10.0.1.35:84',
   // baseURL: 'http://192.168.8.80:8000/api',
-  baseURL: 'http://192.168.8.182:5000/api',
+  baseURL: 'http://192.168.8.182:8000/api',
 
   headers: {
     Accept: 'application/json',

@@ -1,4 +1,4 @@
-//src\stores\office\unitWorkPlanStore.js
+// src/stores/office/unitWorkPlanStore.js
 import { defineStore } from 'pinia'
 import { api } from 'src/boot/axios'
 import { v4 as uuidv4 } from 'uuid'
@@ -196,6 +196,14 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     resolveVerbLabel(idOrText) {
       if (!idOrText) return ''
 
+      // Handle array of indicators
+      if (Array.isArray(idOrText)) {
+        return idOrText
+          .map((item) => this.resolveVerbLabel(item))
+          .filter(Boolean)
+          .join(', ')
+      }
+
       if (typeof idOrText === 'string' && isNaN(Number(idOrText))) {
         return idOrText
       }
@@ -228,39 +236,34 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     /**
      * Build timeliness value string from row data based on active inputs
      */
+
     buildTimelinessValue(row, activeTimelinessInputs) {
       if (!row) return ''
 
+      // Don't use fallback logic - only build from active inputs
+      // This ensures when fields are cleared, they stay cleared
       let timelinessValue = ''
 
-      // Build timeliness from active input types
+      // Build timeliness ONLY from fields that should be active
       if (activeTimelinessInputs?.range && row.timelinessRange) {
-        timelinessValue = row.timelinessRange
+        timelinessValue = timelinessValue
+          ? `${timelinessValue} ${row.timelinessRange}`
+          : row.timelinessRange
       }
+
       if (activeTimelinessInputs?.date && row.timelinessDate) {
         timelinessValue = timelinessValue
           ? `${timelinessValue} by ${row.timelinessDate}`
           : `by ${row.timelinessDate}`
       }
+
       if (activeTimelinessInputs?.description && row.timelinessText) {
         timelinessValue = timelinessValue
           ? `${timelinessValue} ${row.timelinessText}`
           : row.timelinessText
       }
 
-      // FALLBACK: If no active inputs produced a value, try to get from any available field
-      if (!timelinessValue) {
-        if (row.timelinessText) {
-          timelinessValue = row.timelinessText
-        } else if (row.timelinessRange) {
-          timelinessValue = row.timelinessRange
-        } else if (row.timelinessDate) {
-          timelinessValue = `by ${row.timelinessDate}`
-        } else if (row.timeliness) {
-          timelinessValue = row.timeliness
-        }
-      }
-
+      // Return empty string if no active inputs have values
       return timelinessValue
     },
 
@@ -376,7 +379,11 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         categoryName: standard.category || '',
         mfoName: standard.mfo || '',
         outputName: standard.output_name || '',
-        indicatorName: standard.performance_indicator || '',
+        indicatorName: Array.isArray(standard.performance_indicator)
+          ? standard.performance_indicator
+          : standard.performance_indicator
+            ? [standard.performance_indicator]
+            : [],
         successIndicator: standard.success_indicator || '',
         requiredOutput: standard.required_output || '',
         modeOfVerification: '',
@@ -390,9 +397,12 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         timelinessInputs: { range: true, date: false, description: false },
         activeTimelinessInputs: { range: true, date: false, description: false },
         targetOutput: standard.target_output || { baseTarget: null, calculated: [] },
-        coreCompetencies: standard.core || [],
-        technicalCompetencies: standard.technical || [],
-        leadershipCompetencies: standard.leadership || [],
+        // UPDATED: Use the new competencies structure
+        competencies: {
+          core: standard.core_competency || standard.core || [],
+          technical: standard.technical_competency || standard.technical || [],
+          leadership: standard.leadership_competency || standard.leadership || [],
+        },
         standardOutcomeRows: sortedDefaultRows(),
         targetOutputValue: null,
       }
@@ -581,14 +591,14 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           const employeeId =
             emp.employeeId || emp.employeeData?.id || emp.employeeData?.employeeId || null
 
-          // Extract competencies from employee data
-          const coreCompetencies = emp.coreCompetencies || []
-          const technicalCompetencies = emp.technicalCompetencies || []
-          const leadershipCompetencies = emp.leadershipCompetencies || []
-
           // Build performance standards for this employee
           const performanceStandards = Array.isArray(emp.performanceStandards)
             ? emp.performanceStandards.map((standard) => {
+                // UPDATED: Extract competencies from the new structure
+                const coreCompetencies = standard.competencies?.core || []
+                const technicalCompetencies = standard.competencies?.technical || []
+                const leadershipCompetencies = standard.competencies?.leadership || []
+
                 // Extract IDs properly - handle both objects and IDs
                 const categoryId = this.extractId(standard.rows?.category)
                 const mfoId = this.extractId(standard.rows?.mfo)
@@ -616,18 +626,31 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                     standard.rows?.output ||
                     ''
 
-                // Get performance indicator - handle both ID and string
-                let performanceIndicator = ''
+                let performanceIndicators = []
                 if (standard.indicatorName) {
-                  if (
+                  if (Array.isArray(standard.indicatorName)) {
+                    // It's an array of IDs or strings
+                    performanceIndicators = standard.indicatorName
+                      .map((item) => {
+                        if (
+                          typeof item === 'number' ||
+                          (typeof item === 'string' && !isNaN(item))
+                        ) {
+                          return this.resolveVerbLabel(Number(item))
+                        }
+                        return item
+                      })
+                      .filter(Boolean)
+                  } else if (
                     typeof standard.indicatorName === 'number' ||
                     (typeof standard.indicatorName === 'string' && !isNaN(standard.indicatorName))
                   ) {
-                    // It's an ID
-                    performanceIndicator = this.resolveVerbLabel(Number(standard.indicatorName))
+                    // Single ID
+                    const resolved = this.resolveVerbLabel(Number(standard.indicatorName))
+                    if (resolved) performanceIndicators = [resolved]
                   } else {
-                    // It's already a string name
-                    performanceIndicator = standard.indicatorName
+                    // Single string name
+                    performanceIndicators = [standard.indicatorName]
                   }
                 }
 
@@ -657,10 +680,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   })
                 }
 
-                // Get quantity for config (rating 5)
-                const quantityRow =
-                  standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
-
                 // Determine which rating is the reference for timeliness
                 const referenceRating =
                   standard.timelinessIndicatorType === 'onDeadline' ? '5' : '3'
@@ -671,14 +690,29 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   activeInputs,
                 )
 
+                // Get quantity based on the quantity indicator type
+                let targetOutput = ''
+                if (standard.quantityIndicatorType === 'numeric') {
+                  // Type A: Get from rating 5 quantity field
+                  const quantityRow =
+                    standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
+                  targetOutput = String(quantityRow.quantity || '')
+                } else if (standard.quantityIndicatorType === 'B') {
+                  // Type B: Get from targetOutputValue (modal input)
+                  targetOutput = String(standard.targetOutputValue || '')
+                } else if (standard.quantityIndicatorType === 'C') {
+                  // Type C: Fixed at 100%
+                  targetOutput = '100%'
+                }
+
                 const config = {
                   // String fields - use snake_case
-                  target_output: String(quantityRow.quantity || 'N/A'), // Changed
-                  quantity_indicator: String(standard.quantityIndicatorType || 'numeric'), // Changed
+                  target_output: targetOutput,
+                  quantity_indicator: String(standard.quantityIndicatorType || 'numeric'),
                   timeliness_indicator: String(
                     standard.timelinessIndicatorType || 'beforeDeadline',
-                  ), // Changed
-                  timeliness_value: String(referenceTimelinessValue || 'N/A'),
+                  ),
+                  timeliness_value: String(referenceTimelinessValue || ''),
 
                   // Object field - keep as is
                   timelinessType: {
@@ -698,8 +732,24 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   output: String(outputValue || ''),
                   output_name: String(standard.outputName || ''),
                   success_indicator: String(standard.successIndicator || ''),
-                  performance_indicator: String(performanceIndicator || ''),
+                  performance_indicator: performanceIndicators,
                   required_output: String(requiredOutput),
+                  // COMPETENCIES AT PERFORMANCE STANDARD LEVEL - UPDATED structure
+                  core_competency: coreCompetencies.map((comp) => ({
+                    code: comp.code || '',
+                    level: comp.value || '',
+                    description: comp.description || '',
+                  })),
+                  technical_competency: technicalCompetencies.map((comp) => ({
+                    code: comp.code || '',
+                    level: comp.value || '',
+                    description: comp.description || '',
+                  })),
+                  leadership_competency: leadershipCompetencies.map((comp) => ({
+                    code: comp.code || '',
+                    level: comp.value || '',
+                    description: comp.description || '',
+                  })),
                   ratings: ratings.length > 0 ? ratings : [],
                   config, // Matches backend expectations
                 }
@@ -727,23 +777,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
               : null,
             unit: officeData.unit ? String(officeData.unit.label || officeData.unit.name) : null,
 
-            // ADD COMPETENCIES TO PAYLOAD
-            core_competency: coreCompetencies.map((comp) => ({
-              code: comp.code,
-              level: comp.value,
-              description: comp.description || '',
-            })),
-            technical_competency: technicalCompetencies.map((comp) => ({
-              code: comp.code,
-              level: comp.value,
-              description: comp.description || '',
-            })),
-            leadership_competency: leadershipCompetencies.map((comp) => ({
-              code: comp.code,
-              level: comp.value,
-              description: comp.description || '',
-            })),
-
             performance_standards: performanceStandards,
           }
         }),
@@ -752,7 +785,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
     /**
      * Transform payload for UPDATE operation (existing UWP)
-     * Updated for endpoint: PUT /unit_work_plan/update/{controlNo}/{semester}/{year}
      */
     transformUpdatePayload(updateData, officeLibraryStore) {
       console.log('📝 Starting transformUpdatePayload with:', updateData)
@@ -786,10 +818,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         section: getHierarchyValue('section'),
         unit: getHierarchyValue('unit'),
 
-        core_competenc: employee.coreCompetencies || [],
-        technical_competencies: employee.technicalCompetencies || [],
-        leadership_competencies: employee.leadershipCompetencies || [],
-
         // Performance standards
         performance_standards: [],
       }
@@ -801,6 +829,11 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
         base.performance_standards = employee.performanceStandards.map((standard, index) => {
           console.log(`📝 Processing standard ${index + 1}:`, standard)
+
+          // UPDATED: Extract competencies from the new structure
+          const coreCompetencies = standard.competencies?.core || []
+          const technicalCompetencies = standard.competencies?.technical || []
+          const leadershipCompetencies = standard.competencies?.leadership || []
 
           // Extract IDs properly - handle both objects and IDs
           const categoryId = this.extractId(standard.rows?.category)
@@ -830,22 +863,29 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
           console.log('📝 Resolved names:', { categoryName, mfoName, outputName })
 
-          // Get performance indicator - handle both ID and string
-          let performanceIndicator = ''
+          let performanceIndicators = []
           if (standard.indicatorName) {
-            if (
+            if (Array.isArray(standard.indicatorName)) {
+              performanceIndicators = standard.indicatorName
+                .map((item) => {
+                  if (typeof item === 'number' || (typeof item === 'string' && !isNaN(item))) {
+                    return this.resolveVerbLabel(Number(item))
+                  }
+                  return item
+                })
+                .filter(Boolean)
+            } else if (
               typeof standard.indicatorName === 'number' ||
               (typeof standard.indicatorName === 'string' && !isNaN(standard.indicatorName))
             ) {
-              // It's an ID
-              performanceIndicator = this.resolveVerbLabel(Number(standard.indicatorName))
+              const resolved = this.resolveVerbLabel(Number(standard.indicatorName))
+              if (resolved) performanceIndicators = [resolved]
             } else {
-              // It's already a string name
-              performanceIndicator = standard.indicatorName
+              performanceIndicators = [standard.indicatorName]
             }
           }
 
-          console.log('📝 Performance indicator:', performanceIndicator)
+          console.log('📝 Performance indicator:', performanceIndicators)
 
           const ratings = []
           const activeInputs = standard.activeTimelinessInputs || standard.timelinessInputs
@@ -892,9 +932,23 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           console.log('📝 Reference rating:', referenceRating)
           console.log('📝 Reference timeliness value:', referenceTimelinessValue)
 
-          // Get quantity for rating 5 - this is the target_output
-          const quantityRow = standard.standardOutcomeRows?.find((r) => r.rating === '5') || {}
-          const targetOutput = quantityRow.quantity || ''
+          // Get quantity based on the quantity indicator type
+          let targetOutput = ''
+          if (standard.quantityIndicatorType === 'numeric') {
+            // Type A: Get from rating 5 quantity field
+            const quantityRow = standard.standardOutcomeRows?.find((r) => r.rating === '5') || {}
+            targetOutput = String(quantityRow.quantity || '')
+          } else if (standard.quantityIndicatorType === 'B') {
+            // Type B: Get from targetOutputValue (modal input)
+            targetOutput = String(standard.targetOutputValue || '')
+          } else if (standard.quantityIndicatorType === 'C') {
+            // Type C: Fixed at 100%
+            targetOutput = '100%'
+          }
+
+          console.log('📝 Target output:', targetOutput)
+          console.log('📝 Quantity indicator type:', standard.quantityIndicatorType)
+          console.log('📝 Target output value:', standard.targetOutputValue)
 
           // Determine quantity indicator type
           let quantityIndicator = standard.quantityIndicatorType || 'numeric'
@@ -905,9 +959,9 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           // Build config object with EXACT field names the backend expects
           const config = {
             // Use snake_case field names as shown in the error
-            target_output: String(targetOutput || ''), // Changed from targetOutput
-            quantity_indicator: String(quantityIndicator || 'numeric'), // Changed from quantityIndicator
-            timeliness_indicator: String(timelinessIndicator || 'beforeDeadline'), // Changed from timelinessIndicator
+            target_output: targetOutput,
+            quantity_indicator: String(quantityIndicator || 'numeric'),
+            timeliness_indicator: String(timelinessIndicator || 'beforeDeadline'),
             timeliness_value: String(referenceTimelinessValue || ''),
             timelinessType: {
               type: String(timelinessIndicator || 'beforeDeadline'),
@@ -927,11 +981,24 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             mfo: mfoName,
             output: outputName,
             output_name: standard.outputName || '',
-            core_competency: standard.coreCompetencies || [],
-            technical_competency: standard.technicalCompetencies || [],
-            leadership_competency: standard.leadershipCompetencies || [],
+            // COMPETENCIES AT PERFORMANCE STANDARD LEVEL - UPDATED structure
+            core_competency: coreCompetencies.map((comp) => ({
+              code: comp.code || '',
+              level: comp.value || '',
+              description: comp.description || '',
+            })),
+            technical_competency: technicalCompetencies.map((comp) => ({
+              code: comp.code || '',
+              level: comp.value || '',
+              description: comp.description || '',
+            })),
+            leadership_competency: leadershipCompetencies.map((comp) => ({
+              code: comp.code || '',
+              level: comp.value || '',
+              description: comp.description || '',
+            })),
             success_indicator: standard.successIndicator || '',
-            performance_indicator: performanceIndicator,
+            performance_indicator: performanceIndicators,
             required_output: standard.requiredOutput || '',
             ratings: ratings.length > 0 ? ratings : [],
             config,
@@ -1026,7 +1093,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
       }
     },
 
-    // In your unitWorkPlanStore.js, replace the updateUWP method:
     async updateUWP(updateData, officeLibraryIndicatorStore, officeLibraryStore) {
       this.loading = true
       this.error = null
@@ -1263,9 +1329,12 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   activeTimelinessInputs: { ...timelinessInputs },
                   apiData: ps,
                   standardOutcomeRows,
-                  coreCompetencies: ps.core || [],
-                  technicalCompetencies: ps.technical || [],
-                  leadershipCompetencies: ps.leadership || [],
+                  // UPDATED: COMPETENCIES AT PERFORMANCE STANDARD LEVEL - using the new structure
+                  competencies: {
+                    core: ps.core_competency || ps.core || [],
+                    technical: ps.technical_competency || ps.technical || [],
+                    leadership: ps.leadership_competency || ps.leadership || [],
+                  },
                 }
               },
             )

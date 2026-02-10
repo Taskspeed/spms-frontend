@@ -470,7 +470,7 @@
 import { date } from 'quasar'
 
 export default {
-  name: 'DateWizardModal',
+  name: 'RatingFormModal',
 
   props: {
     modelValue: { type: Boolean, default: false },

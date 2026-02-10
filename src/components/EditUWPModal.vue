@@ -373,38 +373,79 @@
                               </q-card>
                             </div>
 
-                            <!-- Competencies Card -->
+                            <!-- Competencies Card - UPDATED to match UWPPage -->
                             <div class="col-md-6">
                               <q-card flat bordered class="full-height">
                                 <q-card-section class="q-pa-sm">
-                                  <div class="text-subtitle2">Competencies</div>
+                                  <div class="text-subtitle2">
+                                    Competencies (for IPCR each MFO should have competency)
+                                  </div>
+
+                                  <!-- Competency Error Message -->
+                                  <div
+                                    v-if="showCompetencyError[index]"
+                                    class="text-negative q-mt-xs q-mb-sm text-caption"
+                                  >
+                                    Please add at least one competency (Core, Technical, or
+                                    Leadership)
+                                  </div>
                                 </q-card-section>
-
                                 <q-separator />
-
                                 <q-card-section class="q-pa-sm">
                                   <div class="row q-col-gutter-sm">
+                                    <!-- Core Competencies -->
                                     <div class="col-md-4">
                                       <q-card flat bordered class="full-height">
                                         <q-card-section class="q-pa-sm">
-                                          <div class="text-caption text-weight-medium">Core</div>
+                                          <div class="row items-center justify-between">
+                                            <div class="text-caption text-weight-medium">Core</div>
+                                            <q-btn
+                                              flat
+                                              round
+                                              dense
+                                              icon="add"
+                                              size="xs"
+                                              color="primary"
+                                              @click="openCompetencyModal('core', index)"
+                                            >
+                                              <q-tooltip>Add Core Competency</q-tooltip>
+                                            </q-btn>
+                                          </div>
                                         </q-card-section>
                                         <q-separator />
                                         <q-card-section class="q-pa-sm">
                                           <div class="competency-list">
                                             <div
-                                              v-if="coreCompetencies.length === 0"
+                                              v-if="
+                                                !standard.competencies ||
+                                                standard.competencies.core.length === 0
+                                              "
                                               class="text-grey-6 text-center"
                                             >
-                                              No core competencies
+                                              No core competencies added
                                             </div>
                                             <div
-                                              v-for="comp in coreCompetencies"
-                                              :key="comp.code"
+                                              v-else
+                                              v-for="(comp, compIndex) in standard.competencies
+                                                .core"
+                                              :key="'core-' + index + '-' + compIndex"
                                               class="competency-item q-pb-xs"
                                             >
-                                              <div class="text-caption">
-                                                {{ comp.code }} - {{ numberCom(comp.value) }}
+                                              <div class="row items-center justify-between">
+                                                <div class="text-caption">
+                                                  {{ comp.code }} - {{ comp.value }}
+                                                </div>
+                                                <q-btn
+                                                  flat
+                                                  round
+                                                  dense
+                                                  icon="close"
+                                                  size="xs"
+                                                  color="negative"
+                                                  @click="
+                                                    removeCompetency('core', compIndex, index)
+                                                  "
+                                                />
                                               </div>
                                             </div>
                                           </div>
@@ -412,29 +453,61 @@
                                       </q-card>
                                     </div>
 
+                                    <!-- Technical Competencies -->
                                     <div class="col-md-4">
                                       <q-card flat bordered class="full-height">
                                         <q-card-section class="q-pa-sm">
-                                          <div class="text-caption text-weight-medium">
-                                            Technical
+                                          <div class="row items-center justify-between">
+                                            <div class="text-caption text-weight-medium">
+                                              Technical
+                                            </div>
+                                            <q-btn
+                                              flat
+                                              round
+                                              dense
+                                              icon="add"
+                                              size="xs"
+                                              color="primary"
+                                              @click="openCompetencyModal('technical', index)"
+                                            >
+                                              <q-tooltip>Add Technical Competency</q-tooltip>
+                                            </q-btn>
                                           </div>
                                         </q-card-section>
                                         <q-separator />
                                         <q-card-section class="q-pa-sm">
                                           <div class="competency-list">
                                             <div
-                                              v-if="technicalCompetencies.length === 0"
+                                              v-if="
+                                                !standard.competencies ||
+                                                standard.competencies.technical.length === 0
+                                              "
                                               class="text-grey-6 text-center"
                                             >
-                                              No technical competencies
+                                              No technical competencies added
                                             </div>
                                             <div
-                                              v-for="comp in technicalCompetencies"
-                                              :key="comp.code"
+                                              v-else
+                                              v-for="(comp, compIndex) in standard.competencies
+                                                .technical"
+                                              :key="'technical-' + index + '-' + compIndex"
                                               class="competency-item q-pb-xs"
                                             >
-                                              <div class="text-caption">
-                                                {{ comp.code }} - {{ numberCom(comp.value) }}
+                                              <div class="row items-center justify-between">
+                                                <div class="text-caption">
+                                                  {{ comp.code }} - {{ comp.value }}
+                                                </div>
+                                                <q-btn
+                                                  flat
+                                                  round
+                                                  dense
+                                                  icon="close"
+                                                  size="xs"
+                                                  color="negative"
+                                                  @click="
+                                                    removeCompetency('technical', compIndex, index)
+                                                  "
+                                                />
                                               </div>
                                             </div>
                                           </div>
@@ -442,29 +515,61 @@
                                       </q-card>
                                     </div>
 
+                                    <!-- Leadership Competencies -->
                                     <div class="col-md-4">
                                       <q-card flat bordered class="full-height">
                                         <q-card-section class="q-pa-sm">
-                                          <div class="text-caption text-weight-medium">
-                                            Leadership
+                                          <div class="row items-center justify-between">
+                                            <div class="text-caption text-weight-medium">
+                                              Leadership
+                                            </div>
+                                            <q-btn
+                                              flat
+                                              round
+                                              dense
+                                              icon="add"
+                                              size="xs"
+                                              color="primary"
+                                              @click="openCompetencyModal('leadership', index)"
+                                            >
+                                              <q-tooltip>Add Leadership Competency</q-tooltip>
+                                            </q-btn>
                                           </div>
                                         </q-card-section>
                                         <q-separator />
                                         <q-card-section class="q-pa-sm">
                                           <div class="competency-list">
                                             <div
-                                              v-if="leadershipCompetencies.length === 0"
+                                              v-if="
+                                                !standard.competencies ||
+                                                standard.competencies.leadership.length === 0
+                                              "
                                               class="text-grey-6 text-center"
                                             >
-                                              No leadership competencies
+                                              No leadership competencies added
                                             </div>
                                             <div
-                                              v-for="comp in leadershipCompetencies"
-                                              :key="comp.code"
+                                              v-else
+                                              v-for="(comp, compIndex) in standard.competencies
+                                                .leadership"
+                                              :key="'leadership-' + index + '-' + compIndex"
                                               class="competency-item q-pb-xs"
                                             >
-                                              <div class="text-caption">
-                                                {{ comp.code }} - {{ numberCom(comp.value) }}
+                                              <div class="row items-center justify-between">
+                                                <div class="text-caption">
+                                                  {{ comp.code }} - {{ comp.value }}
+                                                </div>
+                                                <q-btn
+                                                  flat
+                                                  round
+                                                  dense
+                                                  icon="close"
+                                                  size="xs"
+                                                  color="negative"
+                                                  @click="
+                                                    removeCompetency('leadership', compIndex, index)
+                                                  "
+                                                />
                                               </div>
                                             </div>
                                           </div>
@@ -509,6 +614,8 @@
                                       option-label="name"
                                       emit-value
                                       map-options
+                                      multiple
+                                      use-chips
                                       clearable
                                       @update:model-value="generateSuccessIndicator(index)"
                                     >
@@ -517,6 +624,9 @@
                                       </template>
                                       <template #option="scope">
                                         <q-item v-bind="scope.itemProps" dense>
+                                          <q-item-section side>
+                                            <q-checkbox :model-value="scope.selected" />
+                                          </q-item-section>
                                           <q-item-section>
                                             <q-item-label>{{ scope.opt.name }}</q-item-label>
                                             <q-item-label caption v-if="scope.opt.description">
@@ -527,9 +637,9 @@
                                       </template>
                                       <template #no-option>
                                         <q-item>
-                                          <q-item-section class="text-grey"
-                                            >No performance indicators found</q-item-section
-                                          >
+                                          <q-item-section class="text-grey">
+                                            No performance indicators found
+                                          </q-item-section>
                                         </q-item>
                                       </template>
                                     </q-select>
@@ -627,10 +737,6 @@
                                                 label="Range"
                                               />
                                               <q-checkbox
-                                                v-model="standard.timelinessInputs.date"
-                                                label="Date"
-                                              />
-                                              <q-checkbox
                                                 v-model="standard.timelinessInputs.description"
                                                 label="Description"
                                               />
@@ -675,10 +781,6 @@
                                               <q-checkbox
                                                 v-model="standard.timelinessInputs.range"
                                                 label="Range"
-                                              />
-                                              <q-checkbox
-                                                v-model="standard.timelinessInputs.date"
-                                                label="Date"
                                               />
                                               <q-checkbox
                                                 v-model="standard.timelinessInputs.description"
@@ -773,7 +875,7 @@
                                           v-model="props.row.timelinessRange"
                                           dense
                                           outlined
-                                          placeholder="Range"
+                                          placeholder="Number or Range"
                                           :rules="[validateStrictNumeric]"
                                           @keydown="blockInvalidChars"
                                           @update:model-value="
@@ -920,6 +1022,13 @@
       <q-card style="min-width: 400px; border-radius: 8px">
         <q-card-section class="modal-header">
           <div class="text-h6">Enter Target Output</div>
+          <div
+            v-if="currentEmployee?.performanceStandards?.[currentStandardIndex]?.targetOutputValue"
+            class="text-caption text-grey q-mt-xs"
+          >
+            Current value:
+            {{ currentEmployee.performanceStandards[currentStandardIndex].targetOutputValue }}
+          </div>
         </q-card-section>
 
         <q-card-section class="modal-body">
@@ -931,12 +1040,140 @@
             dense
             :rules="[(val) => val > 0 || 'Must be greater than 0']"
             @keypress="blockInvalidChars"
+            @update:model-value="(val) => console.log('Quantity value updated:', val)"
           />
         </q-card-section>
 
         <q-card-actions align="right" class="modal-actions">
           <q-btn flat label="Cancel" color="grey-7" v-close-popup @click="cancelQuantityInput" />
-          <q-btn label="Calculate" color="green" unelevated @click="computeQuantities" />
+          <q-btn
+            label="Calculate"
+            color="green"
+            unelevated
+            @click="computeQuantities('B', currentStandardIndex)"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Competency Selection Modal -->
+    <q-dialog v-model="showCompetencyModal" persistent>
+      <q-card style="min-width: 700px; max-width: 900px; border-radius: 8px">
+        <q-card-section class="modal-header">
+          <div class="text-h6">
+            Select {{ competencyType.charAt(0).toUpperCase() + competencyType.slice(1) }}
+            Competency
+          </div>
+        </q-card-section>
+
+        <q-card-section class="modal-body">
+          <div class="q-gutter-md">
+            <!-- Competency Rows -->
+            <div
+              v-for="(competency, index) in competencySelections"
+              :key="index"
+              class="competency-row"
+            >
+              <div class="row q-col-gutter-md items-start">
+                <!-- Competency Selection -->
+                <div class="col-8">
+                  <q-select
+                    v-model="competency.selectedCompetency"
+                    :options="getAvailableCompetencies(index)"
+                    label="Select Competency"
+                    outlined
+                    dense
+                    use-input
+                    input-debounce="300"
+                    @filter="(val, update) => filterCompetencies(val, update, index)"
+                    option-value="code"
+                    option-label="label"
+                    clearable
+                    :rules="[(val) => !!val || 'Competency is required']"
+                  >
+                    <template #option="scope">
+                      <q-item v-bind="scope.itemProps" dense>
+                        <q-item-section>
+                          <q-item-label>{{ scope.opt.label }}</q-item-label>
+                          <q-item-label caption>
+                            {{ scope.opt.description }}
+                          </q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
+
+                <!-- Level Selection -->
+                <div class="col-3">
+                  <q-select
+                    v-model="competency.selectedLevel"
+                    :options="levelOptions"
+                    label="Level"
+                    outlined
+                    dense
+                    option-value="value"
+                    option-label="label"
+                    :rules="[(val) => !!val || 'Level is required']"
+                  >
+                    <template #option="scope">
+                      <q-item v-bind="scope.itemProps" dense>
+                        <q-item-section>
+                          <q-item-label>{{ scope.opt.label }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
+
+                <!-- Remove Button -->
+                <div class="col-1 flex items-center">
+                  <q-btn
+                    v-if="competencySelections.length > 1"
+                    flat
+                    dense
+                    round
+                    icon="close"
+                    color="negative"
+                    size="sm"
+                    @click="removeCompetencyRow(index)"
+                  >
+                    <q-tooltip>Remove</q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add Another Button -->
+            <div class="row q-mt-md">
+              <q-btn
+                flat
+                dense
+                icon="add"
+                label="Add Another Competency"
+                color="primary"
+                @click="addCompetencyRow"
+                class="q-ml-sm"
+              />
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="modal-actions q-pa-md">
+          <q-btn
+            flat
+            label="Cancel"
+            color="grey-7"
+            v-close-popup
+            @click="cancelCompetencySelection"
+          />
+          <q-btn
+            label="Add Selected Competencies"
+            color="green"
+            unelevated
+            @click="addAllSelectedCompetencies"
+            :disable="!isAnyCompetencyValid"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -993,7 +1230,7 @@ const createDefaultPerformanceStandard = () => ({
   id: uuidv4(),
   expanded: true,
   outputName: '',
-  indicatorName: '',
+  indicatorName: [],
   successIndicator: '',
   requiredOutput: '',
   modeOfVerification: '',
@@ -1002,7 +1239,13 @@ const createDefaultPerformanceStandard = () => ({
   timelinessIndicatorType: 'beforeDeadline',
   timelinessInputs: { range: true, date: false, description: false },
   activeTimelinessInputs: { range: true, date: false, description: false },
+  competencies: {
+    core: [],
+    technical: [],
+    leadership: [],
+  },
   standardOutcomeRows: createDefaultStandardRows(),
+  targetOutputValue: null,
 })
 
 const createDefaultEmployeeData = () => ({
@@ -1081,6 +1324,19 @@ export default {
     const technicalCompetencies = ref([])
     const leadershipCompetencies = ref([])
 
+    // Competency Modal Refs
+    const showCompetencyModal = ref(false)
+    const competencyType = ref('core')
+    const currentStandardIndexForCompetency = ref(0)
+    const selectedCompetency = ref(null)
+    const selectedLevel = ref(null)
+    const filteredCompetencyOptions = ref([])
+    const showCompetencyError = ref([])
+
+    // Multiple competency selection refs
+    const competencySelections = ref([{ selectedCompetency: null, selectedLevel: null }])
+    const filteredCompetencyOptionsByRow = ref([])
+
     const standardOutcomeColumns = [
       { name: 'rating', label: 'Rating', field: 'rating', align: 'center', width: '80px' },
       { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'center', width: '200px' },
@@ -1100,10 +1356,42 @@ export default {
       },
     ]
 
+    // Competency Data
+    const competencyData = {
+      core: [
+        { code: 'DSE', description: 'Delivering Service Excellence' },
+        { code: 'EI', description: 'Exemplifying Integrity' },
+        { code: 'IS', description: 'Interpersonal Skills' },
+      ],
+      technical: [
+        { code: 'P&O', description: 'Planning and Organizing' },
+        { code: 'M&E', description: 'Monitoring and Evaluation' },
+        { code: 'RM', description: 'Records Management' },
+        { code: 'P&N', description: 'Partnering and Networking' },
+        { code: 'PM', description: 'Process Management' },
+        { code: 'AD', description: 'Attention to Details' },
+      ],
+      leadership: [
+        { code: 'TSC', description: 'Thinking Strategically and Creatively' },
+        { code: 'PSDM', description: 'Problem Solving and Decision Making' },
+        {
+          code: 'BCIWR',
+          description: 'Building Collaborative and Inclusive Working Relationships',
+        },
+        { code: 'MPCR', description: 'Managing Performance and Coaching for Results' },
+      ],
+    }
+
+    const levelOptions = [
+      { label: 'Basic', value: '1' },
+      { label: 'Intermediate', value: '2' },
+      { label: 'Advanced', value: '3' },
+      { label: 'Superior', value: '4' },
+    ]
+
     const onBack = () => {
       console.log('Back button clicked')
-      // Emit an event to parent component
-      emit('close') // or emit('back') or emit('cancel')
+      emit('close')
     }
     const semesterOptions = computed(() => uwpStore.getSemesterOptions)
     const yearOptions = computed(() => uwpStore.getYearOptions)
@@ -1218,16 +1506,39 @@ export default {
       return filledValues >= 2
     }
 
+    // Competency computed properties
+    const competencyOptions = computed(() => {
+      const options = competencyData[competencyType.value] || []
+      return options.map((comp) => ({
+        ...comp,
+        label: `${comp.code} - ${comp.description}`,
+      }))
+    })
+
+    const isAnyCompetencyValid = computed(() => {
+      return competencySelections.value.some(
+        (comp) => comp.selectedCompetency && comp.selectedLevel,
+      )
+    })
+
     const isFormValid = computed(() => {
       if (!currentEmployee.value?.employeeId) return false
       const hasTargetPeriod = targetPeriodDetails.value?.semester && targetPeriodDetails.value?.year
       if (!hasTargetPeriod) return false
 
       return currentEmployee.value.performanceStandards?.every((standard) => {
+        // Check effectiveness values
         const filled =
           standard.standardOutcomeRows?.filter((row) => row.effectiveness?.trim()?.length > 0)
             .length || 0
-        return filled >= 2
+        if (filled < 2) return false
+
+        // Check competencies (at least 1)
+        const { core, technical, leadership } = standard.competencies || {}
+        const totalCompetencies =
+          (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
+
+        return totalCompetencies >= 1
       })
     })
 
@@ -1439,11 +1750,27 @@ export default {
     const getQuantityComponent = (index) => {
       const standard = currentEmployee.value?.performanceStandards?.[index]
       if (!standard) return ''
+
+      // ALWAYS use the current quantityIndicatorType first, not the API data
+      // This ensures real-time updates when user changes the option
       if (standard.quantityIndicatorType === 'numeric') {
+        // Type A: Get from row 5 quantity field
         return standard.standardOutcomeRows.find((row) => row.rating === '5')?.quantity || ''
       }
-      if (standard.quantityIndicatorType === 'B') return quantityValue.value?.toString() || ''
-      if (standard.quantityIndicatorType === 'C') return '100%'
+      if (standard.quantityIndicatorType === 'B') {
+        // Type B: Get from targetOutputValue or API config
+        return (
+          standard.targetOutputValue ||
+          standard.apiData?.config?.targetOutput ||
+          standard.apiData?.config?.target_output ||
+          ''
+        )
+      }
+      if (standard.quantityIndicatorType === 'C') {
+        // Type C: Fixed at 100%
+        return '100%'
+      }
+
       return ''
     }
 
@@ -1476,11 +1803,13 @@ export default {
           parts.push(highestRating.timelinessText)
       }
 
-      return parts.join(' ')
+      const result = parts.join(' ')
+      return result ? `, ${result}` : ''
     }
 
     const generateSuccessIndicator = (index) => {
       if (!currentEmployee.value?.performanceStandards) return
+
       const applyIndex = Number.isInteger(index)
         ? [index]
         : currentEmployee.value.performanceStandards.map((_, i) => i)
@@ -1491,18 +1820,39 @@ export default {
 
         const quantityPart = getQuantityComponent(i)
         const outputNamePart = standard.outputName?.trim() || ''
-        const indicatorNamePart =
-          typeof standard.indicatorName === 'number' || !isNaN(standard.indicatorName)
-            ? officeLibraryIndicatorStore.verbs.find((v) => v.id === standard.indicatorName)
-                ?.indicator_name ||
-              officeLibraryIndicatorStore.verbs.find((v) => v.id === standard.indicatorName)
-                ?.name ||
-              ''
-            : (standard.indicatorName || '').trim()
+
+        // UPDATED: Handle multiple indicators with "and" before the last one
+        let indicatorNamePart = ''
+        if (Array.isArray(standard.indicatorName) && standard.indicatorName.length > 0) {
+          // Map each indicator (could be ID or string) to its name
+          const indicatorNames = standard.indicatorName
+            .map((idOrText) => {
+              if (typeof idOrText === 'number' || !isNaN(idOrText)) {
+                const verb = officeLibraryIndicatorStore.verbs.find(
+                  (v) => v.id === Number(idOrText),
+                )
+                return verb?.indicator_name || verb?.name || ''
+              }
+              return idOrText // It's already a string like "supervised"
+            })
+            .filter(Boolean)
+
+          // Join with commas and "and" before the last item
+          if (indicatorNames.length === 1) {
+            indicatorNamePart = indicatorNames[0]
+          } else if (indicatorNames.length === 2) {
+            indicatorNamePart = indicatorNames.join(' and ')
+          } else if (indicatorNames.length > 2) {
+            const allButLast = indicatorNames.slice(0, -1).join(', ')
+            const last = indicatorNames[indicatorNames.length - 1]
+            indicatorNamePart = `${allButLast}, and ${last}`
+          }
+        }
 
         const effectivenessPart = getEffectivenessComponent(i)
         const timelinessPart = getTimelinessComponent(i)
 
+        // Build success indicator
         standard.successIndicator = [
           quantityPart,
           outputNamePart,
@@ -1512,6 +1862,15 @@ export default {
         ]
           .filter(Boolean)
           .join(' ')
+
+        console.log(`Success Indicator for standard ${i + 1}:`, {
+          quantityValue: quantityPart,
+          outputName: outputNamePart,
+          indicatorNames: indicatorNamePart,
+          effectiveness: effectivenessPart,
+          timeliness: timelinessPart,
+          final: standard.successIndicator,
+        })
       })
     }
 
@@ -1573,60 +1932,185 @@ export default {
     const onQuantityOptionSelect = (value, index) => {
       const standard = currentEmployee.value?.performanceStandards?.[index]
       if (!standard) return
+
       standard.quantityIndicatorType = value
       currentStandardIndex.value = index
 
+      // If we have API data with config, extract the targetOutput
+      if (standard.apiData?.config && value === 'B') {
+        const config = standard.apiData.config
+        const targetOutput = config.targetOutput || config.target_output
+        if (targetOutput) {
+          quantityValue.value = targetOutput
+          standard.targetOutputValue = targetOutput
+          // COMPUTE IMMEDIATELY if we have the value
+          computeQuantities('B', index)
+          return // Don't show modal if we already have the value
+        }
+      }
+
       if (value === 'B') {
-        quantityValue.value = null
+        if (!quantityValue.value) {
+          quantityValue.value = null
+        }
         showQuantityModal.value = true
       } else if (value === 'C') {
-        computeQuantities()
+        // When changing to C, compute quantities immediately
+        computeQuantities('C', index)
       } else {
+        // Type A: Clear quantity fields
         standard.standardOutcomeRows.forEach((row) => (row.quantity = ''))
         generateSuccessIndicator(index)
       }
     }
 
-    const computeQuantities = () => {
-      const index = currentStandardIndex.value
-      const standard = currentEmployee.value?.performanceStandards?.[index]
+    const computeQuantities = (type = null, index = null) => {
+      const idx = index !== null ? index : currentStandardIndex.value
+      const standard = currentEmployee.value?.performanceStandards?.[idx]
       if (!standard) return
 
-      if (
-        standard.quantityIndicatorType === 'B' &&
-        (!quantityValue.value || isNaN(quantityValue.value))
-      ) {
-        return $q.notify({
-          message: 'Please enter a valid number',
-          color: 'negative',
-          position: 'top',
+      const currentType = type || standard.quantityIndicatorType
+
+      console.log('computeQuantities called:', {
+        type,
+        index,
+        currentType,
+        currentStandardIndex: currentStandardIndex.value,
+        quantityValue: quantityValue.value,
+        targetOutputValue: standard.targetOutputValue,
+        standard,
+      })
+
+      // =====================
+      // TYPE B (Auto-compute, can exceed 100%)
+      // =====================
+      if (currentType === 'B') {
+        // Use either the stored targetOutputValue or the current quantityValue from modal
+        let targetValue = standard.targetOutputValue || quantityValue.value
+
+        // If we have quantityValue from modal input, use it and store it
+        if (quantityValue.value && !standard.targetOutputValue) {
+          targetValue = quantityValue.value
+          standard.targetOutputValue = targetValue.toString()
+        }
+
+        console.log('Processing Type B with targetValue:', targetValue)
+
+        if (!targetValue || isNaN(targetValue) || targetValue <= 0) {
+          $q.notify({
+            message: 'Please enter a valid number greater than 0',
+            color: 'negative',
+            position: 'top',
+          })
+          return
+        }
+
+        const base = Number(targetValue)
+
+        // Store target output
+        standard.targetOutputValue = base.toString()
+
+        // Rounded thresholds (rounded once to avoid gaps)
+        const max130 = Math.round(base * 1.3)
+        const max115 = Math.round(base * 1.15)
+        const max50 = Math.round(base * 0.5)
+
+        console.log('Calculated thresholds:', { base, max130, max115, max50 })
+
+        // Continuous ranges (no gaps, no overlaps)
+        const above130Min = max130
+
+        const range115to129Min = max115
+        const range115to129Max = max130 - 1
+
+        const range100to114Min = base
+        const range100to114Max = max115 - 1
+
+        const range51to99Min = max50 + 1
+        const range51to99Max = base - 1
+
+        const below50Max = max50
+
+        console.log('Final ranges:', {
+          above130Min,
+          range115to129: `${range115to129Min}-${range115to129Max}`,
+          range100to114: `${range100to114Min}-${range100to114Max}`,
+          range51to99: `${range51to99Min}-${range51to99Max}`,
+          below50Max,
         })
-      }
 
-      standard.standardOutcomeRows.forEach((row) => (row.quantity = ''))
+        // Assign quantities
+        standard.standardOutcomeRows[0].quantity = `${above130Min} and above`
+        standard.standardOutcomeRows[1].quantity = `${range115to129Min}-${range115to129Max}`
+        standard.standardOutcomeRows[2].quantity = `${range100to114Min}-${range100to114Max}`
+        standard.standardOutcomeRows[3].quantity = `${range51to99Min}-${range51to99Max}`
+        standard.standardOutcomeRows[4].quantity = `${below50Max} and below`
 
-      if (standard.quantityIndicatorType === 'B') {
-        const base = Number(quantityValue.value)
-        standard.standardOutcomeRows[0].quantity = `${Math.ceil(base * 1.3)} and above`
-        standard.standardOutcomeRows[1].quantity = `${Math.ceil(base * 1.15)}-${Math.floor(base * 1.3) - 1}`
-        standard.standardOutcomeRows[2].quantity = `${base}-${Math.floor(base * 1.15) - 1}`
-        standard.standardOutcomeRows[3].quantity = `${Math.ceil(base * 0.51)}-${Math.floor(base * 0.99)}`
-        standard.standardOutcomeRows[4].quantity = `${Math.floor(base * 0.5)} and below`
+        // Clear any leftover quantityValue from modal
+        quantityValue.value = null
+
+        // Close the modal
+        showQuantityModal.value = false
+
+        // Generate success indicator
+        generateSuccessIndicator(idx)
+
         $q.notify({
-          message: 'Quantities calculated successfully',
+          message: 'Quantities calculated successfully for Type B',
           color: 'positive',
           position: 'top',
         })
-      } else if (standard.quantityIndicatorType === 'C') {
+
+        // =====================
+        // TYPE C (Percentage-based, max 100%)
+        // =====================
+      } else if (currentType === 'C') {
+        console.log('Processing Type C')
+
+        standard.targetOutputValue = '100%'
+
+        // Clear any stored quantity value
+        if (quantityValue.value) {
+          quantityValue.value = null
+        }
+
         standard.standardOutcomeRows[0].quantity = '100% and above'
         standard.standardOutcomeRows[1].quantity = '88%-99%'
         standard.standardOutcomeRows[2].quantity = '77%-87%'
         standard.standardOutcomeRows[3].quantity = '38%-76%'
         standard.standardOutcomeRows[4].quantity = '37% and below'
-      }
 
-      showQuantityModal.value = false
-      generateSuccessIndicator(index)
+        generateSuccessIndicator(idx)
+
+        $q.notify({
+          message: 'Quantities set for Type C (cannot exceed 100%)',
+          color: 'positive',
+          position: 'top',
+        })
+      } else {
+        console.log('Processing Type A (numeric)')
+
+        standard.targetOutputValue = null
+
+        // Clear any stored quantity value
+        if (quantityValue.value) {
+          quantityValue.value = null
+        }
+
+        // Quantities are manually entered by the user
+        // Nothing to auto-calculate here, but ensure fields are clear
+        standard.standardOutcomeRows.forEach((row) => {
+          row.quantity = row.quantity || ''
+        })
+
+        generateSuccessIndicator(idx)
+
+        $q.notify({
+          message: 'Switched to manual quantity input (Type A)',
+          color: 'info',
+          position: 'top',
+        })
+      }
     }
 
     const cancelQuantityInput = () => {
@@ -1680,6 +2164,131 @@ export default {
         standards.splice(index, 1)
         $q.notify({ message: 'Performance standard removed', color: 'positive', position: 'top' })
       })
+    }
+
+    // Competency Methods
+    const openCompetencyModal = (type, standardIndex) => {
+      competencyType.value = type
+      currentStandardIndexForCompetency.value = standardIndex
+      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
+      filteredCompetencyOptionsByRow.value = [competencyOptions.value]
+      showCompetencyModal.value = true
+    }
+
+    const filterCompetencies = (val, update, rowIndex) => {
+      if (typeof update === 'function') {
+        update(() => {
+          const needle = (val || '').toLowerCase()
+          const filtered = competencyOptions.value.filter(
+            (comp) =>
+              comp.code.toLowerCase().includes(needle) ||
+              comp.description.toLowerCase().includes(needle),
+          )
+          if (!filteredCompetencyOptionsByRow.value[rowIndex]) {
+            filteredCompetencyOptionsByRow.value[rowIndex] = []
+          }
+          filteredCompetencyOptionsByRow.value[rowIndex] = filtered
+        })
+      } else {
+        if (!filteredCompetencyOptionsByRow.value[rowIndex]) {
+          filteredCompetencyOptionsByRow.value[rowIndex] = []
+        }
+        filteredCompetencyOptionsByRow.value[rowIndex] = competencyOptions.value
+      }
+    }
+
+    const getAvailableCompetencies = (rowIndex) => {
+      const selectedCodes = competencySelections.value
+        .map((sel, idx) =>
+          idx !== rowIndex && sel.selectedCompetency ? sel.selectedCompetency.code : null,
+        )
+        .filter(Boolean)
+      const options = filteredCompetencyOptionsByRow.value[rowIndex] || competencyOptions.value
+      return options.filter((comp) => !selectedCodes.includes(comp.code))
+    }
+
+    const addCompetencyRow = () => {
+      competencySelections.value.push({ selectedCompetency: null, selectedLevel: null })
+      filteredCompetencyOptionsByRow.value.push(competencyOptions.value)
+    }
+
+    const removeCompetencyRow = (index) => {
+      if (competencySelections.value.length > 1) {
+        competencySelections.value.splice(index, 1)
+        filteredCompetencyOptionsByRow.value.splice(index, 1)
+      }
+    }
+
+    const addAllSelectedCompetencies = () => {
+      const standard =
+        currentEmployee.value?.performanceStandards[currentStandardIndexForCompetency.value]
+      if (!standard) return
+
+      let addedCount = 0
+      competencySelections.value.forEach((selection) => {
+        if (selection.selectedCompetency && selection.selectedLevel) {
+          const competency = {
+            code: selection.selectedCompetency.code,
+            description: selection.selectedCompetency.description,
+            value: selection.selectedLevel.value,
+          }
+          const alreadyExists = standard.competencies[competencyType.value].some(
+            (existing) => existing.code === competency.code,
+          )
+          if (!alreadyExists) {
+            standard.competencies[competencyType.value].push(competency)
+            addedCount++
+          }
+        }
+      })
+
+      if (addedCount > 0) {
+        $q.notify({
+          message: `${addedCount} competenc${addedCount > 1 ? 'ies' : 'y'} added`,
+          color: 'positive',
+          position: 'top',
+        })
+      }
+
+      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
+      filteredCompetencyOptionsByRow.value = [competencyOptions.value]
+      showCompetencyModal.value = false
+      validateCompetencies(currentStandardIndexForCompetency.value)
+    }
+
+    const removeCompetency = (type, compIndex, standardIndex) => {
+      const standard = currentEmployee.value?.performanceStandards[standardIndex]
+      if (!standard || !standard.competencies[type]) return
+
+      $q.dialog({
+        title: 'Confirm Removal',
+        message: `Remove ${standard.competencies[type][compIndex].code} competency?`,
+        cancel: true,
+        persistent: true,
+      }).onOk(() => {
+        standard.competencies[type].splice(compIndex, 1)
+        $q.notify({
+          message: 'Competency removed',
+          color: 'positive',
+          position: 'top',
+        })
+        validateCompetencies(standardIndex)
+      })
+    }
+
+    const validateCompetencies = (standardIndex) => {
+      const standard = currentEmployee.value?.performanceStandards[standardIndex]
+      if (!standard) return
+      const { core, technical, leadership } = standard.competencies
+      const totalCompetencies =
+        (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
+      showCompetencyError.value[standardIndex] = totalCompetencies === 0
+    }
+
+    const cancelCompetencySelection = () => {
+      showCompetencyModal.value = false
+      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
+      filteredCompetencyOptionsByRow.value = [competencyOptions.value]
     }
 
     const validateStrictNumeric = (value) => {
@@ -1978,6 +2587,17 @@ export default {
                   }
                 }
 
+                let indicatorName = []
+                if (ps.performance_indicator) {
+                  if (Array.isArray(ps.performance_indicator)) {
+                    // It's already an array (e.g., ["supervised", "managed"])
+                    indicatorName = ps.performance_indicator
+                  } else {
+                    // It's a single value, convert to array
+                    indicatorName = [ps.performance_indicator]
+                  }
+                }
+
                 // Build standard outcome rows from ratings
                 const ratings = ps.ratings || []
                 console.log('📊 Ratings for this PS:', ratings)
@@ -2004,11 +2624,12 @@ export default {
                   return row
                 })
 
-                return {
+                // Create the standard object
+                const standard = {
                   id: `ps_${ps.id || Date.now()}`,
                   expanded: true,
                   outputName: ps.output_name || '',
-                  indicatorName: ps.performance_indicator || '',
+                  indicatorName: indicatorName || '',
                   successIndicator: ps.success_indicator || '',
                   requiredOutput: ps.required_output || '',
                   modeOfVerification: '',
@@ -2022,11 +2643,26 @@ export default {
                   timelinessInputs,
                   activeTimelinessInputs: { ...timelinessInputs },
                   standardOutcomeRows,
-                  coreCompetencies: ps.core || [],
-                  technicalCompetencies: ps.technical || [],
-                  leadershipCompetencies: ps.leadership || [],
+                  // COMPETENCIES AT PERFORMANCE STANDARD LEVEL
+                  competencies: {
+                    core: ps.core_competency || ps.core || [],
+                    technical: ps.technical_competency || ps.technical || [],
+                    leadership: ps.leadership_competency || ps.leadership || [],
+                  },
                   apiData: ps, // Keep original data for reference
+                  targetOutputValue: null, // Initialize targetOutputValue
                 }
+
+                // Set targetOutputValue if quantity type is B
+                if (quantityIndicatorType === 'B') {
+                  const targetOutput = config.targetOutput || config.target_output
+                  if (targetOutput) {
+                    standard.targetOutputValue = targetOutput
+                    quantityValue.value = targetOutput
+                  }
+                }
+
+                return standard
               })
             } else {
               console.log('📊 No performance standards found, creating default')
@@ -2097,16 +2733,37 @@ export default {
       }
 
       const invalid = []
-      currentEmployee.value.performanceStandards?.forEach((_, idx) => {
-        if (!hasMinimumEffectivenessValues(idx)) invalid.push(idx + 1)
+      currentEmployee.value.performanceStandards?.forEach((standard, idx) => {
+        const errors = []
+
+        // Check effectiveness values
+        const filledEffectivenessValues = standard.standardOutcomeRows.filter(
+          (row) => row.effectiveness?.trim()?.length > 0,
+        ).length
+        if (filledEffectivenessValues < 2) {
+          errors.push('requires at least 2 effectiveness values')
+        }
+
+        // Check competencies
+        const { core, technical, leadership } = standard.competencies || {}
+        const totalCompetencies =
+          (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
+
+        if (totalCompetencies < 1) {
+          errors.push('requires at least 1 competency')
+        }
+
+        if (errors.length > 0) {
+          invalid.push(`${idx + 1} (${errors.join(', ')})`)
+        }
       })
 
       if (invalid.length) {
         return $q.notify({
-          message: `Please complete effectiveness criteria for standards: ${invalid.join(', ')}`,
+          message: `Please complete required fields for standards: ${invalid.join(', ')}`,
           color: 'negative',
           position: 'top',
-          timeout: 3000,
+          timeout: 5000,
         })
       }
 
@@ -2125,10 +2782,16 @@ export default {
           },
           employee: {
             ...currentEmployee.value,
-            controlNo: props.controlNo, // Make sure controlNo is passed
+            controlNo: props.controlNo,
             performanceStandards: currentEmployee.value.performanceStandards?.map((standard) => {
               return {
                 ...standard,
+                // UPDATED: Ensure indicatorName is always an array
+                indicatorName: Array.isArray(standard.indicatorName)
+                  ? standard.indicatorName
+                  : standard.indicatorName
+                    ? [standard.indicatorName]
+                    : [],
                 rows: {
                   category: standard.rows?.category?.id || standard.rows?.category,
                   mfo: standard.rows?.mfo?.id || standard.rows?.mfo,
@@ -2139,12 +2802,7 @@ export default {
           },
         }
 
-        console.log('📤 Submitting update data:', {
-          controlNo: props.controlNo,
-          semester: targetPeriodDetails.value.semester,
-          year: targetPeriodDetails.value.year,
-          updateData,
-        })
+        console.log('📤 Submitting update data:', updateData)
 
         await uwpStore.updateUWP(updateData, officeLibraryIndicatorStore, officeLibraryStore)
 
@@ -2155,7 +2813,6 @@ export default {
           position: 'top',
         })
 
-        // Close the modal after a short delay
         setTimeout(() => {
           emit('close')
         }, 1500)
@@ -2248,6 +2905,19 @@ export default {
       { deep: true },
     )
 
+    // Add watcher for competency validation
+    watch(
+      () => currentEmployee.value?.performanceStandards,
+      (newStandards) => {
+        if (newStandards) {
+          newStandards.forEach((_, index) => {
+            validateCompetencies(index)
+          })
+        }
+      },
+      { deep: true },
+    )
+
     return {
       // state
       targetPeriodDetails,
@@ -2271,6 +2941,19 @@ export default {
       isLoadingEmployeeInfo,
       isLoadingStandards,
       isAddingStandard,
+
+      // Competency Modal Data
+      showCompetencyModal,
+      competencyType,
+      selectedCompetency,
+      selectedLevel,
+      competencyOptions,
+      levelOptions,
+      filteredCompetencyOptions,
+      showCompetencyError,
+      competencySelections,
+      filteredCompetencyOptionsByRow,
+      isAnyCompetencyValid,
 
       // computed
       breadcrumbDisplay,
@@ -2333,6 +3016,17 @@ export default {
       getCategoryLabel,
       getMfoLabel,
       getOutputLabel,
+
+      // Competency Methods
+      openCompetencyModal,
+      filterCompetencies,
+      addAllSelectedCompetencies,
+      removeCompetency,
+      cancelCompetencySelection,
+      validateCompetencies,
+      getAvailableCompetencies,
+      addCompetencyRow,
+      removeCompetencyRow,
     }
   },
 }

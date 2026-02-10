@@ -107,7 +107,7 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
                 this.parseCompetencies(standard.technical_competencies).join(', ') || 'N/A',
               leadership:
                 this.parseCompetencies(standard.leadership_competencies).join(', ') || 'N/A',
-              indicator: '',
+              indicator: standard.success_indicator || standard.performance_indicator || '',
               required: standard.required_output || '',
               standard5: standards[5] || 'N/A',
               standard4: standards[4] || 'N/A',
@@ -263,7 +263,9 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
           // Add Office Head for this MFO (only once per MFO)
           const officeHeadData = {
             name: mfo.employee.name,
-            position: mfo.employee.ControlNo || 'Office Head',
+            position: mfo.employee.position || 'Office Head',
+            sg: mfo.employee.sg,
+            level: mfo.employee.level,
             rank: mfo.employee.rank || 'Office-Head',
             isOfficeHead: true,
             isMfoHeader: true, // This marks it as the MFO header row
@@ -279,7 +281,9 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
         mfoGroup.orgEmployees.forEach((orgEmpData, empIndex) => {
           const orgEmployeeData = {
             name: orgEmpData.employee.name,
-            position: orgEmpData.employee.ControlNo || '',
+            position: orgEmpData.employee.position || '',
+            sg: orgEmpData.employee.sg,
+            level: orgEmpData.employee.level,
             rank: orgEmpData.employee.rank || '',
             isOfficeHead: false,
             isMfoHeader: false,
@@ -308,7 +312,9 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
           mfoGroup.orgEmployees.forEach((orgEmpData) => {
             const orgEmployeeData = {
               name: orgEmpData.employee.name,
-              position: orgEmpData.employee.ControlNo || '',
+              position: orgEmpData.employee.position || '',
+              sg: orgEmpData.employee.sg,
+              level: orgEmpData.employee.level,
               rank: orgEmpData.employee.rank || '',
               isOfficeHead: false,
               isMfoHeader: false,
@@ -375,13 +381,13 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
     formatStandard(outcome) {
       const parts = []
 
-      if (outcome.quantity_target) parts.push(`Q - ${outcome.quantity_target}`)
-      if (outcome.effectiveness_criteria) parts.push(`E - ${outcome.effectiveness_criteria}`)
-      if (outcome.timeliness_range) parts.push(`T - ${outcome.timeliness_range}`)
+      // Always add Q, E, T with values or dashes
+      parts.push(`Q - ${outcome.quantity_target || '-'}`)
+      parts.push(`E - ${outcome.effectiveness_criteria || '-'}`)
+      parts.push(`T - ${outcome.timeliness_range || '-'}`)
 
       // Use newline characters (safer than HTML)
-      const result = parts.length > 0 ? parts.join('\n') : 'N/A'
-      return result
+      return parts.join('\n')
     },
 
     // Clear data
