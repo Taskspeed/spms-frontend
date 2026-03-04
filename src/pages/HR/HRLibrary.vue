@@ -580,7 +580,7 @@ export default {
         const style = CATEGORY_STYLES[cat.categories_name] || { icon: 'label', color: 'grey' }
         return {
           label: cat.categories_name,
-          value: cat.id,
+          value: Number(cat.id), // FIX: normalize to Number
           icon: style.icon,
           color: style.color,
         }
@@ -605,8 +605,9 @@ export default {
 
       if (this.verbCategoryFilter === 'uncategorized') {
         verbs = verbs.filter((v) => !v.category_id)
-      } else if (this.verbCategoryFilter) {
-        verbs = verbs.filter((v) => v.category_id === this.verbCategoryFilter)
+      } else if (this.verbCategoryFilter !== null && this.verbCategoryFilter !== undefined) {
+        // FIX: coerce both sides to Number for safe comparison
+        verbs = verbs.filter((v) => Number(v.category_id) === Number(this.verbCategoryFilter))
       }
 
       return verbs
@@ -625,8 +626,14 @@ export default {
         })
       }
 
-      if (this.verbCategoryFilter) {
-        return categories.filter((cat) => cat.value === this.verbCategoryFilter)
+      if (this.verbCategoryFilter !== null && this.verbCategoryFilter !== undefined) {
+        return categories.filter((cat) => {
+          if (this.verbCategoryFilter === 'uncategorized') {
+            return cat.value === 'uncategorized'
+          }
+          // FIX: coerce both sides to Number
+          return Number(cat.value) === Number(this.verbCategoryFilter)
+        })
       }
 
       return categories
@@ -683,7 +690,10 @@ export default {
       if (categoryValue === 'uncategorized') {
         return this.filteredVerbs.filter((verb) => !verb.category_id)
       }
-      return this.filteredVerbs.filter((verb) => verb.category_id === categoryValue)
+      // FIX: coerce both sides to Number to handle mixed string/number IDs from API
+      return this.filteredVerbs.filter(
+        (verb) => verb.category_id && Number(verb.category_id) === Number(categoryValue),
+      )
     },
 
     getCategoryCount(categoryValue) {
@@ -742,7 +752,8 @@ export default {
       this.editingVerb = {
         id: verb.id,
         indicator_name: verb.indicator_name,
-        categoryId: verb.category_id || null,
+        // FIX: normalize to Number so q-select can match the option value
+        categoryId: verb.category_id ? Number(verb.category_id) : null,
       }
       this.dialogEditVerb = true
     },
