@@ -132,6 +132,13 @@ const columns = [
     align: 'left',
     sortable: true,
   },
+  {
+    name: 'Status',
+    label: 'Status',
+    field: 'Status',
+    align: 'left',
+    sortable: true,
+  },
 ]
 
 const employees = computed(() => employeeStore.unassignedEmployees)
@@ -192,6 +199,7 @@ async function handleSearch() {
     }
   } catch (error) {
     console.error('Search failed:', error)
+
     isSearching.value = false
   }
 }
@@ -225,6 +233,7 @@ async function addEmployee() {
       level: emp.level,
       itemNo: emp.itemNo,
       pageNo: emp.pageNo,
+      status: emp.Status || emp.status || null,
     }))
 
   console.log('Selected employees to emit:', selectedEmployees)

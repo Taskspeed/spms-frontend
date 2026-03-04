@@ -20,7 +20,6 @@ import officeSpms from 'src/pages/Office/OfficeSPMS.vue'
 import officeProfile from 'src/pages/Office/OfficeProfile.vue'
 import unitworkplan from 'src/pages/Office/OfficeUnitWorkPlan.vue'
 import library from 'src/pages/Office/OfficeLibrary.vue'
-import rating from 'src/pages/Office/ERMSRating.vue'
 
 // Planning Admin Pages
 import PlanningDashboard from 'src/pages/Planning/PlanningDashboard.vue'
@@ -138,11 +137,7 @@ export const routes = [
         component: officeProfile,
         meta: { role: 'office-admin' },
       },
-      {
-        path: 'office/rating',
-        component: rating,
-        meta: { role: 'office-admin' },
-      },
+
       // Planning Admin Routes
       {
         path: 'planning/dashboard',

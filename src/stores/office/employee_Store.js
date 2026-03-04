@@ -140,6 +140,7 @@ export const useEmployeeStore = defineStore('employee', {
         level: emp.SGLevel || emp.level || null,
         itemNo: emp.ItemNo || emp.itemNo || null,
         pageNo: emp.PageNo || emp.pageNo || null,
+        Status: emp.Status || emp.status || null,
       }
     },
 
@@ -266,6 +267,7 @@ export const useEmployeeStore = defineStore('employee', {
           level: emp.level || null,
           itemNo: emp.itemNo || null,
           pageNo: emp.pageNo || null,
+          Status: emp.Status || emp.status || null,
         }))
 
         return this.assignedEmployees
@@ -326,6 +328,7 @@ export const useEmployeeStore = defineStore('employee', {
             level: emp.SGLevel || emp.level || null,
             itemNo: emp.ItemNo || emp.itemNo || null,
             pageNo: emp.PageNo || emp.pageNo || null,
+            Status: emp.Status || emp.status || null,
           }))
 
           if (params.unassigned_only) {
@@ -374,6 +377,7 @@ export const useEmployeeStore = defineStore('employee', {
           level: emp.level || null,
           itemNo: emp.itemNo || null,
           pageNo: emp.pageNo || null,
+          status: emp.Status || emp.status || null,
         }))
 
         console.log('Validated Employees Payload:', validatedEmployees)
@@ -503,6 +507,7 @@ export const useEmployeeStore = defineStore('employee', {
             level: emp.SGLevel || emp.level || null,
             itemNo: emp.ItemNo || emp.itemNo || null,
             pageNo: emp.PageNo || emp.pageNo || null,
+            Status: emp.Status || emp.status || null,
           }))
           return this.searchedEmployees
         }

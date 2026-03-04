@@ -6,12 +6,12 @@ export const useLibraryStore = defineStore('library', {
     verbs: [],
     ranks: [],
     targetPeriods: [],
+    categories: [],
     loading: false,
     error: null,
   }),
 
   getters: {
-    // Get verbs sorted alphabetically
     sortedVerbs: (state) => {
       return [...state.verbs].sort((a, b) =>
         (a.indicator_name || '')
@@ -20,51 +20,59 @@ export const useLibraryStore = defineStore('library', {
       )
     },
 
-    // Get ranks sorted alphabetically
     sortedRanks: (state) => {
       return [...state.ranks].sort((a, b) =>
         (a.rank_name || '').toLowerCase().localeCompare((b.rank_name || '').toLowerCase()),
       )
     },
 
-    // Get target periods sorted by year and semester
     sortedTargetPeriods: (state) => {
       return [...state.targetPeriods].sort((a, b) => {
         if (a.year !== b.year) {
-          return b.year - a.year // Descending year
+          return b.year - a.year
         }
-        // Semester order: July-December comes after January-June
         const semesterOrder = { 'January-June': 0, 'July-December': 1 }
         return (semesterOrder[a.semester] || 0) - (semesterOrder[b.semester] || 0)
       })
     },
 
-    // Check if a verb already exists
-    verbExists: (state) => (verbName) => {
-      return state.verbs.some(
-        (v) => (v.indicator_name || '').toLowerCase().trim() === verbName.toLowerCase().trim(),
-      )
-    },
-
-    // Check if a rank already exists
-    rankExists: (state) => (rankName) => {
-      return state.ranks.some(
-        (r) => (r.rank_name || '').toLowerCase().trim() === rankName.toLowerCase().trim(),
-      )
-    },
-
-    // Check if a target period already exists
-    targetPeriodExists: (state) => (semester, year) => {
-      return state.targetPeriods.some(
-        (tp) => tp.semester === semester && tp.year.toString() === year.toString(),
-      )
+    // Get category by ID
+    getCategoryById: (state) => (id) => {
+      return state.categories.find((cat) => cat.id === id)
     },
   },
 
   actions: {
-    /**
-     * Fetch all verbs (indicators)
-     */
+    // ==================== CATEGORIES ====================
+    async fetchCategories() {
+      this.loading = true
+      this.error = null
+      try {
+        const token = localStorage.getItem('token')
+        const response = await api.get('/hr/category', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (Array.isArray(response.data)) {
+          this.categories = response.data
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          this.categories = response.data.data
+        } else {
+          this.categories = []
+        }
+
+        return this.categories
+      } catch (error) {
+        console.error('Failed to fetch categories:', error)
+        this.error = error.response?.data?.message || 'Failed to load categories'
+        this.categories = []
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // ==================== VERBS ====================
     async fetchVerbs() {
       this.loading = true
       this.error = null
@@ -74,13 +82,10 @@ export const useLibraryStore = defineStore('library', {
           headers: { Authorization: `Bearer ${token}` },
         })
 
-        // Handle both array and object responses
         if (Array.isArray(response.data)) {
           this.verbs = response.data
         } else if (response.data.data && Array.isArray(response.data.data)) {
           this.verbs = response.data.data
-        } else if (response.data.success && Array.isArray(response.data.indicators)) {
-          this.verbs = response.data.indicators
         } else {
           this.verbs = []
         }
@@ -96,21 +101,22 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Add a new verb
-     */
-    async addVerb(verbName) {
+    async addVerb(name, categoryId) {
       this.loading = true
       this.error = null
       try {
         const token = localStorage.getItem('token')
         const response = await api.post(
           '/hr/indicator/store',
-          { indicator_name: verbName.trim() },
-          { headers: { Authorization: `Bearer ${token}` } },
+          {
+            indicator_name: name.trim(),
+            category_id: categoryId,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
         )
 
-        // Extract the new verb from response
         let newVerb = null
         if (response.data.data) {
           newVerb = response.data.data
@@ -120,11 +126,9 @@ export const useLibraryStore = defineStore('library', {
           newVerb = response.data
         }
 
-        // Add to local state
         if (newVerb) {
           this.verbs.push(newVerb)
         } else {
-          // Fallback:  create a temporary entry and refresh
           await this.fetchVerbs()
         }
 
@@ -139,41 +143,50 @@ export const useLibraryStore = defineStore('library', {
     },
 
     /**
-     * Update a verb
+     * Update a verb's category
      */
-    async updateVerb(verbId, verbName) {
+    async updateVerbCategory(id, categoryId) {
       this.loading = true
       this.error = null
       try {
         const token = localStorage.getItem('token')
+
+        // Find the verb to get its current name
+        const verb = this.verbs.find((v) => v.id === id)
+        if (!verb) {
+          throw new Error('Verb not found')
+        }
+
         const response = await api.put(
-          `/indicator/update/${verbId}`,
-          { indicator_name: verbName.trim() },
-          { headers: { Authorization: `Bearer ${token}` } },
+          `/hr/indicator/update/${id}`,
+          {
+            indicator_name: verb.indicator_name, // Include the existing name
+            category_id: categoryId,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
         )
 
         // Update local state
-        const index = this.verbs.findIndex((v) => v.id === verbId)
+        const index = this.verbs.findIndex((v) => v.id === id)
         if (index !== -1) {
           this.verbs[index] = {
             ...this.verbs[index],
-            indicator_name: verbName.trim(),
+            category_id: categoryId,
           }
         }
 
         return response.data
       } catch (error) {
-        console.error('Failed to update verb:', error)
-        this.error = error.response?.data?.message || 'Failed to update verb'
+        console.error('Failed to update verb category:', error)
+        this.error = error.response?.data?.message || 'Failed to update verb category'
         throw error
       } finally {
         this.loading = false
       }
     },
 
-    /**
-     * Delete verb(s)
-     */
     async deleteVerbs(verbIds) {
       this.loading = true
       this.error = null
@@ -181,7 +194,6 @@ export const useLibraryStore = defineStore('library', {
         const token = localStorage.getItem('token')
         const ids = Array.isArray(verbIds) ? verbIds : [verbIds]
 
-        // Delete each verb
         await Promise.all(
           ids.map((id) =>
             api.delete(`/hr/indicator/delete/${id}`, {
@@ -190,7 +202,6 @@ export const useLibraryStore = defineStore('library', {
           ),
         )
 
-        // Remove from local state
         const idSet = new Set(ids)
         this.verbs = this.verbs.filter((v) => !idSet.has(v.id))
 
@@ -204,9 +215,20 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Fetch all ranks
-     */
+    verbExists(verbName, categoryId = null) {
+      if (categoryId) {
+        return this.verbs.some(
+          (v) =>
+            (v.indicator_name || '').toLowerCase().trim() === verbName.toLowerCase().trim() &&
+            v.category_id === categoryId,
+        )
+      }
+      return this.verbs.some(
+        (v) => (v.indicator_name || '').toLowerCase().trim() === verbName.toLowerCase().trim(),
+      )
+    },
+
+    // ==================== RANKS ====================
     async fetchRanks() {
       this.loading = true
       this.error = null
@@ -216,13 +238,10 @@ export const useLibraryStore = defineStore('library', {
           headers: { Authorization: `Bearer ${token}` },
         })
 
-        // Handle both array and object responses
         if (Array.isArray(response.data)) {
           this.ranks = response.data
         } else if (response.data.data && Array.isArray(response.data.data)) {
           this.ranks = response.data.data
-        } else if (response.data.success && Array.isArray(response.data.ranks)) {
-          this.ranks = response.data.ranks
         } else {
           this.ranks = []
         }
@@ -238,23 +257,19 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Add a new rank
-     */
     async addRank(rankName) {
       this.loading = true
       this.error = null
       try {
         const token = localStorage.getItem('token')
-        const payload = {
-          rank_name: rankName.trim(),
-        }
+        const response = await api.post(
+          '/hr/rank/store',
+          { rank_name: rankName.trim() },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        )
 
-        const response = await api.post('/hr/rank/store', payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        // Extract the new rank from response
         let newRank = null
         if (response.data.data) {
           newRank = response.data.data
@@ -264,11 +279,9 @@ export const useLibraryStore = defineStore('library', {
           newRank = response.data
         }
 
-        // Add to local state
         if (newRank) {
           this.ranks.push(newRank)
         } else {
-          // Fallback: refresh from server
           await this.fetchRanks()
         }
 
@@ -282,23 +295,19 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Update a rank
-     */
     async updateRank(rankId, rankName) {
       this.loading = true
       this.error = null
       try {
         const token = localStorage.getItem('token')
-        const payload = {
-          rank_name: rankName.trim(),
-        }
+        const response = await api.put(
+          `/hr/rank/update/${rankId}`,
+          { rank_name: rankName.trim() },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        )
 
-        const response = await api.put(`/hr/rank/update/${rankId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        // Update local state
         const index = this.ranks.findIndex((r) => r.id === rankId)
         if (index !== -1) {
           this.ranks[index] = {
@@ -317,9 +326,6 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Delete rank(s)
-     */
     async deleteRanks(rankIds) {
       this.loading = true
       this.error = null
@@ -327,7 +333,6 @@ export const useLibraryStore = defineStore('library', {
         const token = localStorage.getItem('token')
         const ids = Array.isArray(rankIds) ? rankIds : [rankIds]
 
-        // Delete each rank
         await Promise.all(
           ids.map((id) =>
             api.delete(`/hr/rank/delete/${id}`, {
@@ -336,7 +341,6 @@ export const useLibraryStore = defineStore('library', {
           ),
         )
 
-        // Remove from local state
         const idSet = new Set(ids)
         this.ranks = this.ranks.filter((r) => !idSet.has(r.id))
 
@@ -350,9 +354,13 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Fetch all target periods
-     */
+    rankExists(rankName) {
+      return this.ranks.some(
+        (r) => (r.rank_name || '').toLowerCase().trim() === rankName.toLowerCase().trim(),
+      )
+    },
+
+    // ==================== TARGET PERIODS ====================
     async fetchTargetPeriods() {
       this.loading = true
       this.error = null
@@ -362,13 +370,10 @@ export const useLibraryStore = defineStore('library', {
           headers: { Authorization: `Bearer ${token}` },
         })
 
-        // Handle both array and object responses
         if (Array.isArray(response.data)) {
           this.targetPeriods = response.data
         } else if (response.data.data && Array.isArray(response.data.data)) {
           this.targetPeriods = response.data.data
-        } else if (response.data.success && Array.isArray(response.data.targetPeriods)) {
-          this.targetPeriods = response.data.targetPeriods
         } else {
           this.targetPeriods = []
         }
@@ -384,24 +389,22 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Add a new target period
-     */
     async addTargetPeriod(semester, year) {
       this.loading = true
       this.error = null
       try {
         const token = localStorage.getItem('token')
-        const payload = {
-          semester: semester.trim(),
-          year: parseInt(year),
-        }
+        const response = await api.post(
+          '/targetPeriod/store',
+          {
+            semester: semester.trim(),
+            year: parseInt(year),
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        )
 
-        const response = await api.post('/targetPeriod/store', payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        // Extract the new target period from response
         let newTargetPeriod = null
         if (response.data.data) {
           newTargetPeriod = response.data.data
@@ -411,11 +414,9 @@ export const useLibraryStore = defineStore('library', {
           newTargetPeriod = response.data
         }
 
-        // Add to local state
         if (newTargetPeriod) {
           this.targetPeriods.push(newTargetPeriod)
         } else {
-          // Fallback: refresh from server
           await this.fetchTargetPeriods()
         }
 
@@ -429,9 +430,6 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Delete target period(s)
-     */
     async deleteTargetPeriods(targetPeriodIds) {
       this.loading = true
       this.error = null
@@ -439,7 +437,6 @@ export const useLibraryStore = defineStore('library', {
         const token = localStorage.getItem('token')
         const ids = Array.isArray(targetPeriodIds) ? targetPeriodIds : [targetPeriodIds]
 
-        // Delete each target period
         await Promise.all(
           ids.map((id) =>
             api.delete(`/targetPeriod/delete/${id}`, {
@@ -448,7 +445,6 @@ export const useLibraryStore = defineStore('library', {
           ),
         )
 
-        // Remove from local state
         const idSet = new Set(ids)
         this.targetPeriods = this.targetPeriods.filter((tp) => !idSet.has(tp.id))
 
@@ -462,13 +458,18 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
-    /**
-     * Clear all state
-     */
+    targetPeriodExists(semester, year) {
+      return this.targetPeriods.some(
+        (tp) => tp.semester === semester && tp.year.toString() === year.toString(),
+      )
+    },
+
+    // ==================== UTILITY ====================
     clearState() {
       this.verbs = []
       this.ranks = []
       this.targetPeriods = []
+      this.categories = []
       this.error = null
     },
   },

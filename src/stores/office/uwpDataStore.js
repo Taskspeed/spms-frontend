@@ -59,7 +59,6 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
       }
     },
 
-    // stores/office/uwpDataStore.js - Update the transformDataForReport function
     transformDataForReport(apiData) {
       console.log('🔧 Raw API data for transformation:', apiData)
 
@@ -179,13 +178,12 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
                   const standards = this.mapStandardOutcomes(standard.standard_outcomes || [])
                   console.log('🔧 Org employee standards:', standards)
 
-                  // Get the output name - check both "output" and "output_name" fields
                   const outputName = standard.output || standard.output_name || ''
                   console.log('🔧 Output name from standard:', outputName)
 
                   const outputData = {
                     mfoId: mfoId,
-                    name: outputName, // Use the actual output name
+                    name: outputName,
                     core: this.parseCompetencies(standard.core).join(', ') || 'N/A',
                     technical: this.parseCompetencies(standard.technical).join(', ') || 'N/A',
                     leadership: this.parseCompetencies(standard.leadership).join(', ') || 'N/A',
@@ -203,7 +201,7 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
                 }
               } else {
                 console.log(`⚠️ MFO ${mfoId} not found in office MFOs, creating new group`)
-                // Create new MFO group for org employee if office doesn't have it
+
                 if (!mfoGroups[mfoId]) {
                   mfoGroups[mfoId] = {
                     name: mfoName,
@@ -212,7 +210,6 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
                   }
                 }
 
-                // Add org employee to this MFO
                 mfoGroups[mfoId].orgEmployees.push({
                   employee: orgEmployee,
                   outputs: [],
@@ -250,17 +247,15 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
         })
       }
 
-      // 3. Build the final employees array in the exact order you want
+      // 3. Build the final employees array
       console.log('🔧 Office MFOs to process:', officeMfos)
       console.log('🔧 MFO Groups:', mfoGroups)
 
-      // First, add office employees with their MFOs
       officeMfos.forEach((mfo, index) => {
         console.log(`🔧 Processing office MFO ${index}: ${mfo.name}`)
         const mfoGroup = mfoGroups[mfo.id]
 
         if (mfoGroup.officeOutput) {
-          // Add Office Head for this MFO (only once per MFO)
           const officeHeadData = {
             name: mfo.employee.name,
             position: mfo.employee.position || 'Office Head',
@@ -268,7 +263,7 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
             level: mfo.employee.level,
             rank: mfo.employee.rank || 'Office-Head',
             isOfficeHead: true,
-            isMfoHeader: true, // This marks it as the MFO header row
+            isMfoHeader: true,
             mfoName: mfo.name,
             outputs: [mfoGroup.officeOutput],
           }
@@ -276,7 +271,6 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
           employees.push(officeHeadData)
         }
 
-        // Add organization employees for this MFO
         console.log(`🔧 Org employees for MFO ${mfo.name}:`, mfoGroup.orgEmployees)
         mfoGroup.orgEmployees.forEach((orgEmpData, empIndex) => {
           const orgEmployeeData = {
@@ -287,7 +281,7 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
             rank: orgEmpData.employee.rank || '',
             isOfficeHead: false,
             isMfoHeader: false,
-            mfoName: '', // Not needed for org employees
+            mfoName: '',
             outputs: orgEmpData.outputs,
           }
           console.log(`🔧 Adding org employee ${empIndex}:`, orgEmployeeData)
@@ -299,16 +293,13 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
       Object.keys(mfoGroups).forEach((mfoId) => {
         const mfoGroup = mfoGroups[mfoId]
 
-        // Skip if already processed in officeMfos
         if (officeMfos.some((mfo) => mfo.id === mfoId)) {
           return
         }
 
-        // Only process if there are org employees
         if (mfoGroup.orgEmployees.length > 0) {
           console.log(`🔧 Processing MFO ${mfoId} with only org employees`)
 
-          // Add organization employees for this MFO
           mfoGroup.orgEmployees.forEach((orgEmpData) => {
             const orgEmployeeData = {
               name: orgEmpData.employee.name,
@@ -318,7 +309,7 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
               rank: orgEmpData.employee.rank || '',
               isOfficeHead: false,
               isMfoHeader: false,
-              mfoName: '', // Not needed for org employees
+              mfoName: '',
               outputs: orgEmpData.outputs,
             }
             console.log(`🔧 Adding org employee from non-office MFO:`, orgEmployeeData)
@@ -327,16 +318,16 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
         }
       })
 
-      // Store in the state
+      // ✅ FIX: Preserve the original office object so unitworkplan_status is accessible
       this.data = {
         name: apiData.organization?.name || apiData.office?.name || 'Division Report',
         employees: employees,
+        office: apiData.office || null,
       }
 
       console.log('✅ Final transformed data:', this.data)
     },
 
-    // Helper method to parse JSON competencies
     parseCompetencies(competencies) {
       try {
         if (!competencies) return []
@@ -354,7 +345,6 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
       }
     },
 
-    // Helper method to map standard outcomes to ratings
     mapStandardOutcomes(standardOutcomes) {
       const standards = {}
 
@@ -380,17 +370,12 @@ export const useUnitWorkPlanReportStore = defineStore('unitWorkPlanReport', {
 
     formatStandard(outcome) {
       const parts = []
-
-      // Always add Q, E, T with values or dashes
       parts.push(`Q - ${outcome.quantity_target || '-'}`)
       parts.push(`E - ${outcome.effectiveness_criteria || '-'}`)
       parts.push(`T - ${outcome.timeliness_range || '-'}`)
-
-      // Use newline characters (safer than HTML)
       return parts.join('\n')
     },
 
-    // Clear data
     clearData() {
       this.data = null
       this.error = null

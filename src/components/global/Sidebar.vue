@@ -143,7 +143,6 @@ export default {
             ],
           },
           { label: 'Account', icon: 'person', route: '/office/profile' },
-          { label: 'Rating', icon: 'rate_review', route: '/office/rating' },
         ],
         // Planning Admin
         2: [

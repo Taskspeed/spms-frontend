@@ -19,6 +19,10 @@
           <span class="q-ml-md">
             Position: <strong>{{ selectedEmployee.position }}</strong>
           </span>
+          <span class="q-ml-md" v-if="selectedEmployee.sg && selectedEmployee.level">
+            SG: <strong>{{ selectedEmployee.sg }}</strong> | Level:
+            <strong>{{ getLevelText(selectedEmployee.level) }}</strong>
+          </span>
         </p>
       </div>
       <div class="column items-end">
@@ -289,7 +293,7 @@
                                       </template>
                                     </q-select>
 
-                                    <!-- MFO DROPDOWN - Fixed -->
+                                    <!-- MFO DROPDOWN -->
                                     <q-select
                                       v-if="!isSupportCategory(standard.rows.category)"
                                       outlined
@@ -327,7 +331,7 @@
                                       </template>
                                     </q-select>
 
-                                    <!-- OUTPUT DROPDOWN - Fixed -->
+                                    <!-- OUTPUT DROPDOWN -->
                                     <q-select
                                       outlined
                                       dense
@@ -373,7 +377,7 @@
                               </q-card>
                             </div>
 
-                            <!-- Competencies Card - UPDATED to match UWPPage -->
+                            <!-- Competencies Card -->
                             <div class="col-md-6">
                               <q-card flat bordered class="full-height">
                                 <q-card-section class="q-pa-sm">
@@ -393,23 +397,15 @@
                                 <q-separator />
                                 <q-card-section class="q-pa-sm">
                                   <div class="row q-col-gutter-sm">
-                                    <!-- Core Competencies -->
+                                    <!-- Core Competencies - Auto-populated based on SG/Level -->
                                     <div class="col-md-4">
                                       <q-card flat bordered class="full-height">
                                         <q-card-section class="q-pa-sm">
                                           <div class="row items-center justify-between">
-                                            <div class="text-caption text-weight-medium">Core</div>
-                                            <q-btn
-                                              flat
-                                              round
-                                              dense
-                                              icon="add"
-                                              size="xs"
-                                              color="primary"
-                                              @click="openCompetencyModal('core', index)"
-                                            >
-                                              <q-tooltip>Add Core Competency</q-tooltip>
-                                            </q-btn>
+                                            <div class="text-caption text-weight-medium">
+                                              Core (Auto-populated)
+                                            </div>
+                                            <!-- No add button for core competencies -->
                                           </div>
                                         </q-card-section>
                                         <q-separator />
@@ -422,7 +418,7 @@
                                               "
                                               class="text-grey-6 text-center"
                                             >
-                                              No core competencies added
+                                              No core competencies required for this SG/Level
                                             </div>
                                             <div
                                               v-else
@@ -433,19 +429,11 @@
                                             >
                                               <div class="row items-center justify-between">
                                                 <div class="text-caption">
-                                                  {{ comp.code }} - {{ comp.value }}
+                                                  {{ comp.code }} - {{ comp.value }} ({{
+                                                    comp.level
+                                                  }})
                                                 </div>
-                                                <q-btn
-                                                  flat
-                                                  round
-                                                  dense
-                                                  icon="close"
-                                                  size="xs"
-                                                  color="negative"
-                                                  @click="
-                                                    removeCompetency('core', compIndex, index)
-                                                  "
-                                                />
+                                                <!-- Core competencies cannot be removed -->
                                               </div>
                                             </div>
                                           </div>
@@ -677,6 +665,7 @@
                             </q-card-section>
                           </q-card>
 
+                          <!-- Standard Outcome Section -->
                           <div class="q-mt-sm">
                             <div class="row items-center justify-between q-mt-sm">
                               <div class="text-subtitle2">Standard Outcome</div>
@@ -869,7 +858,7 @@
                                     <div class="row q-col-gutter-sm">
                                       <div
                                         v-if="standard.activeTimelinessInputs.range"
-                                        :class="timelinessColumnClass(standard, 'range')"
+                                        :class="timelinessColumnClass(standard)"
                                       >
                                         <q-input
                                           v-model="props.row.timelinessRange"
@@ -886,7 +875,7 @@
 
                                       <div
                                         v-if="standard.activeTimelinessInputs.date"
-                                        :class="timelinessColumnClass(standard, 'date')"
+                                        :class="timelinessColumnClass(standard)"
                                       >
                                         <q-input
                                           v-model="props.row.timelinessDate"
@@ -922,7 +911,7 @@
 
                                       <div
                                         v-if="standard.activeTimelinessInputs.description"
-                                        :class="timelinessColumnClass(standard, 'description')"
+                                        :class="timelinessColumnClass(standard)"
                                       >
                                         <q-input
                                           v-model="props.row.timelinessText"
@@ -1040,7 +1029,6 @@
             dense
             :rules="[(val) => val > 0 || 'Must be greater than 0']"
             @keypress="blockInvalidChars"
-            @update:model-value="(val) => console.log('Quantity value updated:', val)"
           />
         </q-card-section>
 
@@ -1063,6 +1051,10 @@
           <div class="text-h6">
             Select {{ competencyType.charAt(0).toUpperCase() + competencyType.slice(1) }}
             Competency
+          </div>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            Based on SG: {{ currentEmployee?.sg }} | Level:
+            {{ getLevelText(currentEmployee?.level) }}
           </div>
         </q-card-section>
 
@@ -1096,7 +1088,7 @@
                         <q-item-section>
                           <q-item-label>{{ scope.opt.label }}</q-item-label>
                           <q-item-label caption>
-                            {{ scope.opt.description }}
+                            Required Level: {{ scope.opt.requiredLevel }}
                           </q-item-label>
                         </q-item-section>
                       </q-item>
@@ -1104,14 +1096,15 @@
                   </q-select>
                 </div>
 
-                <!-- Level Selection -->
+                <!-- Level Selection (Auto-populated based on required level) -->
                 <div class="col-3">
                   <q-select
                     v-model="competency.selectedLevel"
-                    :options="levelOptions"
+                    :options="getLevelOptionsForCompetency(competency.selectedCompetency)"
                     label="Level"
                     outlined
                     dense
+                    readonly
                     option-value="value"
                     option-label="label"
                     :rules="[(val) => !!val || 'Level is required']"
@@ -1154,6 +1147,7 @@
                 color="primary"
                 @click="addCompetencyRow"
                 class="q-ml-sm"
+                :disable="competencySelections.length >= filteredCompetencyOptionsByType.length"
               />
             </div>
           </div>
@@ -1201,78 +1195,6 @@ import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
 import { useUnitWorkPlanStore } from 'src/stores/office/unitWorkPlanStore'
 import { useCompetencyStore } from 'src/stores/competencyStore'
 
-const quantityIndicator = [
-  { label: 'Quantity (A.   Custom Target)', value: 'numeric' },
-  { label: 'Quantity (B.  Can exceed 100%)', value: 'B' },
-  { label: 'Quantity (C. Cannot exceed 100%)', value: 'C' },
-]
-
-const createEmptyStandardRow = () => ({
-  rating: '',
-  quantity: '',
-  effectiveness: '',
-  timeliness: '',
-  timelinessRange: '',
-  timelinessText: '',
-  timelinessDeadline: '',
-  timelinessDate: '',
-})
-
-const createDefaultStandardRows = () => [
-  { ...createEmptyStandardRow(), rating: '5' },
-  { ...createEmptyStandardRow(), rating: '4' },
-  { ...createEmptyStandardRow(), rating: '3' },
-  { ...createEmptyStandardRow(), rating: '2' },
-  { ...createEmptyStandardRow(), rating: '1' },
-]
-
-const createDefaultPerformanceStandard = () => ({
-  id: uuidv4(),
-  expanded: true,
-  outputName: '',
-  indicatorName: [],
-  successIndicator: '',
-  requiredOutput: '',
-  modeOfVerification: '',
-  rows: { category: null, mfo: null, output: null },
-  quantityIndicatorType: 'numeric',
-  timelinessIndicatorType: 'beforeDeadline',
-  timelinessInputs: { range: true, date: false, description: false },
-  activeTimelinessInputs: { range: true, date: false, description: false },
-  competencies: {
-    core: [],
-    technical: [],
-    leadership: [],
-  },
-  standardOutcomeRows: createDefaultStandardRows(),
-  targetOutputValue: null,
-})
-
-const createDefaultEmployeeData = () => ({
-  id: uuidv4(),
-  name: '',
-  employeeId: null,
-  employeeData: null,
-  sg: null,
-  level: null,
-  rank: '',
-  position: '',
-  performanceStandards: [createDefaultPerformanceStandard()],
-})
-
-const numberCom = (value) => {
-  if (!value || value === '-') return '-'
-  return { Basic: '1', Intermediate: '2', Advanced: '3', Superior: '4' }[value] || value
-}
-
-const timelinessColumnClass = (standard) => {
-  const { range, date, description } = standard.activeTimelinessInputs
-  const activeCount = [range, date, description].filter(Boolean).length
-  if (activeCount === 1) return 'col'
-  if (activeCount === 2) return 'col-6'
-  return 'col-4'
-}
-
 export default {
   emits: ['close', 'cancel', 'saved'],
   props: {
@@ -1289,18 +1211,18 @@ export default {
     const uwpStore = useUnitWorkPlanStore()
     const competencyStore = useCompetencyStore()
 
-    // Add loading states
+    // Loading states
     const isLoading = ref(true)
     const isLoadingTargetPeriod = ref(true)
     const isLoadingEmployeeInfo = ref(true)
     const isLoadingStandards = ref(true)
     const isAddingStandard = ref(false)
+    const isLoadingFilteredEmployees = ref(false)
 
+    // Data refs
     const filteredMfoOptions = ref({})
     const filteredOutputOptions = ref({})
     const filteredVerbs = ref([])
-
-    // FIXED: Add targetPeriodDetails ref to store the actual target period data
     const targetPeriodDetails = ref({
       semester: '',
       year: '',
@@ -1315,48 +1237,22 @@ export default {
     const formInteracted = ref(false)
     const shouldValidate = ref(false)
     const currentEmployee = ref(null)
-    const isLoadingFilteredEmployees = ref(false)
     const currentStandardIndex = ref(0)
     const showQuantityModal = ref(false)
     const quantityValue = ref(null)
 
-    const coreCompetencies = ref([])
-    const technicalCompetencies = ref([])
-    const leadershipCompetencies = ref([])
-
     // Competency Modal Refs
     const showCompetencyModal = ref(false)
-    const competencyType = ref('core')
+    const competencyType = ref('technical')
     const currentStandardIndexForCompetency = ref(0)
     const selectedCompetency = ref(null)
     const selectedLevel = ref(null)
     const filteredCompetencyOptions = ref([])
     const showCompetencyError = ref([])
-
-    // Multiple competency selection refs
     const competencySelections = ref([{ selectedCompetency: null, selectedLevel: null }])
     const filteredCompetencyOptionsByRow = ref([])
 
-    const standardOutcomeColumns = [
-      { name: 'rating', label: 'Rating', field: 'rating', align: 'center', width: '80px' },
-      { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'center', width: '200px' },
-      {
-        name: 'effectiveness',
-        label: 'Effectiveness',
-        field: 'effectiveness',
-        align: 'center',
-        width: '300px',
-      },
-      {
-        name: 'timeliness',
-        label: 'Timeliness',
-        field: 'timeliness',
-        align: 'center',
-        width: '300px',
-      },
-    ]
-
-    // Competency Data
+    // Competency Data - Base definitions
     const competencyData = {
       core: [
         { code: 'DSE', description: 'Delivering Service Excellence' },
@@ -1389,23 +1285,279 @@ export default {
       { label: 'Superior', value: '4' },
     ]
 
-    const onBack = () => {
-      console.log('Back button clicked')
-      emit('close')
+    const quantityIndicator = [
+      { label: 'Quantity (A. Custom Target)', value: 'numeric' },
+      { label: 'Quantity (B. Can exceed 100%)', value: 'B' },
+      { label: 'Quantity (C. Cannot exceed 100%)', value: 'C' },
+    ]
+
+    const standardOutcomeColumns = [
+      { name: 'rating', label: 'Rating', field: 'rating', align: 'center', width: '80px' },
+      { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'center', width: '200px' },
+      {
+        name: 'effectiveness',
+        label: 'Effectiveness',
+        field: 'effectiveness',
+        align: 'center',
+        width: '300px',
+      },
+      {
+        name: 'timeliness',
+        label: 'Timeliness',
+        field: 'timeliness',
+        align: 'center',
+        width: '300px',
+      },
+    ]
+
+    // ==================== HELPER FUNCTIONS ====================
+
+    const getLevelText = (level) => {
+      if (level === '1') return '1st Level'
+      if (level === '2') return '2nd Level'
+      return `Level ${level}`
     }
+
+    const createEmptyStandardRow = () => ({
+      rating: '',
+      quantity: '',
+      effectiveness: '',
+      timeliness: '',
+      timelinessRange: '',
+      timelinessText: '',
+      timelinessDeadline: '',
+      timelinessDate: '',
+    })
+
+    const createDefaultStandardRows = () => [
+      { ...createEmptyStandardRow(), rating: '5' },
+      { ...createEmptyStandardRow(), rating: '4' },
+      { ...createEmptyStandardRow(), rating: '3' },
+      { ...createEmptyStandardRow(), rating: '2' },
+      { ...createEmptyStandardRow(), rating: '1' },
+    ]
+
+    const createDefaultPerformanceStandard = () => ({
+      id: uuidv4(),
+      expanded: true,
+      outputName: '',
+      indicatorName: [],
+      successIndicator: '',
+      requiredOutput: '',
+      modeOfVerification: '',
+      rows: { category: null, mfo: null, output: null },
+      quantityIndicatorType: 'numeric',
+      timelinessIndicatorType: 'beforeDeadline',
+      timelinessInputs: { range: true, date: false, description: false },
+      activeTimelinessInputs: { range: true, date: false, description: false },
+      competencies: {
+        core: [],
+        technical: [],
+        leadership: [],
+      },
+      standardOutcomeRows: createDefaultStandardRows(),
+      targetOutputValue: null,
+    })
+
+    const createDefaultEmployeeData = () => ({
+      id: uuidv4(),
+      name: '',
+      employeeId: null,
+      employeeData: null,
+      sg: null,
+      level: null,
+      rank: '',
+      position: '',
+      performanceStandards: [createDefaultPerformanceStandard()],
+    })
+
+    const timelinessColumnClass = (standard) => {
+      const { range, date, description } = standard.activeTimelinessInputs
+      const activeCount = [range, date, description].filter(Boolean).length
+      if (activeCount === 1) return 'col'
+      if (activeCount === 2) return 'col-6'
+      return 'col-4'
+    }
+
+    // ==================== LABEL RESOLVERS ====================
+
+    const getCategoryLabel = (categoryValue) => {
+      if (!categoryValue) return ''
+      if (typeof categoryValue === 'string' && isNaN(Number(categoryValue))) {
+        return categoryValue
+      }
+      if (typeof categoryValue === 'object' && categoryValue !== null) {
+        return categoryValue.name || categoryValue.label || ''
+      }
+      const categoryId = typeof categoryValue === 'object' ? categoryValue.id : categoryValue
+      const category = officeLibraryStore.categories.find((cat) => cat.id === categoryId)
+      return category?.name || category?.label || ''
+    }
+
+    const getMfoLabel = (mfoValue) => {
+      if (!mfoValue) return ''
+      if (typeof mfoValue === 'string' && isNaN(Number(mfoValue))) {
+        return mfoValue
+      }
+      if (typeof mfoValue === 'object' && mfoValue !== null) {
+        return mfoValue.name || mfoValue.label || ''
+      }
+      const mfoId = typeof mfoValue === 'object' ? mfoValue.id : mfoValue
+      const mfo = officeLibraryStore.mfos.find((m) => m.id === mfoId)
+      return mfo?.name || mfo?.label || ''
+    }
+
+    const getOutputLabel = (outputValue, categoryValue, mfoValue) => {
+      if (!outputValue) return ''
+      if (typeof outputValue === 'string' && isNaN(Number(outputValue))) {
+        return outputValue
+      }
+      if (typeof outputValue === 'object' && outputValue !== null) {
+        return outputValue.name || outputValue.label || ''
+      }
+      const outputId = typeof outputValue === 'object' ? outputValue.id : outputValue
+      const categoryId = categoryValue
+        ? typeof categoryValue === 'object'
+          ? categoryValue.id
+          : categoryValue
+        : null
+      const isSupport = categoryId ? isSupportCategory(categoryId) : false
+
+      if (isSupport) {
+        const output = officeLibraryStore.category_outputs.find((o) => o.id === outputId)
+        return output?.name || output?.label || ''
+      } else {
+        const mfoId = mfoValue ? (typeof mfoValue === 'object' ? mfoValue.id : mfoValue) : null
+        const output = officeLibraryStore.outputs.find(
+          (o) =>
+            o.id === outputId && o.f_category_id === categoryId && (!mfoId || o.mfo_id === mfoId),
+        )
+        return output?.name || output?.label || ''
+      }
+    }
+
+    // ==================== COMPETENCY STORE INTEGRATION ====================
+
+    // Get filtered competencies based on SG and Level
+    const getFilteredCompetenciesByType = (type) => {
+      if (!currentEmployee.value?.sg || !currentEmployee.value?.level) {
+        return []
+      }
+
+      const sg = currentEmployee.value.sg
+      const competencyRow = competencyStore.getBySG(sg)
+
+      if (!competencyRow) return []
+
+      // Get competencies based on type and filter only those with values
+      const typeCompetencies = competencyData[type] || []
+
+      return typeCompetencies
+        .filter((comp) => {
+          const competencyLevel = competencyRow[comp.code]
+          // Only include competencies that are required (have a level value and not '-')
+          return competencyLevel && competencyLevel !== '-'
+        })
+        .map((comp) => ({
+          code: comp.code,
+          description: comp.description,
+          label: `${comp.code} - ${comp.description}`,
+          requiredLevel: competencyRow[comp.code],
+        }))
+    }
+
+    // Computed property for filtered competency options based on current type
+    const filteredCompetencyOptionsByType = computed(() => {
+      return getFilteredCompetenciesByType(competencyType.value)
+    })
+
+    // Computed property for filtered competency options (for backward compatibility)
+    // const filteredCompetencyOptions = computed(() => {
+    //   return filteredCompetencyOptionsByType.value
+    // })
+
+    // Get level options for a specific competency
+    const getLevelOptionsForCompetency = (competency) => {
+      if (!competency) return []
+
+      const requiredLevel = competency.requiredLevel
+      const levelMap = {
+        Basic: { label: 'Basic', value: '1' },
+        Intermediate: { label: 'Intermediate', value: '2' },
+        Advanced: { label: 'Advanced', value: '3' },
+        Superior: { label: 'Superior', value: '4' },
+      }
+
+      return requiredLevel ? [levelMap[requiredLevel]] : []
+    }
+
+    // ==================== CORE COMPETENCY AUTO-POPULATION ====================
+
+    const autoPopulateCoreCompetencies = (standard, sg, level) => {
+      if (!sg || !level) {
+        console.log('Cannot auto-populate: missing SG or Level', { sg, level })
+        return
+      }
+
+      console.log('Auto-populating core competencies for SG:', sg, 'Level:', level)
+
+      // Get the competency row using the store's getBySG method
+      const competencyRow = competencyStore.getBySG(sg)
+
+      if (!competencyRow) {
+        console.log('No competency row found for SG:', sg)
+        return
+      }
+
+      console.log('Competency row:', competencyRow)
+
+      // Clear existing core competencies first
+      standard.competencies.core = []
+
+      // Get core competencies from competencyData
+      const coreCompetencies = competencyData.core || []
+
+      // For each core competency, check if it's required for this SG
+      coreCompetencies.forEach((comp) => {
+        const requiredLevel = competencyRow[comp.code]
+
+        // Only add if the competency is required (has a level and not '-')
+        if (requiredLevel && requiredLevel !== '-') {
+          // Map the level text to value
+          const valueMap = {
+            Basic: '1',
+            Intermediate: '2',
+            Advanced: '3',
+            Superior: '4',
+          }
+
+          standard.competencies.core.push({
+            code: comp.code,
+            description: comp.description,
+            value: valueMap[requiredLevel] || '1',
+            level: requiredLevel,
+          })
+
+          console.log(`Added ${comp.code} with level ${requiredLevel}`)
+        }
+      })
+
+      console.log('Final core competencies:', standard.competencies.core)
+    }
+
+    // ==================== COMPUTED PROPERTIES ====================
+
     const semesterOptions = computed(() => uwpStore.getSemesterOptions)
     const yearOptions = computed(() => uwpStore.getYearOptions)
 
     const breadcrumbDisplay = computed(() => {
       if (!currentEmployee.value?.employeeData?.target_periods?.[0]) return 'Loading...'
-
       const targetPeriod = currentEmployee.value.employeeData.target_periods[0]
       const parts = []
       if (targetPeriod.office) parts.push(targetPeriod.office)
       if (targetPeriod.division) parts.push(targetPeriod.division)
       if (targetPeriod.section) parts.push(targetPeriod.section)
       if (targetPeriod.unit) parts.push(targetPeriod.unit)
-
       return parts.join(' / ') || 'Organization Structure'
     })
 
@@ -1415,104 +1567,27 @@ export default {
       return { name, rank, position, sg, level }
     })
 
-    // Add these functions to resolve labels from IDs/objects
-    const getCategoryLabel = (categoryValue) => {
-      if (!categoryValue) return ''
+    const categoryOptions = computed(() =>
+      officeLibraryStore.categories.map((cat) => ({
+        id: cat.id,
+        label: cat.name,
+        value: cat.id,
+        name: cat.name,
+      })),
+    )
 
-      // If it's already a string (label), return it
-      if (typeof categoryValue === 'string' && isNaN(Number(categoryValue))) {
-        return categoryValue
-      }
+    const performanceIndicatorOptions = computed(() =>
+      officeLibraryIndicatorStore.verbs.map((verb) => ({
+        id: verb.id,
+        label: verb.indicator_name || verb.name,
+        value: verb.id,
+        name: verb.indicator_name || verb.name,
+        description: verb.description || '',
+      })),
+    )
 
-      // If it's an object with label/name property
-      if (typeof categoryValue === 'object' && categoryValue !== null) {
-        return categoryValue.name || categoryValue.label || ''
-      }
-
-      // If it's an ID, find in store
-      const categoryId = typeof categoryValue === 'object' ? categoryValue.id : categoryValue
-      const category = officeLibraryStore.categories.find((cat) => cat.id === categoryId)
-      return category?.name || category?.label || ''
-    }
-
-    const getMfoLabel = (mfoValue) => {
-      if (!mfoValue) return ''
-
-      // If it's already a string (label), return it
-      if (typeof mfoValue === 'string' && isNaN(Number(mfoValue))) {
-        return mfoValue
-      }
-
-      // If it's an object with label/name property
-      if (typeof mfoValue === 'object' && mfoValue !== null) {
-        return mfoValue.name || mfoValue.label || ''
-      }
-
-      // If it's an ID, find in store
-      const mfoId = typeof mfoValue === 'object' ? mfoValue.id : mfoValue
-      const mfo = officeLibraryStore.mfos.find((m) => m.id === mfoId)
-      return mfo?.name || mfo?.label || ''
-    }
-
-    const getOutputLabel = (outputValue, categoryValue, mfoValue) => {
-      if (!outputValue) return ''
-
-      // If it's already a string (label), return it
-      if (typeof outputValue === 'string' && isNaN(Number(outputValue))) {
-        return outputValue
-      }
-
-      // If it's an object with label/name property
-      if (typeof outputValue === 'object' && outputValue !== null) {
-        return outputValue.name || outputValue.label || ''
-      }
-
-      // If it's an ID, find in store
-      const outputId = typeof outputValue === 'object' ? outputValue.id : outputValue
-
-      // Get category ID
-      const categoryId = categoryValue
-        ? typeof categoryValue === 'object'
-          ? categoryValue.id
-          : categoryValue
-        : null
-
-      // Check if it's a support category
-      const isSupport = categoryId ? isSupportCategory(categoryId) : false
-
-      if (isSupport) {
-        // Look in category_outputs
-        const output = officeLibraryStore.category_outputs.find((o) => o.id === outputId)
-        return output?.name || output?.label || ''
-      } else {
-        // Look in regular outputs
-        const mfoId = mfoValue ? (typeof mfoValue === 'object' ? mfoValue.id : mfoValue) : null
-
-        const output = officeLibraryStore.outputs.find(
-          (o) =>
-            o.id === outputId && o.f_category_id === categoryId && (!mfoId || o.mfo_id === mfoId),
-        )
-        return output?.name || output?.label || ''
-      }
-    }
-
-    // FIXED: This was incorrect - should use actual target period data
-    const hasMinimumEffectivenessValues = (index) => {
-      const standard = currentEmployee.value?.performanceStandards?.[index]
-      if (!standard) return false
-      const filledValues = standard.standardOutcomeRows.filter(
-        (row) => row.effectiveness?.trim()?.length > 0,
-      ).length
-      return filledValues >= 2
-    }
-
-    // Competency computed properties
     const competencyOptions = computed(() => {
-      const options = competencyData[competencyType.value] || []
-      return options.map((comp) => ({
-        ...comp,
-        label: `${comp.code} - ${comp.description}`,
-      }))
+      return filteredCompetencyOptionsByType.value
     })
 
     const isAnyCompetencyValid = computed(() => {
@@ -1527,13 +1602,11 @@ export default {
       if (!hasTargetPeriod) return false
 
       return currentEmployee.value.performanceStandards?.every((standard) => {
-        // Check effectiveness values
         const filled =
           standard.standardOutcomeRows?.filter((row) => row.effectiveness?.trim()?.length > 0)
             .length || 0
         if (filled < 2) return false
 
-        // Check competencies (at least 1)
         const { core, technical, leadership } = standard.competencies || {}
         const totalCompetencies =
           (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
@@ -1542,96 +1615,53 @@ export default {
       })
     })
 
-    const filterPerformanceIndicators = (val, update) => {
-      const needle = (val || '').toLowerCase()
-      // Use the computed property directly from the store
-      const base = officeLibraryIndicatorStore.verbs.map((verb) => ({
-        id: verb.id,
-        label: verb.indicator_name || verb.name,
-        value: verb.id,
-        name: verb.indicator_name || verb.name,
-        description: verb.description || '',
-      }))
-      const filtered = base.filter(
-        (verb) =>
-          verb.label.toLowerCase().includes(needle) ||
-          verb.description.toLowerCase().includes(needle),
-      )
-      if (typeof update === 'function') update(() => (filteredVerbs.value = filtered))
-      else filteredVerbs.value = filtered
-    }
+    // ==================== MFO/OUTPUT FILTERING ====================
 
     const isSupportCategory = (categoryId) => {
-      if (!categoryId) return false // Handle null/undefined
-
-      // If categoryId is an object with id property
+      if (!categoryId) return false
       const id = typeof categoryId === 'object' ? categoryId.id : categoryId
       if (!id) return false
-
       const category = officeLibraryStore.categories.find((cat) => cat.id === id)
-      return category && category.name === 'C. SUPPORT FUNCTION'
+      return (
+        category &&
+        (category.name === 'C. SUPPORT FUNCTION' ||
+          category.name?.toLowerCase().includes('support'))
+      )
     }
-
-    // In the setup() function, modify these computed-like functions:
 
     const getFilteredMfoOptions = (index) => {
       const standard = currentEmployee.value?.performanceStandards?.[index]
       if (!standard?.rows.category) return []
 
-      // Use computed or watch to make it reactive
-      return computed(() => {
-        const categoryId =
-          typeof standard.rows.category === 'object'
-            ? standard.rows.category.id
-            : standard.rows.category
+      const categoryId =
+        typeof standard.rows.category === 'object'
+          ? standard.rows.category.id
+          : standard.rows.category
 
-        return officeLibraryStore.mfos
-          .filter((mfo) => mfo.f_category_id === categoryId)
-          .map((mfo) => ({
-            id: mfo.id,
-            label: mfo.name,
-            value: mfo.id,
-            name: mfo.name,
-            code: mfo.code || '',
-            description: mfo.description || '',
-          }))
-      }).value
+      return officeLibraryStore.mfos
+        .filter((mfo) => mfo.f_category_id === categoryId)
+        .map((mfo) => ({
+          id: mfo.id,
+          label: mfo.name,
+          value: mfo.id,
+          name: mfo.name,
+          code: mfo.code || '',
+          description: mfo.description || '',
+        }))
     }
 
     const getFilteredOutputOptions = (index) => {
       const standard = currentEmployee.value?.performanceStandards?.[index]
-      if (!standard?.rows?.category) return [] // Add optional chaining here
+      if (!standard?.rows?.category) return []
 
-      return computed(() => {
-        const category = standard.rows.category
-        // Add null check before accessing .id
-        if (!category) return []
+      const category = standard.rows.category
+      if (!category) return []
 
-        const categoryId = typeof category === 'object' ? category.id : category
+      const categoryId = typeof category === 'object' ? category.id : category
 
-        if (isSupportCategory(categoryId)) {
-          // Handle support category
-          return officeLibraryStore.category_outputs
-            .filter((output) => output.f_category_id === categoryId)
-            .map((output) => ({
-              id: output.id,
-              label: output.name,
-              value: output.id,
-              name: output.name,
-              code: output.code || '',
-              description: output.description || '',
-            }))
-        }
-
-        const mfo = standard.rows.mfo
-        const mfoId = mfo ? (typeof mfo === 'object' ? mfo.id : mfo) : null
-
-        return officeLibraryStore.outputs
-          .filter((output) => {
-            if (output.f_category_id !== categoryId) return false
-            if (mfoId) return output.mfo_id === mfoId
-            return output.mfo_id === null
-          })
+      if (isSupportCategory(categoryId)) {
+        return officeLibraryStore.category_outputs
+          .filter((output) => output.f_category_id === categoryId)
           .map((output) => ({
             id: output.id,
             label: output.name,
@@ -1640,7 +1670,25 @@ export default {
             code: output.code || '',
             description: output.description || '',
           }))
-      }).value
+      }
+
+      const mfo = standard.rows.mfo
+      const mfoId = mfo ? (typeof mfo === 'object' ? mfo.id : mfo) : null
+
+      return officeLibraryStore.outputs
+        .filter((output) => {
+          if (output.f_category_id !== categoryId) return false
+          if (mfoId) return output.mfo_id === mfoId
+          return output.mfo_id === null
+        })
+        .map((output) => ({
+          id: output.id,
+          label: output.name,
+          value: output.id,
+          name: output.name,
+          code: output.code || '',
+          description: output.description || '',
+        }))
     }
 
     const clearDependentFields = (standardIndex, fieldIndex) => {
@@ -1740,25 +1788,34 @@ export default {
       })
     }
 
-    const sanitizeNumericInput = (row, field) => {
-      if (!row[field]) return
-      row[field] = row[field].replace(/[^0-9-]/g, '')
-      const hyphens = row[field].split('-').length - 1
-      if (hyphens > 1) row[field] = row[field].substring(0, row[field].lastIndexOf('-'))
+    const filterPerformanceIndicators = (val, update) => {
+      const needle = (val || '').toLowerCase()
+      const base = officeLibraryIndicatorStore.verbs.map((verb) => ({
+        id: verb.id,
+        label: verb.indicator_name || verb.name,
+        value: verb.id,
+        name: verb.indicator_name || verb.name,
+        description: verb.description || '',
+      }))
+      const filtered = base.filter(
+        (verb) =>
+          verb.label.toLowerCase().includes(needle) ||
+          verb.description.toLowerCase().includes(needle),
+      )
+      if (typeof update === 'function') update(() => (filteredVerbs.value = filtered))
+      else filteredVerbs.value = filtered
     }
+
+    // ==================== SUCCESS INDICATOR GENERATION ====================
 
     const getQuantityComponent = (index) => {
       const standard = currentEmployee.value?.performanceStandards?.[index]
       if (!standard) return ''
 
-      // ALWAYS use the current quantityIndicatorType first, not the API data
-      // This ensures real-time updates when user changes the option
       if (standard.quantityIndicatorType === 'numeric') {
-        // Type A: Get from row 5 quantity field
         return standard.standardOutcomeRows.find((row) => row.rating === '5')?.quantity || ''
       }
       if (standard.quantityIndicatorType === 'B') {
-        // Type B: Get from targetOutputValue or API config
         return (
           standard.targetOutputValue ||
           standard.apiData?.config?.targetOutput ||
@@ -1767,10 +1824,8 @@ export default {
         )
       }
       if (standard.quantityIndicatorType === 'C') {
-        // Type C: Fixed at 100%
         return '100%'
       }
-
       return ''
     }
 
@@ -1821,10 +1876,8 @@ export default {
         const quantityPart = getQuantityComponent(i)
         const outputNamePart = standard.outputName?.trim() || ''
 
-        // UPDATED: Handle multiple indicators with "and" before the last one
         let indicatorNamePart = ''
         if (Array.isArray(standard.indicatorName) && standard.indicatorName.length > 0) {
-          // Map each indicator (could be ID or string) to its name
           const indicatorNames = standard.indicatorName
             .map((idOrText) => {
               if (typeof idOrText === 'number' || !isNaN(idOrText)) {
@@ -1833,11 +1886,10 @@ export default {
                 )
                 return verb?.indicator_name || verb?.name || ''
               }
-              return idOrText // It's already a string like "supervised"
+              return idOrText
             })
             .filter(Boolean)
 
-          // Join with commas and "and" before the last item
           if (indicatorNames.length === 1) {
             indicatorNamePart = indicatorNames[0]
           } else if (indicatorNames.length === 2) {
@@ -1852,7 +1904,6 @@ export default {
         const effectivenessPart = getEffectivenessComponent(i)
         const timelinessPart = getTimelinessComponent(i)
 
-        // Build success indicator
         standard.successIndicator = [
           quantityPart,
           outputNamePart,
@@ -1862,16 +1913,16 @@ export default {
         ]
           .filter(Boolean)
           .join(' ')
-
-        console.log(`Success Indicator for standard ${i + 1}:`, {
-          quantityValue: quantityPart,
-          outputName: outputNamePart,
-          indicatorNames: indicatorNamePart,
-          effectiveness: effectivenessPart,
-          timeliness: timelinessPart,
-          final: standard.successIndicator,
-        })
       })
+    }
+
+    // ==================== QUANTITY/TIMELINESS HANDLERS ====================
+
+    const sanitizeNumericInput = (row, field) => {
+      if (!row[field]) return
+      row[field] = row[field].replace(/[^0-9-]/g, '')
+      const hyphens = row[field].split('-').length - 1
+      if (hyphens > 1) row[field] = row[field].substring(0, row[field].lastIndexOf('-'))
     }
 
     const onQuantityUpdate = (row, field, index) => {
@@ -1936,29 +1987,24 @@ export default {
       standard.quantityIndicatorType = value
       currentStandardIndex.value = index
 
-      // If we have API data with config, extract the targetOutput
+      // If there's existing API data with targetOutput, store it but still show modal for manual input
       if (standard.apiData?.config && value === 'B') {
         const config = standard.apiData.config
         const targetOutput = config.targetOutput || config.target_output
         if (targetOutput) {
+          // Store the existing value but don't auto-calculate
           quantityValue.value = targetOutput
           standard.targetOutputValue = targetOutput
-          // COMPUTE IMMEDIATELY if we have the value
-          computeQuantities('B', index)
-          return // Don't show modal if we already have the value
+          // Don't return here - allow modal to show
         }
       }
 
       if (value === 'B') {
-        if (!quantityValue.value) {
-          quantityValue.value = null
-        }
+        // Always show modal for type B when manually selected
         showQuantityModal.value = true
       } else if (value === 'C') {
-        // When changing to C, compute quantities immediately
         computeQuantities('C', index)
       } else {
-        // Type A: Clear quantity fields
         standard.standardOutcomeRows.forEach((row) => (row.quantity = ''))
         generateSuccessIndicator(index)
       }
@@ -1971,30 +2017,9 @@ export default {
 
       const currentType = type || standard.quantityIndicatorType
 
-      console.log('computeQuantities called:', {
-        type,
-        index,
-        currentType,
-        currentStandardIndex: currentStandardIndex.value,
-        quantityValue: quantityValue.value,
-        targetOutputValue: standard.targetOutputValue,
-        standard,
-      })
-
-      // =====================
-      // TYPE B (Auto-compute, can exceed 100%)
-      // =====================
       if (currentType === 'B') {
-        // Use either the stored targetOutputValue or the current quantityValue from modal
-        let targetValue = standard.targetOutputValue || quantityValue.value
-
-        // If we have quantityValue from modal input, use it and store it
-        if (quantityValue.value && !standard.targetOutputValue) {
-          targetValue = quantityValue.value
-          standard.targetOutputValue = targetValue.toString()
-        }
-
-        console.log('Processing Type B with targetValue:', targetValue)
+        // Always use the current quantityValue from modal input
+        let targetValue = quantityValue.value
 
         if (!targetValue || isNaN(targetValue) || targetValue <= 0) {
           $q.notify({
@@ -2005,54 +2030,33 @@ export default {
           return
         }
 
+        // Update the standard with the new value
+        standard.targetOutputValue = targetValue.toString()
+
         const base = Number(targetValue)
 
-        // Store target output
-        standard.targetOutputValue = base.toString()
-
-        // Rounded thresholds (rounded once to avoid gaps)
         const max130 = Math.round(base * 1.3)
         const max115 = Math.round(base * 1.15)
         const max50 = Math.round(base * 0.5)
 
-        console.log('Calculated thresholds:', { base, max130, max115, max50 })
-
-        // Continuous ranges (no gaps, no overlaps)
         const above130Min = max130
-
         const range115to129Min = max115
         const range115to129Max = max130 - 1
-
         const range100to114Min = base
         const range100to114Max = max115 - 1
-
         const range51to99Min = max50 + 1
         const range51to99Max = base - 1
-
         const below50Max = max50
 
-        console.log('Final ranges:', {
-          above130Min,
-          range115to129: `${range115to129Min}-${range115to129Max}`,
-          range100to114: `${range100to114Min}-${range100to114Max}`,
-          range51to99: `${range51to99Min}-${range51to99Max}`,
-          below50Max,
-        })
-
-        // Assign quantities
         standard.standardOutcomeRows[0].quantity = `${above130Min} and above`
         standard.standardOutcomeRows[1].quantity = `${range115to129Min}-${range115to129Max}`
         standard.standardOutcomeRows[2].quantity = `${range100to114Min}-${range100to114Max}`
         standard.standardOutcomeRows[3].quantity = `${range51to99Min}-${range51to99Max}`
         standard.standardOutcomeRows[4].quantity = `${below50Max} and below`
 
-        // Clear any leftover quantityValue from modal
         quantityValue.value = null
-
-        // Close the modal
         showQuantityModal.value = false
 
-        // Generate success indicator
         generateSuccessIndicator(idx)
 
         $q.notify({
@@ -2060,16 +2064,8 @@ export default {
           color: 'positive',
           position: 'top',
         })
-
-        // =====================
-        // TYPE C (Percentage-based, max 100%)
-        // =====================
       } else if (currentType === 'C') {
-        console.log('Processing Type C')
-
         standard.targetOutputValue = '100%'
-
-        // Clear any stored quantity value
         if (quantityValue.value) {
           quantityValue.value = null
         }
@@ -2088,28 +2084,14 @@ export default {
           position: 'top',
         })
       } else {
-        console.log('Processing Type A (numeric)')
-
         standard.targetOutputValue = null
-
-        // Clear any stored quantity value
         if (quantityValue.value) {
           quantityValue.value = null
         }
-
-        // Quantities are manually entered by the user
-        // Nothing to auto-calculate here, but ensure fields are clear
         standard.standardOutcomeRows.forEach((row) => {
           row.quantity = row.quantity || ''
         })
-
         generateSuccessIndicator(idx)
-
-        $q.notify({
-          message: 'Switched to manual quantity input (Type A)',
-          color: 'info',
-          position: 'top',
-        })
       }
     }
 
@@ -2120,13 +2102,198 @@ export default {
       showQuantityModal.value = false
     }
 
+    const hasMinimumEffectivenessValues = (index) => {
+      const standard = currentEmployee.value?.performanceStandards?.[index]
+      if (!standard || !standard.standardOutcomeRows) return false
+      const filledValues = standard.standardOutcomeRows.filter(
+        (row) => row.effectiveness && row.effectiveness.trim().length > 0,
+      ).length
+      return filledValues >= 2
+    }
+
+    // ==================== COMPETENCY MODAL METHODS ====================
+
+    const openCompetencyModal = (type, standardIndex) => {
+      if (!currentEmployee.value?.sg || !currentEmployee.value?.level) {
+        $q.notify({
+          message: 'Employee SG and Level are required to select competencies',
+          color: 'warning',
+          position: 'top',
+        })
+        return
+      }
+
+      competencyType.value = type
+      currentStandardIndexForCompetency.value = standardIndex
+
+      // Reset selections
+      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
+
+      // Initialize filtered options with all available competencies for this type
+      filteredCompetencyOptionsByRow.value = [[...filteredCompetencyOptionsByType.value]]
+
+      showCompetencyModal.value = true
+    }
+
+    const filterCompetencies = (val, update, rowIndex) => {
+      if (typeof update === 'function') {
+        update(() => {
+          const needle = (val || '').toLowerCase()
+
+          // Get the base options from filteredCompetencyOptionsByType
+          const baseOptions = filteredCompetencyOptionsByType.value
+
+          // Filter based on search term
+          const filtered = baseOptions.filter(
+            (comp) =>
+              comp.code.toLowerCase().includes(needle) ||
+              comp.description.toLowerCase().includes(needle),
+          )
+
+          // Ensure the array exists for this row
+          if (!filteredCompetencyOptionsByRow.value[rowIndex]) {
+            filteredCompetencyOptionsByRow.value[rowIndex] = []
+          }
+
+          // Set the filtered options
+          filteredCompetencyOptionsByRow.value[rowIndex] = filtered
+        })
+      }
+    }
+
+    const getAvailableCompetencies = (rowIndex) => {
+      // Get all selected competency codes from other rows
+      const selectedCodes = competencySelections.value
+        .map((sel, idx) =>
+          idx !== rowIndex && sel.selectedCompetency ? sel.selectedCompetency.code : null,
+        )
+        .filter(Boolean)
+
+      // Get the options for this row (either filtered or all available)
+      const options =
+        filteredCompetencyOptionsByRow.value[rowIndex] || filteredCompetencyOptionsByType.value
+
+      // Filter out already selected competencies
+      return options.filter((comp) => !selectedCodes.includes(comp.code))
+    }
+
+    const addCompetencyRow = () => {
+      // Don't add if we've reached the maximum available competencies
+      if (competencySelections.value.length >= filteredCompetencyOptionsByType.value.length) {
+        $q.notify({
+          message: 'No more competencies available to add',
+          color: 'warning',
+          position: 'top',
+        })
+        return
+      }
+
+      competencySelections.value.push({ selectedCompetency: null, selectedLevel: null })
+      filteredCompetencyOptionsByRow.value.push([...filteredCompetencyOptionsByType.value])
+    }
+
+    const removeCompetencyRow = (index) => {
+      if (competencySelections.value.length > 1) {
+        competencySelections.value.splice(index, 1)
+        filteredCompetencyOptionsByRow.value.splice(index, 1)
+      }
+    }
+
+    const addAllSelectedCompetencies = () => {
+      const standard =
+        currentEmployee.value?.performanceStandards[currentStandardIndexForCompetency.value]
+      if (!standard) return
+
+      let addedCount = 0
+      competencySelections.value.forEach((selection) => {
+        if (selection.selectedCompetency && selection.selectedLevel) {
+          const competency = {
+            code: selection.selectedCompetency.code,
+            description: selection.selectedCompetency.description,
+            value: selection.selectedLevel.value,
+            level: selection.selectedLevel.label,
+          }
+          const alreadyExists = standard.competencies[competencyType.value].some(
+            (existing) => existing.code === competency.code,
+          )
+          if (!alreadyExists) {
+            standard.competencies[competencyType.value].push(competency)
+            addedCount++
+          }
+        }
+      })
+
+      if (addedCount > 0) {
+        $q.notify({
+          message: `${addedCount} competenc${addedCount > 1 ? 'ies' : 'y'} added`,
+          color: 'positive',
+          position: 'top',
+        })
+      }
+
+      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
+      filteredCompetencyOptionsByRow.value = [filteredCompetencyOptionsByType.value]
+      showCompetencyModal.value = false
+      validateCompetencies(currentStandardIndexForCompetency.value)
+    }
+
+    const removeCompetency = (type, compIndex, standardIndex) => {
+      const standard = currentEmployee.value?.performanceStandards[standardIndex]
+      if (!standard || !standard.competencies[type]) return
+
+      $q.dialog({
+        title: 'Confirm Removal',
+        message: `Remove ${standard.competencies[type][compIndex].code} competency?`,
+        cancel: true,
+        persistent: true,
+      }).onOk(() => {
+        standard.competencies[type].splice(compIndex, 1)
+        $q.notify({
+          message: 'Competency removed',
+          color: 'positive',
+          position: 'top',
+        })
+        validateCompetencies(standardIndex)
+      })
+    }
+
+    const validateCompetencies = (standardIndex) => {
+      const standard = currentEmployee.value?.performanceStandards[standardIndex]
+      if (!standard) return
+      const { core, technical, leadership } = standard.competencies
+      const totalCompetencies =
+        (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
+      showCompetencyError.value[standardIndex] = totalCompetencies === 0
+    }
+
+    const cancelCompetencySelection = () => {
+      showCompetencyModal.value = false
+      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
+      filteredCompetencyOptionsByRow.value = [[...filteredCompetencyOptionsByType.value]]
+    }
+
+    // ==================== PERFORMANCE STANDARD MANAGEMENT ====================
+
     const addPerformanceStandard = async () => {
       isAddingStandard.value = true
       try {
         if (!currentEmployee.value) currentEmployee.value = createDefaultEmployeeData()
         if (!currentEmployee.value.performanceStandards)
           currentEmployee.value.performanceStandards = []
-        currentEmployee.value.performanceStandards.push(createDefaultPerformanceStandard())
+
+        const newStandard = createDefaultPerformanceStandard()
+
+        // Auto-populate core competencies for the new standard
+        if (currentEmployee.value.sg && currentEmployee.value.level) {
+          autoPopulateCoreCompetencies(
+            newStandard,
+            currentEmployee.value.sg,
+            currentEmployee.value.level,
+          )
+        }
+
+        currentEmployee.value.performanceStandards.push(newStandard)
+
         $q.notify({
           message: `Added new performance standard ${currentEmployee.value.performanceStandards.length}`,
           color: 'positive',
@@ -2166,130 +2333,7 @@ export default {
       })
     }
 
-    // Competency Methods
-    const openCompetencyModal = (type, standardIndex) => {
-      competencyType.value = type
-      currentStandardIndexForCompetency.value = standardIndex
-      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
-      filteredCompetencyOptionsByRow.value = [competencyOptions.value]
-      showCompetencyModal.value = true
-    }
-
-    const filterCompetencies = (val, update, rowIndex) => {
-      if (typeof update === 'function') {
-        update(() => {
-          const needle = (val || '').toLowerCase()
-          const filtered = competencyOptions.value.filter(
-            (comp) =>
-              comp.code.toLowerCase().includes(needle) ||
-              comp.description.toLowerCase().includes(needle),
-          )
-          if (!filteredCompetencyOptionsByRow.value[rowIndex]) {
-            filteredCompetencyOptionsByRow.value[rowIndex] = []
-          }
-          filteredCompetencyOptionsByRow.value[rowIndex] = filtered
-        })
-      } else {
-        if (!filteredCompetencyOptionsByRow.value[rowIndex]) {
-          filteredCompetencyOptionsByRow.value[rowIndex] = []
-        }
-        filteredCompetencyOptionsByRow.value[rowIndex] = competencyOptions.value
-      }
-    }
-
-    const getAvailableCompetencies = (rowIndex) => {
-      const selectedCodes = competencySelections.value
-        .map((sel, idx) =>
-          idx !== rowIndex && sel.selectedCompetency ? sel.selectedCompetency.code : null,
-        )
-        .filter(Boolean)
-      const options = filteredCompetencyOptionsByRow.value[rowIndex] || competencyOptions.value
-      return options.filter((comp) => !selectedCodes.includes(comp.code))
-    }
-
-    const addCompetencyRow = () => {
-      competencySelections.value.push({ selectedCompetency: null, selectedLevel: null })
-      filteredCompetencyOptionsByRow.value.push(competencyOptions.value)
-    }
-
-    const removeCompetencyRow = (index) => {
-      if (competencySelections.value.length > 1) {
-        competencySelections.value.splice(index, 1)
-        filteredCompetencyOptionsByRow.value.splice(index, 1)
-      }
-    }
-
-    const addAllSelectedCompetencies = () => {
-      const standard =
-        currentEmployee.value?.performanceStandards[currentStandardIndexForCompetency.value]
-      if (!standard) return
-
-      let addedCount = 0
-      competencySelections.value.forEach((selection) => {
-        if (selection.selectedCompetency && selection.selectedLevel) {
-          const competency = {
-            code: selection.selectedCompetency.code,
-            description: selection.selectedCompetency.description,
-            value: selection.selectedLevel.value,
-          }
-          const alreadyExists = standard.competencies[competencyType.value].some(
-            (existing) => existing.code === competency.code,
-          )
-          if (!alreadyExists) {
-            standard.competencies[competencyType.value].push(competency)
-            addedCount++
-          }
-        }
-      })
-
-      if (addedCount > 0) {
-        $q.notify({
-          message: `${addedCount} competenc${addedCount > 1 ? 'ies' : 'y'} added`,
-          color: 'positive',
-          position: 'top',
-        })
-      }
-
-      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
-      filteredCompetencyOptionsByRow.value = [competencyOptions.value]
-      showCompetencyModal.value = false
-      validateCompetencies(currentStandardIndexForCompetency.value)
-    }
-
-    const removeCompetency = (type, compIndex, standardIndex) => {
-      const standard = currentEmployee.value?.performanceStandards[standardIndex]
-      if (!standard || !standard.competencies[type]) return
-
-      $q.dialog({
-        title: 'Confirm Removal',
-        message: `Remove ${standard.competencies[type][compIndex].code} competency?`,
-        cancel: true,
-        persistent: true,
-      }).onOk(() => {
-        standard.competencies[type].splice(compIndex, 1)
-        $q.notify({
-          message: 'Competency removed',
-          color: 'positive',
-          position: 'top',
-        })
-        validateCompetencies(standardIndex)
-      })
-    }
-
-    const validateCompetencies = (standardIndex) => {
-      const standard = currentEmployee.value?.performanceStandards[standardIndex]
-      if (!standard) return
-      const { core, technical, leadership } = standard.competencies
-      const totalCompetencies =
-        (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
-      showCompetencyError.value[standardIndex] = totalCompetencies === 0
-    }
-
-    const cancelCompetencySelection = () => {
-      showCompetencyModal.value = false
-      competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
-      filteredCompetencyOptionsByRow.value = [competencyOptions.value]
-    }
+    // ==================== VALIDATION ====================
 
     const validateStrictNumeric = (value) => {
       if (!value) return true
@@ -2318,126 +2362,7 @@ export default {
       event.preventDefault()
     }
 
-    const getLevelText = (level) => {
-      if (level === '1') return '1st Level'
-      if (level === '2') return '2nd Level'
-      return `Level ${level}`
-    }
-
-    const getSGRange = (sg, level) => {
-      const levelText = getLevelText(level)
-      const salaryGrades = competencyStore.getSalaryGrades(levelText)
-      if (!salaryGrades) return sg?.toString?.() || ''
-
-      for (const range of salaryGrades) {
-        if (range.includes('-')) {
-          const [min, max] = range.split('-').map(Number)
-          if (Number(sg) >= min && Number(sg) <= max) return range
-        } else if (Number(sg) === Number(range)) return range
-      }
-      return sg?.toString?.() || ''
-    }
-
-    const updateEmployeeCompetencies = (employee) => {
-      if (!employee?.sg || !employee?.level) {
-        coreCompetencies.value = []
-        technicalCompetencies.value = []
-        leadershipCompetencies.value = []
-        return
-      }
-
-      const levelText = getLevelText(employee.level)
-      const sgRange = getSGRange(employee.sg, employee.level)
-      const row = competencyStore.getRow(levelText, sgRange)
-      if (!row) {
-        coreCompetencies.value = []
-        technicalCompetencies.value = []
-        leadershipCompetencies.value = []
-        return
-      }
-
-      coreCompetencies.value = [
-        { code: 'DSE', value: row.DSE, description: competencyStore.descriptions.core.DSE },
-        { code: 'EI', value: row.EI, description: competencyStore.descriptions.core.EI },
-        { code: 'IS', value: row.IS, description: competencyStore.descriptions.core.IS },
-      ].filter((c) => c.value && c.value !== '-')
-
-      technicalCompetencies.value = [
-        {
-          code: 'P&O',
-          value: row['P&O'],
-          description: competencyStore.descriptions.technical['P&O'],
-        },
-        {
-          code: 'M&E',
-          value: row['M&E'],
-          description: competencyStore.descriptions.technical['M&E'],
-        },
-        { code: 'RM', value: row.RM, description: competencyStore.descriptions.technical.RM },
-        {
-          code: 'P&N',
-          value: row['P&N'],
-          description: competencyStore.descriptions.technical['P&N'],
-        },
-        { code: 'PM', value: row.PM, description: competencyStore.descriptions.technical.PM },
-        { code: 'AD', value: row.AD, description: competencyStore.descriptions.technical.AD },
-      ].filter((c) => c.value && c.value !== '-')
-
-      leadershipCompetencies.value = [
-        { code: 'TSC', value: row.TSC, description: competencyStore.descriptions.leadership.TSC },
-        {
-          code: 'PSDM',
-          value: row.PSDM,
-          description: competencyStore.descriptions.leadership.PSDM,
-        },
-        {
-          code: 'BCIWR',
-          value: row.BCIWR,
-          description: competencyStore.descriptions.leadership.BCIWR,
-        },
-        {
-          code: 'MPCR',
-          value: row.MPCR,
-          description: competencyStore.descriptions.leadership.MPCR,
-        },
-      ].filter((c) => c.value && c.value !== '-')
-    }
-
-    const initializeUWPData = async () => {
-      try {
-        isLoading.value = true
-        isLoadingTargetPeriod.value = true
-        isLoadingEmployeeInfo.value = true
-        isLoadingStandards.value = true
-
-        const { controlNo, semester, year } = props
-
-        // Set default values from props
-        targetPeriodDetails.value.semester = semester
-        targetPeriodDetails.value.year = year
-
-        console.log('🔍 Initializing with props:', { controlNo, semester, year })
-
-        if (controlNo && semester && year) {
-          await fetchEmployeeData(controlNo, semester, year)
-        } else {
-          $q.notify({
-            message: 'Missing required parameters',
-            color: 'warning',
-            position: 'top',
-          })
-          currentEmployee.value = createDefaultEmployeeData()
-        }
-      } catch (error) {
-        console.error('Failed to initialize UWP data:', error)
-        currentEmployee.value = createDefaultEmployeeData()
-      } finally {
-        // Set loading to false
-        setTimeout(() => {
-          isLoading.value = false
-        }, 500)
-      }
-    }
+    // ==================== DATA FETCHING ====================
 
     const fetchEmployeeData = async (controlNo, semester, year) => {
       isLoadingFilteredEmployees.value = true
@@ -2447,8 +2372,6 @@ export default {
 
         if (employeeData?.length) {
           const employee = employeeData[0]
-          console.log('📊 Employee raw data:', employee)
-          console.log('📊 Target periods from API:', employee.employeeData?.target_periods)
 
           // Set currentEmployee with basic info
           currentEmployee.value = {
@@ -2465,21 +2388,20 @@ export default {
             hierarchy: {},
           }
 
-          // Check if employee data has target periods directly
+          console.log('📊 Employee SG/Level:', {
+            sg: currentEmployee.value.sg,
+            level: currentEmployee.value.level,
+          })
+
           let targetPeriod = null
 
           if (employee.employeeData?.target_periods?.[0]) {
-            // Data from fetchEmployeeByControlNo returns with employeeData wrapper
             targetPeriod = employee.employeeData.target_periods[0]
           } else if (employee.target_periods?.[0]) {
-            // Data from other sources might have it directly
             targetPeriod = employee.target_periods[0]
           }
 
-          console.log('📊 Target period found:', targetPeriod)
-
           if (targetPeriod) {
-            // Populate target period details
             targetPeriodDetails.value = {
               semester: targetPeriod.semester || semester,
               year: targetPeriod.year || year,
@@ -2491,9 +2413,6 @@ export default {
               unit: targetPeriod.unit || '',
             }
 
-            console.log('📊 Populated targetPeriodDetails:', targetPeriodDetails.value)
-
-            // Store hierarchy for the employee
             currentEmployee.value.hierarchy = {
               office: targetPeriod.office || employee.office || '',
               office2: targetPeriod.office2 || '',
@@ -2503,19 +2422,12 @@ export default {
               unit: targetPeriod.unit || '',
             }
 
-            // Process performance standards
             const performanceStandards = targetPeriod.performance_standards || []
-            console.log('📊 Performance standards from API:', performanceStandards)
 
             if (performanceStandards.length > 0) {
               currentEmployee.value.performanceStandards = performanceStandards.map((ps) => {
-                console.log('📊 Processing PS:', ps)
-
-                // Extract config - handle different structures
                 const config = ps.config || targetPeriod.config || {}
-                console.log('📊 Config for PS:', config)
 
-                // Parse quantity indicator type
                 let quantityIndicatorType = 'numeric'
                 if (config.quantityIndicator === 'C' || config.quantity_indicator === 'C') {
                   quantityIndicatorType = 'C'
@@ -2523,7 +2435,6 @@ export default {
                   quantityIndicatorType = 'B'
                 }
 
-                // Parse timeliness indicator type
                 let timelinessIndicatorType = 'beforeDeadline'
                 if (
                   config.timelinessIndicator === 'onDeadline' ||
@@ -2532,7 +2443,6 @@ export default {
                   timelinessIndicatorType = 'onDeadline'
                 }
 
-                // Parse timeliness inputs
                 const timelinessType = config.timelinessType || {}
                 const timelinessInputs = {
                   range: timelinessType.range === true,
@@ -2540,19 +2450,11 @@ export default {
                   description: timelinessType.description === true,
                 }
 
-                console.log('📊 Parsed settings:', {
-                  quantityIndicatorType,
-                  timelinessIndicatorType,
-                  timelinessInputs,
-                })
-
-                // Find category
                 const categoryName = ps.category || ''
                 const categoryObj = officeLibraryStore.categories?.find(
                   (cat) => cat.name?.toLowerCase() === categoryName?.toLowerCase(),
                 ) || { id: null, name: categoryName, label: categoryName }
 
-                // Find MFO
                 const mfoName = ps.mfo || ''
                 let mfoObj = null
                 if (categoryObj.id && mfoName) {
@@ -2563,7 +2465,6 @@ export default {
                   ) || { id: null, name: mfoName, label: mfoName }
                 }
 
-                // Find output
                 const outputName = ps.output || ''
                 let outputObj = null
                 if (outputName) {
@@ -2590,23 +2491,69 @@ export default {
                 let indicatorName = []
                 if (ps.performance_indicator) {
                   if (Array.isArray(ps.performance_indicator)) {
-                    // It's already an array (e.g., ["supervised", "managed"])
                     indicatorName = ps.performance_indicator
                   } else {
-                    // It's a single value, convert to array
                     indicatorName = [ps.performance_indicator]
                   }
                 }
 
-                // Build standard outcome rows from ratings
-                const ratings = ps.ratings || []
-                console.log('📊 Ratings for this PS:', ratings)
+                // Process competencies from API
+                const coreCompetencies = (ps.core || []).map((comp) => ({
+                  code: comp.code,
+                  description: competencyStore.descriptions.core[comp.code] || '',
+                  value: comp.level || '1',
+                  level:
+                    Object.keys({
+                      Basic: '1',
+                      Intermediate: '2',
+                      Advanced: '3',
+                      Superior: '4',
+                    }).find(
+                      (key) =>
+                        ({ Basic: '1', Intermediate: '2', Advanced: '3', Superior: '4' })[key] ===
+                        comp.level,
+                    ) || 'Basic',
+                }))
 
+                const technicalCompetencies = (ps.technical || []).map((comp) => ({
+                  code: comp.code,
+                  description: competencyStore.descriptions.technical[comp.code] || '',
+                  value: comp.level || '1',
+                  level:
+                    Object.keys({
+                      Basic: '1',
+                      Intermediate: '2',
+                      Advanced: '3',
+                      Superior: '4',
+                    }).find(
+                      (key) =>
+                        ({ Basic: '1', Intermediate: '2', Advanced: '3', Superior: '4' })[key] ===
+                        comp.level,
+                    ) || 'Basic',
+                }))
+
+                const leadershipCompetencies = (ps.leadership || []).map((comp) => ({
+                  code: comp.code,
+                  description: competencyStore.descriptions.leadership[comp.code] || '',
+                  value: comp.level || '1',
+                  level:
+                    Object.keys({
+                      Basic: '1',
+                      Intermediate: '2',
+                      Advanced: '3',
+                      Superior: '4',
+                    }).find(
+                      (key) =>
+                        ({ Basic: '1', Intermediate: '2', Advanced: '3', Superior: '4' })[key] ===
+                        comp.level,
+                    ) || 'Basic',
+                }))
+
+                const ratings = ps.ratings || []
                 const standardOutcomeRows = createDefaultStandardRows().map((row) => {
                   const ratingData = ratings.find((r) => r.rating?.toString() === row.rating)
 
                   if (ratingData) {
-                    // Parse timeliness
                     const timelinessParsed = uwpStore.parseTimelinessFromApi(
                       ratingData.timeliness || '',
                     )
@@ -2624,7 +2571,6 @@ export default {
                   return row
                 })
 
-                // Create the standard object
                 const standard = {
                   id: `ps_${ps.id || Date.now()}`,
                   expanded: true,
@@ -2643,17 +2589,15 @@ export default {
                   timelinessInputs,
                   activeTimelinessInputs: { ...timelinessInputs },
                   standardOutcomeRows,
-                  // COMPETENCIES AT PERFORMANCE STANDARD LEVEL
                   competencies: {
-                    core: ps.core_competency || ps.core || [],
-                    technical: ps.technical_competency || ps.technical || [],
-                    leadership: ps.leadership_competency || ps.leadership || [],
+                    core: coreCompetencies,
+                    technical: technicalCompetencies,
+                    leadership: leadershipCompetencies,
                   },
-                  apiData: ps, // Keep original data for reference
-                  targetOutputValue: null, // Initialize targetOutputValue
+                  apiData: ps,
+                  targetOutputValue: null,
                 }
 
-                // Set targetOutputValue if quantity type is B
                 if (quantityIndicatorType === 'B') {
                   const targetOutput = config.targetOutput || config.target_output
                   if (targetOutput) {
@@ -2665,11 +2609,9 @@ export default {
                 return standard
               })
             } else {
-              console.log('📊 No performance standards found, creating default')
               currentEmployee.value.performanceStandards = [createDefaultPerformanceStandard()]
             }
           } else {
-            console.log('📊 No target period found, using props')
             targetPeriodDetails.value = {
               semester: semester,
               year: year,
@@ -2683,16 +2625,23 @@ export default {
             currentEmployee.value.performanceStandards = [createDefaultPerformanceStandard()]
           }
 
-          updateEmployeeCompetencies(currentEmployee.value)
+          // Auto-populate core competencies for all standards
+          if (currentEmployee.value.sg && currentEmployee.value.level) {
+            currentEmployee.value.performanceStandards.forEach((standard) => {
+              autoPopulateCoreCompetencies(
+                standard,
+                currentEmployee.value.sg,
+                currentEmployee.value.level,
+              )
+            })
+          }
 
-          // Generate success indicators for all standards
           currentEmployee.value.performanceStandards?.forEach((_, idx) => {
             setTimeout(() => generateSuccessIndicator(idx), 100)
           })
 
           console.log('✅ Final currentEmployee:', currentEmployee.value)
         } else {
-          console.log('📊 No employee data returned')
           currentEmployee.value = createDefaultEmployeeData()
           currentEmployee.value.name = 'Unknown Employee'
           currentEmployee.value.controlNo = controlNo
@@ -2720,6 +2669,40 @@ export default {
       }
     }
 
+    const initializeUWPData = async () => {
+      try {
+        isLoading.value = true
+        isLoadingTargetPeriod.value = true
+        isLoadingEmployeeInfo.value = true
+        isLoadingStandards.value = true
+
+        const { controlNo, semester, year } = props
+
+        targetPeriodDetails.value.semester = semester
+        targetPeriodDetails.value.year = year
+
+        if (controlNo && semester && year) {
+          await fetchEmployeeData(controlNo, semester, year)
+        } else {
+          $q.notify({
+            message: 'Missing required parameters',
+            color: 'warning',
+            position: 'top',
+          })
+          currentEmployee.value = createDefaultEmployeeData()
+        }
+      } catch (error) {
+        console.error('Failed to initialize UWP data:', error)
+        currentEmployee.value = createDefaultEmployeeData()
+      } finally {
+        setTimeout(() => {
+          isLoading.value = false
+        }, 500)
+      }
+    }
+
+    // ==================== SUBMIT ====================
+
     const onSubmit = async () => {
       shouldValidate.value = true
       formInteracted.value = true
@@ -2736,7 +2719,6 @@ export default {
       currentEmployee.value.performanceStandards?.forEach((standard, idx) => {
         const errors = []
 
-        // Check effectiveness values
         const filledEffectivenessValues = standard.standardOutcomeRows.filter(
           (row) => row.effectiveness?.trim()?.length > 0,
         ).length
@@ -2744,7 +2726,6 @@ export default {
           errors.push('requires at least 2 effectiveness values')
         }
 
-        // Check competencies
         const { core, technical, leadership } = standard.competencies || {}
         const totalCompetencies =
           (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
@@ -2786,7 +2767,6 @@ export default {
             performanceStandards: currentEmployee.value.performanceStandards?.map((standard) => {
               return {
                 ...standard,
-                // UPDATED: Ensure indicatorName is always an array
                 indicatorName: Array.isArray(standard.indicatorName)
                   ? standard.indicatorName
                   : standard.indicatorName
@@ -2801,8 +2781,6 @@ export default {
             }),
           },
         }
-
-        console.log('📤 Submitting update data:', updateData)
 
         await uwpStore.updateUWP(updateData, officeLibraryIndicatorStore, officeLibraryStore)
 
@@ -2826,58 +2804,38 @@ export default {
       }
     }
 
-    onMounted(async () => {
-      const officeId = 1 // Default office ID, adjust as needed
+    // ==================== WATCHERS ====================
 
-      console.log('🔄 Loading store data...')
-      try {
-        // Load store data FIRST
-        await officeLibraryStore.fetchAllData(officeId)
-        await officeLibraryIndicatorStore.fetchVerbs()
-
-        console.log('✅ Store data loaded:', {
-          categories: officeLibraryStore.categories,
-          mfos: officeLibraryStore.mfos,
-          outputs: officeLibraryStore.outputs,
-          category_outputs: officeLibraryStore.category_outputs,
-        })
-
-        // THEN initialize UWP data
-        await initializeUWPData()
-
-        if (currentEmployee.value) {
-          updateEmployeeCompetencies(currentEmployee.value)
+    // Watch for SG/Level changes to update core competencies
+    watch(
+      () => ({
+        sg: currentEmployee.value?.sg,
+        level: currentEmployee.value?.level,
+      }),
+      (newValues) => {
+        console.log('SG/Level changed:', newValues)
+        if (newValues.sg && newValues.level && currentEmployee.value?.performanceStandards) {
+          currentEmployee.value.performanceStandards.forEach((standard) => {
+            autoPopulateCoreCompetencies(standard, newValues.sg, newValues.level)
+          })
         }
-      } catch (error) {
-        console.error('Error loading data:', error)
-        $q.notify({
-          message: 'Failed to load library data: ' + error.message,
-          color: 'negative',
-          position: 'top',
-        })
-      } finally {
-        isLoading.value = false
-      }
-    })
+      },
+      { deep: true, immediate: true },
+    )
 
     watch(
       () => currentEmployee.value?.performanceStandards,
       (standards) => {
         if (!standards) return
-
         standards.forEach((standard, index) => {
-          // Watch for category changes
           watch(
             () => standard.rows.category,
             () => {
-              // Clear the filtered options cache when category changes
               filteredMfoOptions.value[index] = null
               filteredOutputOptions.value[index] = null
             },
             { deep: true },
           )
-
-          // Watch for MFO changes
           watch(
             () => standard.rows.mfo,
             () => {
@@ -2900,13 +2858,6 @@ export default {
     )
 
     watch(
-      () => currentEmployee.value,
-      (emp) => updateEmployeeCompetencies(emp),
-      { deep: true },
-    )
-
-    // Add watcher for competency validation
-    watch(
       () => currentEmployee.value?.performanceStandards,
       (newStandards) => {
         if (newStandards) {
@@ -2918,13 +2869,56 @@ export default {
       { deep: true },
     )
 
+    // Watch for competency type changes to update filtered options
+    watch(
+      () => competencyType.value,
+      () => {
+        filteredCompetencyOptionsByRow.value = [filteredCompetencyOptionsByType.value]
+      },
+    )
+
+    // Auto-populate level when competency is selected
+    watch(
+      () => competencySelections.value.map((sel) => sel.selectedCompetency),
+      () => {
+        competencySelections.value.forEach((selection) => {
+          if (selection.selectedCompetency && !selection.selectedLevel) {
+            const levelOptions = getLevelOptionsForCompetency(selection.selectedCompetency)
+            if (levelOptions.length > 0) {
+              selection.selectedLevel = levelOptions[0]
+            }
+          }
+        })
+      },
+      { deep: true },
+    )
+
+    // ==================== LIFECYCLE ====================
+
+    onMounted(async () => {
+      const officeId = 1
+
+      try {
+        await officeLibraryStore.fetchAllData(officeId)
+        await officeLibraryIndicatorStore.fetchVerbs()
+
+        await initializeUWPData()
+      } catch (error) {
+        console.error('Error loading data:', error)
+        $q.notify({
+          message: 'Failed to load library data: ' + error.message,
+          color: 'negative',
+          position: 'top',
+        })
+      } finally {
+        isLoading.value = false
+      }
+    })
+
     return {
-      // state
+      // State
       targetPeriodDetails,
       currentEmployee,
-      coreCompetencies,
-      technicalCompetencies,
-      leadershipCompetencies,
       filteredMfoOptions,
       filteredOutputOptions,
       filteredVerbs,
@@ -2934,15 +2928,11 @@ export default {
       quantityValue,
       currentStandardIndex,
       isLoadingFilteredEmployees,
-
-      // loading states
       isLoading,
       isLoadingTargetPeriod,
       isLoadingEmployeeInfo,
       isLoadingStandards,
       isAddingStandard,
-
-      // Competency Modal Data
       showCompetencyModal,
       competencyType,
       selectedCompetency,
@@ -2954,38 +2944,32 @@ export default {
       competencySelections,
       filteredCompetencyOptionsByRow,
       isAnyCompetencyValid,
+      filteredCompetencyOptionsByType,
 
-      // computed
+      // Computed
       breadcrumbDisplay,
       selectedEmployee,
       semesterOptions,
       yearOptions,
-      categoryOptions: computed(() =>
-        officeLibraryStore.categories.map((cat) => ({
-          id: cat.id,
-          label: cat.name,
-          value: cat.id,
-          name: cat.name,
-        })),
-      ),
-      performanceIndicatorOptions: computed(() =>
-        officeLibraryIndicatorStore.verbs.map((verb) => ({
-          id: verb.id,
-          label: verb.indicator_name || verb.name,
-          value: verb.id,
-          name: verb.indicator_name || verb.name,
-          description: verb.description || '',
-        })),
-      ),
+      categoryOptions,
+      performanceIndicatorOptions,
       standardOutcomeColumns,
       isFormValid,
 
-      // constants
+      // Constants
       quantityIndicator,
 
-      // methods
+      // Helper Functions
+      getLevelText,
+      getCategoryLabel,
+      getMfoLabel,
+      getOutputLabel,
       isSupportCategory,
       hasMinimumEffectivenessValues,
+      timelinessColumnClass,
+      getLevelOptionsForCompetency,
+
+      // Methods
       filterPerformanceIndicators,
       getFilteredMfoOptions,
       getFilteredOutputOptions,
@@ -3005,17 +2989,10 @@ export default {
       addPerformanceStandard,
       removePerformanceStandard,
       onSubmit,
-      onBack,
+      onBack: () => emit('close'),
       validateStrictNumeric,
       blockInvalidChars,
-      timelinessColumnClass,
-      numberCom,
       uwpStore,
-
-      // ADD THESE LABEL RESOLVER FUNCTIONS:
-      getCategoryLabel,
-      getMfoLabel,
-      getOutputLabel,
 
       // Competency Methods
       openCompetencyModal,
@@ -3033,7 +3010,6 @@ export default {
 </script>
 
 <style scoped>
-/* Loading overlay styles */
 .loading-overlay {
   background: rgba(255, 255, 255, 0);
   display: flex;

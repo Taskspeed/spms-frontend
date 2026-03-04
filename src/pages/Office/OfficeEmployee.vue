@@ -9,9 +9,9 @@
       </div> -->
 
       <div v-if="loading" class="loading-container">
-        <q-spinner  size="2em" class="q-mr-sm" color="green" />
-      Loading organization structure...
-    </div>
+        <q-spinner size="2em" class="q-mr-sm" color="green" />
+        Loading organization structure...
+      </div>
       <q-tree
         v-else
         :nodes="treeNodes"
@@ -61,9 +61,9 @@
                 <span>Loading employees...</span>
               </div> -->
 
-            <div class="loading-container">
-                  <q-spinner  size="2em" class="q-mr-sm" color="green" />
-                 <span>Loading employees...</span>
+              <div class="loading-container">
+                <q-spinner size="2em" class="q-mr-sm" color="green" />
+                <span>Loading employees...</span>
               </div>
             </template>
 
@@ -95,7 +95,7 @@
                   color="negative"
                   flat
                   dense
-               @click="confirmDeleteEmployee(props.row)"
+                  @click="confirmDeleteEmployee(props.row)"
                 />
               </q-td>
             </template>
@@ -106,10 +106,9 @@
             <span>Loading employees...</span>
           </div> -->
 
-
-         <div v-if="loading || employeeStore.loading" class="loading-container">
-              <q-spinner  size="2em" class="q-mr-sm" color="green" />
-           <span>Loading employees...</span>
+          <div v-if="loading || employeeStore.loading" class="loading-container">
+            <q-spinner size="2em" class="q-mr-sm" color="green" />
+            <span>Loading employees...</span>
           </div>
         </div>
       </div>
@@ -133,10 +132,7 @@ export default {
     const employeeStore = useEmployeeStore()
     const libraryStore = useLibraryStore()
     const { confirm, success, error } = useMessage()
-    return { employeeStore, libraryStore,
-    confirm,
-    success,
-    error, }
+    return { employeeStore, libraryStore, confirm, success, error }
   },
   data() {
     return {
@@ -163,6 +159,7 @@ export default {
           sortable: true,
         },
         { name: 'rank', label: 'Rank', align: 'left', field: (row) => row.rank, sortable: true },
+
         { name: 'actions', label: 'Actions', align: 'center', sortable: false },
       ],
     }
@@ -377,36 +374,34 @@ export default {
     //       }
     //     })
     // },
-        async confirmDeleteEmployee(employee) {
-        const confirmed = await this.confirm({
-          title: 'Delete Employee',
-          text: `Are you sure you want to delete ${employee.name}?`,
-          confirmText: 'Yes, delete',
-          cancelText: 'Cancel',
-          icon: 'warning',
-        })
+    async confirmDeleteEmployee(employee) {
+      const confirmed = await this.confirm({
+        title: 'Delete Employee',
+        text: `Are you sure you want to delete ${employee.name}?`,
+        confirmText: 'Yes, delete',
+        cancelText: 'Cancel',
+        icon: 'warning',
+      })
 
-        if (!confirmed) return
+      if (!confirmed) return
 
-        try {
-          // Use the correct method from your store
-          const result = await this.employeeStore.deleteEmployee(employee.id)
+      try {
+        // Use the correct method from your store
+        const result = await this.employeeStore.deleteEmployee(employee.id)
 
-          if (result?.success) {
-            await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
-            this.updateTreeCounts()
+        if (result?.success) {
+          await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
+          this.updateTreeCounts()
 
-            await this.success('Employee deleted successfully')
-          } else {
-            throw new Error('Failed to delete employee')
-          }
-        } catch (err) {
-          console.error(err)
-          await this.error(err.message || 'Failed to delete employee')
+          await this.success('Employee deleted successfully')
+        } else {
+          throw new Error('Failed to delete employee')
         }
-      },
-
-
+      } catch (err) {
+        console.error(err)
+        await this.error(err.message || 'Failed to delete employee')
+      }
+    },
 
     async fetchOrganizationStructure() {
       this.loading = true
@@ -738,60 +733,60 @@ export default {
       this.treeNodes.forEach((node) => updateNodeCounts(node))
     },
     async handleAddEmployees(selectedEmployees) {
-  const confirmed = await this.confirm({
-    title: 'Confirm Add Employee',
-    text: 'Are you sure you want to add the selected employees?',
-    confirmText: 'Yes, add',
-  })
+      const confirmed = await this.confirm({
+        title: 'Confirm Add Employee',
+        text: 'Are you sure you want to add the selected employees?',
+        confirmText: 'Yes, add',
+      })
 
-  if (!confirmed) return
+      if (!confirmed) return
 
-  try {
-    const userStore = useUserStore()
-    const officeId = userStore.user?.office_id
-    const officeName = userStore.user?.office?.name
+      try {
+        const userStore = useUserStore()
+        const officeId = userStore.user?.office_id
+        const officeName = userStore.user?.office?.name
 
-    if (!officeId || !this.selectedNode) {
-      throw new Error(
-        !officeId
-          ? 'Unable to determine office.'
-          : 'Please select an office, division, or section first.'
-      )
-    }
+        if (!officeId || !this.selectedNode) {
+          throw new Error(
+            !officeId
+              ? 'Unable to determine office.'
+              : 'Please select an office, division, or section first.',
+          )
+        }
 
-    const employeesToAdd = selectedEmployees.map((emp) => ({
-      ControlNo: emp.ControlNo,
-      name: emp.name,
-      position: emp.position,
-      position_id: emp.position_id || emp.positionID,
-      office_id: officeId,
-      office: officeName,
-      office2: this.getOffice2ForSelectedNode(),
-      group: this.getGroupForSelectedNode(),
-      division: this.getDivisionForSelectedNode(),
-      section: this.getSectionForSelectedNode(),
-      unit: this.getUnitForSelectedNode(),
-      tblStructureID: emp.tblStructureID,
-      sg: emp.sg,
-      level: emp.level,
-      itemNo: emp.itemNo,
-      pageNo: emp.pageNo,
-    }))
+        const employeesToAdd = selectedEmployees.map((emp) => ({
+          ControlNo: emp.ControlNo,
+          name: emp.name,
+          position: emp.position,
+          position_id: emp.position_id || emp.positionID,
+          office_id: officeId,
+          office: officeName,
+          office2: this.getOffice2ForSelectedNode(),
+          group: this.getGroupForSelectedNode(),
+          division: this.getDivisionForSelectedNode(),
+          section: this.getSectionForSelectedNode(),
+          unit: this.getUnitForSelectedNode(),
+          tblStructureID: emp.tblStructureID,
+          sg: emp.sg,
+          level: emp.level,
+          itemNo: emp.itemNo,
+          pageNo: emp.pageNo,
+          Status: emp.Status || emp.status,
+        }))
 
-    await this.employeeStore.addEmployees({ employees: employeesToAdd })
+        await this.employeeStore.addEmployees({ employees: employeesToAdd })
 
-    await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
-    this.updateTreeCounts()
+        await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
+        this.updateTreeCounts()
 
-    await this.success('Employees added successfully')
-  } catch (err) {
-    console.error(err)
-    await this.error(err.message || 'Failed to add employees')
-  } finally {
-    this.showAddModal = false
-  }
-},
-
+        await this.success('Employees added successfully')
+      } catch (err) {
+        console.error(err)
+        await this.error(err.message || 'Failed to add employees')
+      } finally {
+        this.showAddModal = false
+      }
+    },
 
     // async handleAddEmployees(selectedEmployees) {
     //   try {
@@ -1048,8 +1043,6 @@ export default {
 
       return false
     },
-
-
   },
 }
 </script>

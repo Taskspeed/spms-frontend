@@ -291,6 +291,20 @@
                     </template>
                   </q-input>
                 </div>
+                <div class="col-12 col-md-6">
+                  <q-input v-model="selectedEmployee.sg" label="SG" outlined dense readonly>
+                    <template v-slot:prepend>
+                      <q-icon name="work" size="xs" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-md-6">
+                  <q-input v-model="selectedEmployee.level" label="Level" outlined dense readonly>
+                    <template v-slot:prepend>
+                      <q-icon name="work" size="xs" />
+                    </template>
+                  </q-input>
+                </div>
               </div>
             </div>
           </div>
@@ -482,18 +496,10 @@
                                     <q-card flat bordered class="full-height">
                                       <q-card-section class="q-pa-sm">
                                         <div class="row items-center justify-between">
-                                          <div class="text-caption text-weight-medium">Core</div>
-                                          <q-btn
-                                            flat
-                                            round
-                                            dense
-                                            icon="add"
-                                            size="xs"
-                                            color="primary"
-                                            @click="openCompetencyModal('core', index)"
-                                          >
-                                            <q-tooltip>Add Core Competency</q-tooltip>
-                                          </q-btn>
+                                          <div class="text-caption text-weight-medium">
+                                            Core (Auto-populated)
+                                          </div>
+                                          <!-- Removed the add button -->
                                         </div>
                                       </q-card-section>
                                       <q-separator />
@@ -506,7 +512,7 @@
                                             "
                                             class="text-grey-6 text-center"
                                           >
-                                            No core competencies added
+                                            No core competencies required for this SG/Level
                                           </div>
                                           <div
                                             v-else
@@ -516,17 +522,11 @@
                                           >
                                             <div class="row items-center justify-between">
                                               <div class="text-caption">
-                                                {{ comp.code }} - {{ comp.value }}
+                                                {{ comp.code }} - {{ comp.value }} ({{
+                                                  comp.level
+                                                }})
                                               </div>
-                                              <q-btn
-                                                flat
-                                                round
-                                                dense
-                                                icon="close"
-                                                size="xs"
-                                                color="negative"
-                                                @click="removeCompetency('core', compIndex, index)"
-                                              />
+                                              <!-- Core competencies cannot be removed as they're auto-populated -->
                                             </div>
                                           </div>
                                         </div>
@@ -1181,8 +1181,10 @@
       <q-card style="min-width: 700px; max-width: 900px; border-radius: 8px">
         <q-card-section class="modal-header">
           <div class="text-h6">
-            Select {{ competencyType.charAt(0).toUpperCase() + competencyType.slice(1) }}
-            Competency
+            Select {{ competencyType.charAt(0).toUpperCase() + competencyType.slice(1) }} Competency
+          </div>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            Based on SG: {{ currentEmployee.sg }} | Level: {{ currentEmployee.level }}
           </div>
         </q-card-section>
 
@@ -1216,7 +1218,7 @@
                         <q-item-section>
                           <q-item-label>{{ scope.opt.label }}</q-item-label>
                           <q-item-label caption>
-                            {{ scope.opt.description }}
+                            Required Level: {{ scope.opt.requiredLevel }}
                           </q-item-label>
                         </q-item-section>
                       </q-item>
@@ -1224,7 +1226,7 @@
                   </q-select>
                 </div>
 
-                <!-- Level Selection -->
+                <!-- Level Selection (Read-only since it's auto-populated) -->
                 <div class="col-3">
                   <q-select
                     v-model="competency.selectedLevel"
@@ -1232,6 +1234,7 @@
                     label="Level"
                     outlined
                     dense
+                    readonly
                     option-value="value"
                     option-label="label"
                     :rules="[(val) => !!val || 'Level is required']"
@@ -1262,20 +1265,6 @@
                   </q-btn>
                 </div>
               </div>
-
-              <!-- Competency Preview -->
-              <!-- <div
-                v-if="competency.selectedCompetency && competency.selectedLevel"
-                class="preview-chip q-mt-sm q-ml-sm"
-              >
-                <q-chip color="primary" text-color="white" icon="check_circle" size="md">
-                  <strong>{{ competency.selectedCompetency.code }}</strong>
-                  <span class="q-mx-xs">-</span>
-                  {{ competency.selectedCompetency.description }}
-                  <span class="q-mx-xs">|</span>
-                  <strong>Level {{ competency.selectedLevel.value }}</strong>
-                </q-chip>
-              </div> -->
             </div>
 
             <!-- Add Another Button -->
@@ -1288,6 +1277,7 @@
                 color="primary"
                 @click="addCompetencyRow"
                 class="q-ml-sm"
+                :disable="competencySelections.length >= competencyOptions.length"
               />
             </div>
           </div>
@@ -1333,6 +1323,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useMfoStore } from 'src/stores/office/officeLibrary'
 import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
 import { useUnitWorkPlanStore } from 'src/stores/office/unitWorkPlanStore'
+import { useCompetencyStore } from 'src/stores/competencyStore'
 
 export default {
   setup() {
@@ -1341,6 +1332,7 @@ export default {
     const officeLibraryStore = useMfoStore()
     const officeLibraryIndicatorStore = useLibraryStore()
     const uwpStore = useUnitWorkPlanStore()
+    const competencyStore = useCompetencyStore()
 
     // Refs
     const filteredMfoOptions = ref({})
@@ -1452,12 +1444,22 @@ export default {
       ],
     }
 
-    const levelOptions = [
-      { label: 'Basic', value: '1' },
-      { label: 'Intermediate', value: '2' },
-      { label: 'Advanced', value: '3' },
-      { label: 'Superior', value: '4' },
-    ]
+    const levelOptions = computed(() => {
+      if (!selectedCompetency.value) return []
+
+      // Get the required level from the competency row
+      const requiredLevel = selectedCompetency.value.requiredLevel
+
+      // Map to the level options format
+      const levelMap = {
+        Basic: { label: 'Basic', value: '1' },
+        Intermediate: { label: 'Intermediate', value: '2' },
+        Advanced: { label: 'Advanced', value: '3' },
+        Superior: { label: 'Superior', value: '4' },
+      }
+
+      return requiredLevel ? [levelMap[requiredLevel]] : []
+    })
 
     // Columns
     const standardOutcomeColumns = [
@@ -1661,24 +1663,18 @@ export default {
 
     const selectedEmployee = computed(() => {
       const currentTab = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
-      if (currentTab && currentTab.employeeId) {
-        if (currentTab.rank) {
-          return {
-            rank: currentTab.rank,
-            position: currentTab.position || '',
-          }
-        }
-        const emp = uwpData.value.employeesWithoutTargetPeriod?.find(
-          (e) => e.id === currentTab.employeeId,
-        )
-        if (emp) {
-          return {
-            rank: emp.rank || emp.employeeData?.rank || '',
-            position: emp.position || emp.employeeData?.position || '',
-          }
-        }
+
+      if (!currentTab || !currentTab.employeeId) {
+        return { rank: '', position: '', sg: '', level: '' }
       }
-      return { rank: '', position: '' }
+
+      // Get values from the tab (which we set in onEmployeeSelected)
+      return {
+        rank: currentTab.rank || '',
+        position: currentTab.position || '',
+        sg: currentTab.sg || '',
+        level: currentTab.level || '',
+      }
     })
 
     const categoryOptions = computed(() =>
@@ -1712,12 +1708,90 @@ export default {
       return units.value.filter((unit) => unit.id === section?.unitId)
     })
 
+    // Auto-populate core competencies based on employee's SG and Level
+    const autoPopulateCoreCompetencies = (standard, sg, level) => {
+      if (!sg || !level) {
+        console.log('Cannot auto-populate: missing SG or Level', { sg, level })
+        return
+      }
+
+      console.log('Auto-populating core competencies for SG:', sg, 'Level:', level)
+
+      const competencyRow = competencyStore.getBySG(sg)
+
+      if (!competencyRow) {
+        console.log('No competency row found for SG:', sg)
+        return
+      }
+
+      console.log('Competency row:', competencyRow)
+
+      // Clear existing core competencies first
+      standard.competencies.core = []
+
+      // Get core competencies from competencyData
+      const coreCompetencies = competencyData.core || []
+
+      console.log('Core competencies from data:', coreCompetencies)
+
+      // For each core competency, check if it's required for this SG
+      coreCompetencies.forEach((comp) => {
+        const requiredLevel = competencyRow[comp.code]
+
+        console.log(`Checking ${comp.code}:`, { requiredLevel })
+
+        // Only add if the competency is required (has a level and not '-')
+        if (requiredLevel && requiredLevel !== '-') {
+          // Map the level text to value
+          const levelMap = {
+            Basic: '1',
+            Intermediate: '2',
+            Advanced: '3',
+            Superior: '4',
+          }
+
+          standard.competencies.core.push({
+            code: comp.code,
+            description: comp.description,
+            value: levelMap[requiredLevel] || '1',
+            level: requiredLevel,
+          })
+
+          console.log(`Added ${comp.code} with level ${requiredLevel}`)
+        }
+      })
+
+      console.log('Final core competencies:', standard.competencies.core)
+    }
+
     const competencyOptions = computed(() => {
-      const options = competencyData[competencyType.value] || []
-      return options.map((comp) => ({
-        ...comp,
-        label: `${comp.code} - ${comp.description}`,
-      }))
+      if (!currentEmployee.value?.sg || !currentEmployee.value?.level) {
+        return []
+      }
+
+      const sg = currentEmployee.value.sg
+      // const level = currentEmployee.value.level
+
+      // Get the competency row for this SG and Level
+      const competencyRow = competencyStore.getBySG(sg)
+
+      if (!competencyRow) return []
+
+      // Get competencies based on type and filter only those with values
+      const typeCompetencies = competencyData[competencyType.value] || []
+
+      return typeCompetencies
+        .filter((comp) => {
+          const competencyLevel = competencyRow[comp.code]
+          // Only include competencies that are required (have a level value)
+          return competencyLevel && competencyLevel !== '-'
+        })
+        .map((comp) => ({
+          code: comp.code,
+          description: comp.description,
+          label: `${comp.code} - ${comp.description}`,
+          requiredLevel: competencyRow[comp.code],
+        }))
     })
 
     const hasMinimumEffectivenessValues = (index) => {
@@ -2031,13 +2105,19 @@ export default {
 
     // Competency Methods
     const openCompetencyModal = (type, standardIndex) => {
+      if (!currentEmployee.value?.sg || !currentEmployee.value?.level) {
+        $q.notify({
+          message: 'Employee SG and Level are required to select competencies',
+          color: 'warning',
+          position: 'top',
+        })
+        return
+      }
+
       competencyType.value = type
       currentStandardIndexForCompetency.value = standardIndex
 
-      // Reset to single empty row
       competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
-
-      // Initialize filtered options for first row
       filteredCompetencyOptionsByRow.value = [competencyOptions.value]
 
       showCompetencyModal.value = true
@@ -2053,7 +2133,6 @@ export default {
               comp.description.toLowerCase().includes(needle),
           )
 
-          // Update filtered options for this specific row
           if (!filteredCompetencyOptionsByRow.value[rowIndex]) {
             filteredCompetencyOptionsByRow.value[rowIndex] = []
           }
@@ -2066,17 +2145,14 @@ export default {
         filteredCompetencyOptionsByRow.value[rowIndex] = competencyOptions.value
       }
     }
-
     // NEW: Get available competencies for a specific row (excluding already selected)
     const getAvailableCompetencies = (rowIndex) => {
-      // Get all already selected competency codes
       const selectedCodes = competencySelections.value
         .map((sel, idx) =>
           idx !== rowIndex && sel.selectedCompetency ? sel.selectedCompetency.code : null,
         )
         .filter(Boolean)
 
-      // Return options excluding already selected ones
       const options = filteredCompetencyOptionsByRow.value[rowIndex] || competencyOptions.value
       return options.filter((comp) => !selectedCodes.includes(comp.code))
     }
@@ -2095,7 +2171,6 @@ export default {
       }
     }
 
-    // UPDATED: Add all selected competencies at once
     const addAllSelectedCompetencies = () => {
       const standard =
         currentEmployee.value.performanceStandards[currentStandardIndexForCompetency.value]
@@ -2103,16 +2178,15 @@ export default {
 
       let addedCount = 0
 
-      // Loop through all competency selections
       competencySelections.value.forEach((selection) => {
         if (selection.selectedCompetency && selection.selectedLevel) {
           const competency = {
             code: selection.selectedCompetency.code,
             description: selection.selectedCompetency.description,
-            value: selection.selectedLevel.value,
+            value: selection.selectedLevel.value, // This will be 1,2,3,4
+            level: selection.selectedLevel.label, // This will be Basic, Intermediate, etc.
           }
 
-          // Check if this competency is already added
           const alreadyExists = standard.competencies[competencyType.value].some(
             (existing) => existing.code === competency.code,
           )
@@ -2132,12 +2206,9 @@ export default {
         })
       }
 
-      // Clear selections and close modal
       competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
       filteredCompetencyOptionsByRow.value = [competencyOptions.value]
       showCompetencyModal.value = false
-
-      // Validate that we now have at least one competency
       validateCompetencies(currentStandardIndexForCompetency.value)
     }
 
@@ -2171,6 +2242,9 @@ export default {
         (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
 
       showCompetencyError.value[standardIndex] = totalCompetencies === 0
+
+      // Core competencies are auto-populated, so we don't need to validate them separately
+      // The total count already includes core competencies
     }
 
     const cancelCompetencySelection = () => {
@@ -2241,6 +2315,8 @@ export default {
           employeeTabs.value[tabIndex].employeeData = null
           employeeTabs.value[tabIndex].rank = ''
           employeeTabs.value[tabIndex].position = ''
+          employeeTabs.value[tabIndex].sg = ''
+          employeeTabs.value[tabIndex].level = ''
         }
         return
       }
@@ -2248,6 +2324,8 @@ export default {
       const selectedEmp = uwpData.value.employeesWithoutTargetPeriod?.find(
         (emp) => emp.id === employeeId,
       )
+
+      console.log('Selected employee data:', selectedEmp)
 
       if (selectedEmp && activeEmployeeTab.value) {
         const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
@@ -2257,6 +2335,22 @@ export default {
           employeeTabs.value[tabIndex].employeeData = selectedEmp
           employeeTabs.value[tabIndex].rank = selectedEmp.rank || ''
           employeeTabs.value[tabIndex].position = selectedEmp.position || ''
+
+          // Capture SG and Level
+          const sg = selectedEmp.employeeData?.sg || selectedEmp.sg || selectedEmp.SG || ''
+          const level = selectedEmp.employeeData?.level || selectedEmp.level || ''
+
+          employeeTabs.value[tabIndex].sg = sg
+          employeeTabs.value[tabIndex].level = level
+
+          console.log('Captured SG and Level:', { sg, level })
+
+          // Auto-populate core competencies for all performance standards
+          if (employeeTabs.value[tabIndex].performanceStandards) {
+            employeeTabs.value[tabIndex].performanceStandards.forEach((standard) => {
+              autoPopulateCoreCompetencies(standard, sg, level)
+            })
+          }
         }
       }
     }
@@ -2687,7 +2781,19 @@ export default {
     }
 
     const addPerformanceStandard = () => {
-      currentEmployee.value.performanceStandards.push(createDefaultPerformanceStandard())
+      const newStandard = createDefaultPerformanceStandard()
+
+      // Auto-populate core competencies for the new standard using current employee's SG and Level
+      if (currentEmployee.value?.sg && currentEmployee.value?.level) {
+        autoPopulateCoreCompetencies(
+          newStandard,
+          currentEmployee.value.sg,
+          currentEmployee.value.level,
+        )
+      }
+
+      currentEmployee.value.performanceStandards.push(newStandard)
+
       // Initialize competency error tracking for new standard
       showCompetencyError.value[currentEmployee.value.performanceStandards.length - 1] = false
 
@@ -2848,6 +2954,48 @@ export default {
     }
 
     // Watchers
+    watch(
+      () => ({
+        sg: currentEmployee.value?.sg,
+        level: currentEmployee.value?.level,
+        employeeId: currentEmployee.value?.employeeId,
+      }),
+      (newValues) => {
+        console.log('SG/Level changed:', newValues)
+        if (
+          newValues.sg &&
+          newValues.level &&
+          newValues.employeeId &&
+          currentEmployee.value?.performanceStandards
+        ) {
+          currentEmployee.value.performanceStandards.forEach((standard) => {
+            autoPopulateCoreCompetencies(standard, newValues.sg, newValues.level)
+          })
+        }
+      },
+      { deep: true },
+    )
+
+    watch(
+      () => competencySelections.value.map((sel) => sel.selectedCompetency),
+      () => {
+        competencySelections.value.forEach((selection) => {
+          if (selection.selectedCompetency && !selection.selectedLevel) {
+            // Auto-populate the level from the competency's required level
+            const requiredLevel = selection.selectedCompetency.requiredLevel
+            const levelMap = {
+              Basic: { label: 'Basic', value: '1' },
+              Intermediate: { label: 'Intermediate', value: '2' },
+              Advanced: { label: 'Advanced', value: '3' },
+              Superior: { label: 'Superior', value: '4' },
+            }
+            selection.selectedLevel = levelMap[requiredLevel] || null
+          }
+        })
+      },
+      { deep: true },
+    )
+
     watch(
       () => {
         return currentEmployee.value.performanceStandards.map((s) => ({

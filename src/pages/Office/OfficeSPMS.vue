@@ -1,61 +1,60 @@
-//Office-SPMS
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-page-container>
       <q-page padding class="q-pa-md">
         <!-- Main Content -->
         <div class="row q-mb-lg">
+          <!-- Left Panel: Organization Tree -->
           <div class="col-12 col-md-4">
             <q-card flat bordered>
               <q-card-section>
-                <div class="col-12 col-md-6 q-mb-sm">
-                  <div class="row q-gutter-sm items-center">
-                    <q-select
-                      v-model="selectedSemester"
-                      :options="availableSemesters"
-                      label="Semester"
-                      outlined
-                      dense
-                      emit-value
-                      map-options
-                      @update:model-value="onSemesterChange"
-                      class="col"
-                    >
-                      <template v-slot:prepend>
-                        <q-icon name="calendar_view_month" size="xs" />
-                      </template>
-                    </q-select>
+                <!-- Semester and Year Filters -->
+                <div class="row q-gutter-sm items-center q-mb-sm">
+                  <q-select
+                    v-model="selectedSemester"
+                    :options="availableSemesters"
+                    label="Semester"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    @update:model-value="onSemesterChange"
+                    class="col"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="calendar_view_month" size="xs" />
+                    </template>
+                  </q-select>
 
-                    <q-select
-                      v-model="selectedYear"
-                      :options="availableYears"
-                      label="Year"
-                      outlined
-                      dense
-                      emit-value
-                      map-options
-                      @update:model-value="onYearChange"
-                      class="col"
-                    >
-                      <template v-slot:prepend>
-                        <q-icon name="event" size="xs" />
-                      </template>
-                    </q-select>
-                  </div>
+                  <q-select
+                    v-model="selectedYear"
+                    :options="availableYears"
+                    label="Year"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    @update:model-value="onYearChange"
+                    class="col"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="event" size="xs" />
+                    </template>
+                  </q-select>
                 </div>
-                <div class="row q-mb-md">
+
+                <!-- Tree Search -->
+                <div class="q-mb-md">
                   <q-input
                     dense
                     outlined
                     v-model="treeFilter"
                     placeholder="Search organization..."
                     class="full-width"
-                  >
-                    <!-- <template v-slot: append>
-                      <q-icon name="search" />
-                    </template> -->
-                  </q-input>
+                  />
                 </div>
+
+                <!-- Organization Tree -->
                 <q-tree
                   :nodes="organizationTree"
                   node-key="id"
@@ -77,18 +76,9 @@
                       />
                       <div class="column tree-label full-width">
                         <div class="row items-center">
-                          <div class="node-label">
-                            {{ scope.node.label }}
-                          </div>
+                          <div class="node-label">{{ scope.node.label }}</div>
 
-                          <!-- Debug info -->
-                          <!-- <q-badge color="grey" class="q-ml-xs">
-                            Type: {{ scope.node.type }}, Leaf: {{ scope.node.isLeaf }}, Direct:
-                            {{ scope.node.directCount }}
-                          </q-badge> -->
-                          <!-- End debug -->
-
-                          <!-- For bottom-level org nodes (leaf org nodes) show employee count instead of an X/check -->
+                          <!-- Leaf node: show employee count badge -->
                           <q-badge
                             v-if="isLeafNode(scope.node.id)"
                             :color="getLeafBadgeColor(scope.node.id)"
@@ -97,6 +87,7 @@
                             {{ getNodeCount(scope.node.id) }}
                           </q-badge>
 
+                          <!-- Parent org node: show completion ratio -->
                           <q-badge
                             v-else-if="
                               scope.node.type !== 'employee' &&
@@ -108,6 +99,7 @@
                             {{ getNodeCompletionRatio(scope.node.id) }}
                           </q-badge>
 
+                          <!-- Head rank badge for employees -->
                           <q-badge
                             v-if="scope.node.type === 'employee' && isHeadRank(scope.node.rank)"
                             color="green"
@@ -127,165 +119,189 @@
             </q-card>
           </div>
 
+          <!-- Right Panel: Employee Table -->
           <div class="col-12 col-md-8">
             <q-card flat bordered>
               <q-card-section>
+                <!-- Header with Actions -->
                 <div class="row items-center justify-between q-mb-md" v-if="selectedNode">
                   <div class="office-title">{{ selectedNodeBreadcrumb }}</div>
                   <div class="row q-gutter-sm button-container">
-                    <q-btn
-                      class="neu-button-rect"
-                      flat
-                      size="sm"
-                      color="green"
-                      icon="person_add"
-                      label="Create UWP"
-                      @click="createUnitWorkPlan"
-                      v-if="canCreateUWP"
-                    >
-                      <q-tooltip>Create Unit Work Plan</q-tooltip>
-                    </q-btn>
+                    <!-- Show UWP buttons only for valid org node types -->
+                    <template v-if="isOrgNode(selectedNode)">
+                      <!-- Create UWP Button -->
+                      <q-btn
+                        class="neu-button-rect"
+                        flat
+                        size="sm"
+                        color="green"
+                        icon="person_add"
+                        label="Create UWP"
+                        @click="createUnitWorkPlan"
+                        :disable="!canCreateUWP"
+                      >
+                        <q-tooltip>
+                          {{ canCreateUWP ? 'Create Unit Work Plan' : uwpBlockedReason }}
+                        </q-tooltip>
+                      </q-btn>
 
-                    <q-btn
-                      class="neu-button-rect"
-                      flat
-                      size="sm"
-                      color="primary"
-                      label="Preview UWP"
-                      icon="print"
-                      @click="showUnitWorkPlanModal"
-                      v-if="canCreateUWP"
-                    />
+                      <!-- Preview UWP Button -->
+                      <q-btn
+                        class="neu-button-rect"
+                        flat
+                        size="sm"
+                        color="primary"
+                        label="Preview UWP"
+                        icon="print"
+                        @click="showUnitWorkPlanModal"
+                      >
+                      </q-btn>
+                    </template>
                   </div>
                 </div>
 
-                <div class="row q-mb-md">
+                <!-- Employee Search -->
+                <div class="q-mb-md">
                   <q-input
                     dense
                     outlined
                     v-model="employeeFilter"
                     placeholder="Search employees..."
                     class="full-width"
-                  >
-                    <!-- <template v-slot: append>
-                      <q-icon name="search" />
-                    </template> -->
-                  </q-input>
+                  />
                 </div>
 
-                <q-table
-                  :rows="filteredEmployees"
-                  :columns="columns"
-                  row-key="id"
-                  flat
-                  bordered
-                  class="clean-table"
-                  :pagination="{ rowsPerPage: 10 }"
-                  :loading="loading"
-                  :filter="employeeFilter"
-                >
-                  <template v-slot:body="props">
-                    <q-tr :props="props">
-                      <q-td key="name" :props="props">
-                        <div class="row items-center no-wrap full-width">
-                          <q-icon
-                            :name="props.row.isHead ? 'supervisor_account' : 'person'"
-                            :color="props.row.isHead ? 'blue' : 'grey'"
-                            size="sm"
-                            class="q-mr-sm flex-shrink-0"
-                          />
-                          <div class="employee-info full-width">
-                            <div>
-                              {{ props.row.label }}
+                <!-- Employee Table (always shown when a node is selected) -->
+                <template v-if="selectedNode">
+                  <q-table
+                    :rows="filteredEmployees"
+                    :columns="columns"
+                    row-key="id"
+                    flat
+                    bordered
+                    class="clean-table"
+                    :pagination="{ rowsPerPage: 10 }"
+                    :loading="loading"
+                  >
+                    <template v-slot:body="props">
+                      <q-tr :props="props">
+                        <!-- Name Column -->
+                        <q-td key="name" :props="props">
+                          <div class="row items-center no-wrap full-width">
+                            <q-icon
+                              :name="props.row.isHead ? 'supervisor_account' : 'person'"
+                              :color="props.row.isHead ? 'blue' : 'grey'"
+                              size="sm"
+                              class="q-mr-sm flex-shrink-0"
+                            />
+                            <div class="employee-info full-width">
+                              <div>{{ props.row.label }}</div>
+                              <div class="text-caption text-grey-7">{{ props.row.position }}</div>
                             </div>
-                            <div class="text-caption text-grey-7">{{ props.row.position }}</div>
                           </div>
-                        </div>
-                      </q-td>
-                      <q-td key="rank" :props="props">
-                        <div class="text-body2">
+                        </q-td>
+
+                        <!-- Rank Column -->
+                        <q-td key="rank" :props="props">
                           <q-badge v-if="isHeadRank(props.row.rank)" color="green" class="q-mr-xs">
                             {{ props.row.rank || '-' }}
                           </q-badge>
                           <span v-else>{{ props.row.rank || '-' }}</span>
-                        </div>
-                      </q-td>
-                      <q-td key="ipcr_status" :props="props">
-                        <q-badge
-                          :color="getStatusColor(props.row)"
-                          :label="props.row.ipcrStatus || '-'"
-                          class="status-badge"
-                        />
-                      </q-td>
-                      <q-td key="target_period" :props="props" class="text-center">
-                        <q-icon
-                          v-if="props.row.hasTargetPeriod"
-                          name="check_circle"
-                          color="positive"
-                          size="sm"
-                        />
-                        <q-icon v-else name="cancel" color="negative" size="sm" />
-                      </q-td>
-                      <q-td key="actions" :props="props" class="text-center">
-                        <div class="row justify-center q-gutter-xs">
-                          <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="red"
-                            icon="assignment_ind"
-                            size="md"
-                            @click="show_opcr_Modal(props.row)"
-                          >
-                            <q-tooltip>OPCR</q-tooltip>
-                          </q-btn>
-                          <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="blue"
-                            icon="assignment_ind"
-                            size="md"
-                            @click="show_ipcr_Modal(props.row)"
-                          >
-                            <q-tooltip>IPCR</q-tooltip>
-                          </q-btn>
-                          <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="amber"
-                            icon="edit"
-                            size="md"
-                            @click="showEditModal(props.row)"
-                          >
-                            <q-tooltip>Edit</q-tooltip>
-                          </q-btn>
-                          <!-- <q-btn
-                            class="neu-button"
-                            flat
-                            round
-                            color="negative"
-                            icon="delete"
-                            size="md"
-                            @click="confirmDeleteEmployee(props.row)"
-                          >
-                            <q-tooltip>Delete</q-tooltip>
-                          </q-btn> -->
-                        </div>
-                      </q-td>
-                    </q-tr>
-                  </template>
+                        </q-td>
 
-                  <template v-slot: no-data>
-                    <div class="text-center q-pa-md col-12">
-                      <q-icon name="error_outline" size="2rem" color="grey" />
-                      <div class="text-grey-7 q-mt-sm">
-                        No employees found in this {{ selectedNode?.type || 'node' }}
+                        <!-- Status Column -->
+                        <q-td key="ipcr_status" :props="props">
+                          <q-badge
+                            :color="getStatusColor(props.row)"
+                            :label="props.row.ipcrStatus || '-'"
+                            class="status-badge"
+                          />
+                        </q-td>
+
+                        <!-- Target Period Column -->
+                        <q-td key="target_period" :props="props" class="text-center">
+                          <q-icon
+                            v-if="props.row.hasTargetPeriod"
+                            name="check_circle"
+                            color="positive"
+                            size="sm"
+                          />
+                          <q-icon v-else name="cancel" color="negative" size="sm" />
+                        </q-td>
+
+                        <!-- Actions Column -->
+                        <q-td key="actions" :props="props" class="text-center">
+                          <div class="row justify-center q-gutter-xs">
+                            <!-- QPEF: CASUAL, CONTRACTUAL, HONORARIUM only -->
+                            <q-btn
+                              v-if="canShowQPEF(props.row)"
+                              class="neu-button"
+                              flat
+                              round
+                              color="purple"
+                              icon="assignment_ind"
+                              size="md"
+                              @click="show_qpef_Modal(props.row)"
+                            >
+                              <q-tooltip>QPEF</q-tooltip>
+                            </q-btn>
+
+                            <!-- OPCR: Managerial rank only -->
+                            <q-btn
+                              v-if="canShowOPCR(props.row)"
+                              class="neu-button"
+                              flat
+                              round
+                              color="red"
+                              icon="assignment_ind"
+                              size="md"
+                              @click="show_opcr_Modal(props.row)"
+                            >
+                              <q-tooltip>OPCR</q-tooltip>
+                            </q-btn>
+
+                            <!-- IPCR: Not CONTRACTUAL/HONORARIUM, not Managerial -->
+                            <q-btn
+                              v-if="canShowIPCR(props.row)"
+                              class="neu-button"
+                              flat
+                              round
+                              color="blue"
+                              icon="assignment_ind"
+                              size="md"
+                              @click="show_ipcr_Modal(props.row)"
+                            >
+                              <q-tooltip>IPCR</q-tooltip>
+                            </q-btn>
+
+                            <!-- Edit: Not CONTRACTUAL/HONORARIUM -->
+                            <q-btn
+                              v-if="canShowEdit(props.row)"
+                              class="neu-button"
+                              flat
+                              round
+                              color="amber"
+                              icon="edit"
+                              size="md"
+                              @click="showEditModal(props.row)"
+                            >
+                              <q-tooltip>Edit</q-tooltip>
+                            </q-btn>
+                          </div>
+                        </q-td>
+                      </q-tr>
+                    </template>
+
+                    <template v-slot:no-data>
+                      <div class="text-center q-pa-md col-12">
+                        <q-icon name="error_outline" size="2rem" color="grey" />
+                        <div class="text-grey-7 q-mt-sm">
+                          No employees found in this {{ selectedNode?.type || 'node' }}
+                        </div>
                       </div>
-                    </div>
-                  </template>
-                </q-table>
+                    </template>
+                  </q-table>
+                </template>
               </q-card-section>
             </q-card>
           </div>
@@ -294,7 +310,11 @@
     </q-page-container>
   </q-layout>
 
-  <!-- Unit Work Plan Report -->
+  <!-- ======================================================================
+       MODALS
+  ====================================================================== -->
+
+  <!-- Unit Work Plan Report Modal -->
   <q-dialog v-model="showUnitWorkPlanModalOpen" full-width>
     <unitWorkplan_report
       :targetPeriod="currentTargetPeriod"
@@ -307,7 +327,7 @@
     />
   </q-dialog>
 
-  <!-- In your parent component template -->
+  <!-- Edit UWP Modal -->
   <q-dialog v-model="showEditModalOpen" full-width persistent>
     <EditUWP
       v-if="employeeToEdit"
@@ -317,6 +337,40 @@
       :year="employeeToEdit.year || currentTargetPeriod?.year"
       @close="closeEditModal"
       @saved="handleEmployeeSaved"
+    />
+  </q-dialog>
+
+  <!-- IPCR Modal -->
+  <q-dialog v-model="show_ipcr_ModalOpen" full-width>
+    <ipcr_Report
+      :employee="selectedEmployee"
+      :targetPeriod="currentTargetPeriod"
+      :levels="selectedEmployee?.levels"
+      :supervisorySignatory="selectedEmployee?.supervisorySignatory"
+      :managerialSignatory="selectedEmployee?.managerialSignatory"
+      @close="close_ipcr_Modal"
+      @status-updated="handleStatusUpdated"
+    />
+  </q-dialog>
+
+  <!-- OPCR Modal -->
+  <q-dialog v-model="show_opcr_ModalOpen">
+    <OPCRModal
+      :employee="selectedEmployee"
+      :targetPeriod="currentTargetPeriod"
+      @close="close_opcr_Modal"
+    />
+  </q-dialog>
+
+  <!-- QPEF Modal -->
+  <q-dialog v-model="show_qpef_ModalOpen">
+    <QPEFModal
+      :employee="selectedEmployee"
+      :targetPeriod="currentTargetPeriod"
+      :levels="selectedEmployee?.levels"
+      :supervisorySignatory="selectedEmployee?.supervisorySignatory"
+      :managerialSignatory="selectedEmployee?.managerialSignatory"
+      @close="close_qpef_Modal"
     />
   </q-dialog>
 
@@ -333,64 +387,6 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
-
-  <q-dialog v-model="show_ipcr_ModalOpen" full-width>
-    <ipcr_Report
-      :employee="selectedEmployee"
-      :targetPeriod="currentTargetPeriod"
-      :levels="selectedEmployee?.levels"
-      :supervisorySignatory="selectedEmployee?.supervisorySignatory"
-      :managerialSignatory="selectedEmployee?.managerialSignatory"
-      @close="close_ipcr_Modal"
-    />
-  </q-dialog>
-
-  <!-- OPCR Modal -->
-  <q-dialog v-model="show_opcr_ModalOpen">
-    <OPCRModal
-      :employee="selectedEmployee"
-      :targetPeriod="currentTargetPeriod"
-      @close="close_opcr_Modal"
-    />
-  </q-dialog>
-
-  <!-- UWP Validation Error Dialog -->
-  <q-dialog v-model="uwpValidationDialog" persistent>
-    <q-card style="min-width: 500px">
-      <q-card-section class="row items-center">
-        <q-avatar icon="info" color="warning" text-color="white" size="lg" />
-        <span class="q-ml-md text-h6">Cannot Create Unit Work Plan</span>
-      </q-card-section>
-
-      <q-separator />
-
-      <q-card-section class="q-pt-none">
-        <div v-if="uwpIncompleteItems.length > 0" class="q-mt-md">
-          <div class="text-subtitle2 q-mb-sm font-weight-bold">Incomplete Items:</div>
-          <q-list bordered separator>
-            <q-item v-for="item in uwpIncompleteItems" :key="item.id">
-              <q-item-section avatar>
-                <q-icon
-                  :name="getNodeIcon({ type: item.type })"
-                  :color="getNodeColor({ type: item.type })"
-                />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>{{ item.label }}</q-item-label>
-                <q-item-label caption>{{ item.type }} - Status: {{ item.completion }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </div>
-      </q-card-section>
-
-      <q-separator />
-
-      <q-card-actions align="right">
-        <q-btn flat label="Close" color="primary" v-close-popup />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
 </template>
 
 <script setup>
@@ -403,14 +399,22 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import ipcr_Report from 'src/components/ipcr_Report.vue'
 import { api } from 'boot/axios'
-import OPCRModal from 'src/pages/Office/TestPage.vue'
+import OPCRModal from 'src/components/OPCRModal.vue'
+import QPEFModal from 'src/components/QPEFModal.vue'
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
 
 const $q = useQuasar()
 const orgStore = useOrganizationStore()
 const userStore = useUserStore()
 const router = useRouter()
 
-// State
+// ============================================================================
+// STATE
+// ============================================================================
+
 const selectedEmployee = ref(null)
 const selectedNodeId = ref(null)
 const loading = ref(false)
@@ -422,25 +426,30 @@ const showUnitWorkPlanModalOpen = ref(false)
 const filteredRows = ref([])
 const show_ipcr_ModalOpen = ref(false)
 const show_opcr_ModalOpen = ref(false)
-const uwpValidationDialog = ref(false)
-const uwpValidationMessage = ref('')
-const uwpIncompleteItems = ref([])
-
-// Edit Employee State
+const show_qpef_ModalOpen = ref(false)
 const showEditModalOpen = ref(false)
 const employeeToEdit = ref(null)
 
-// Table columns
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const EXCLUDED_STATUSES = ['CONTRACTUAL', 'HONORARIUM']
+const ORG_NODE_TYPES = ['office', 'office2', 'group', 'division', 'section', 'unit']
+
+const HEAD_RANKS = [
+  'office-head',
+  'division-head',
+  'section-head',
+  'unit-head',
+  'group-head',
+  'office2-head',
+]
+
 const columns = ref([
   { name: 'name', align: 'left', label: 'Name', field: 'label', sortable: true },
   { name: 'rank', align: 'left', label: 'Rank', field: 'rank', sortable: true },
-  {
-    name: 'ipcr_status',
-    align: 'left',
-    label: 'Status',
-    field: 'ipcrStatus',
-    sortable: true,
-  },
+  { name: 'ipcr_status', align: 'left', label: 'Status', field: 'ipcrStatus', sortable: true },
   {
     name: 'target_period',
     align: 'center',
@@ -451,18 +460,21 @@ const columns = ref([
   { name: 'actions', align: 'center', label: 'Actions', field: 'actions' },
 ])
 
-// Computed properties
+// ============================================================================
+// STORE BINDINGS
+// ============================================================================
+
 const selectedSemester = computed({
   get: () => orgStore.selectedSemester,
-  set: (value) => {
-    orgStore.selectedSemester = value
+  set: (v) => {
+    orgStore.selectedSemester = v
   },
 })
 
 const selectedYear = computed({
   get: () => orgStore.selectedYear,
-  set: (value) => {
-    orgStore.selectedYear = value
+  set: (v) => {
+    orgStore.selectedYear = v
   },
 })
 
@@ -471,40 +483,130 @@ const availableYears = computed(() => orgStore.getAvailableYears)
 const currentTargetPeriod = computed(() => orgStore.getCurrentTargetPeriod)
 const organizationTree = computed(() => orgStore.structure)
 
-// Add these computed properties to your parent component
+// ============================================================================
+// HELPER: RANK CHECKS
+// ============================================================================
+
+const isHeadRank = (rank) => !!rank && HEAD_RANKS.some((h) => rank.toLowerCase().includes(h))
+
+const isExcludedStatus = (status) => {
+  if (!status) return false
+  return EXCLUDED_STATUSES.includes(status.toUpperCase())
+}
+
+// ============================================================================
+// HELPER: NODE UTILITIES
+// ============================================================================
+
+/** Returns true if the node is an organizational unit (not an employee) */
+const isOrgNode = (node) => node && ORG_NODE_TYPES.includes(node.type)
+
+// ============================================================================
+// UWP LOCKING LOGIC
+// ============================================================================
+
+/**
+ * Finds the managerial employee anywhere within the given nodes (recursive).
+ * Returns the employee node or null.
+ */
+const findManagerialEmployee = (nodes) => {
+  if (!nodes) return null
+  for (const node of nodes) {
+    if (node.type === 'employee' && node.rank?.toLowerCase().includes('managerial')) {
+      return node
+    }
+    if (node.children) {
+      const found = findManagerialEmployee(node.children)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/**
+ * Determines whether the currently selected node is allowed to create a UWP.
+ *
+ * Rule: The managerial employee in the organization must have hasTargetPeriod = true.
+ * If no managerial employee exists, UWP creation is allowed.
+ */
+const uwpLockStatus = computed(() => {
+  if (!selectedNode.value || !isOrgNode(selectedNode.value)) {
+    return { allowed: false, reason: 'Select a valid organizational unit.' }
+  }
+
+  const managerialEmployee = findManagerialEmployee(orgStore.structure)
+
+  if (managerialEmployee && !managerialEmployee.hasTargetPeriod) {
+    return {
+      allowed: false,
+      reason:
+        'The managerial employee has not yet completed their UWP targets. UWP creation is locked until this is done.',
+    }
+  }
+
+  return { allowed: true, reason: '' }
+})
+
+const canCreateUWP = computed(() => uwpLockStatus.value.allowed)
+const uwpBlockedReason = computed(() => uwpLockStatus.value.reason)
+
+// ============================================================================
+// COMPUTED: SELECTED NODE & EMPLOYEES
+// ============================================================================
+
+const selectedNode = computed(() => {
+  if (!selectedNodeId.value) return null
+  return orgStore._findNode(selectedNodeId.value) || null
+})
+
+const selectedNodeBreadcrumb = computed(() => {
+  if (!selectedNode.value) return ''
+  const path = getNodePath(selectedNodeId.value)
+  return path.length > 3 ? `... / ${path.slice(-2).join(' / ')}` : path.join(' / ')
+})
+
+/** Direct employee children of the selected node */
+const employees = computed(() => {
+  if (!selectedNode.value) return []
+  if (selectedNode.value.type === 'employee') return [selectedNode.value]
+  return (selectedNode.value.children || []).filter((c) => c.type === 'employee')
+})
+
+const filteredEmployees = computed(() => {
+  if (!employeeFilter.value) return employees.value
+  const term = employeeFilter.value.toLowerCase()
+  return employees.value.filter(
+    (emp) =>
+      emp.label?.toLowerCase().includes(term) ||
+      emp.position?.toLowerCase().includes(term) ||
+      emp.rank?.toLowerCase().includes(term),
+  )
+})
+
+// ============================================================================
+// COMPUTED: REPORT DATA
+// ============================================================================
+
 const officeStructure = computed(() => {
   const structure = orgStore.structure || []
-
-  // Find the office node that matches the user's office
   const findUserOffice = (nodes) => {
     if (!nodes) return null
-
     for (const node of nodes) {
       if (node.type === 'office') {
-        // Check if this is the user's office
         const userOffice = userStore.officeData?.Office || ''
-        if (node.label.includes(userOffice) || userOffice.includes(node.label)) {
-          return node
-        }
+        if (node.label.includes(userOffice) || userOffice.includes(node.label)) return node
       }
       const found = findUserOffice(node.children)
       if (found) return found
     }
     return null
   }
-
   const userOfficeNode = findUserOffice(structure)
-
-  // If we found the user's office, return that as the root
-  // Otherwise return the full structure
   return userOfficeNode ? [userOfficeNode] : structure
 })
 
-// Get the first sub-level nodes under the office
 const firstSubLevel = computed(() => {
   if (!selectedNode.value) return []
-
-  // Get the office node (root or selected)
   const getOfficeNode = (nodes) => {
     if (!nodes) return null
     for (const node of nodes) {
@@ -514,262 +616,65 @@ const firstSubLevel = computed(() => {
     }
     return null
   }
-
   const officeNode = getOfficeNode(orgStore.structure)
-  if (!officeNode || !officeNode.children) return []
-
-  return officeNode.children.filter(
-    (child) =>
-      child.type !== 'employee' &&
-      ['office2', 'group', 'division', 'section', 'unit'].includes(child.type),
-  )
+  if (!officeNode?.children) return []
+  return officeNode.children.filter((c) => c.type !== 'employee' && ORG_NODE_TYPES.includes(c.type))
 })
 
 const filteredRow = computed(() => {
   if (!selectedNode.value) return []
-
-  const getSubNodes = (node) => {
-    if (!node.children) return []
-    return node.children.filter(
-      (child) =>
-        child.type !== 'employee' &&
-        ['office2', 'group', 'division', 'section', 'unit'].includes(child.type),
-    )
-  }
-
-  return getSubNodes(selectedNode.value)
-})
-
-const selectedNode = computed(() => {
-  const findNode = (nodes) => {
-    if (!nodes) return null
-    return (
-      nodes.find((node) => node.id === selectedNodeId.value) ||
-      nodes.reduce((acc, node) => acc || findNode(node.children), null)
-    )
-  }
-  return selectedNodeId.value ? findNode(orgStore.structure) : null
-})
-
-const getNodePath = (nodeId, nodes = orgStore.structure) => {
-  const path = []
-
-  const findPath = (targetId, currentNodes, currentPath) => {
-    if (!currentNodes) return false
-
-    for (const node of currentNodes) {
-      const newPath = [...currentPath, node.label]
-
-      if (node.id === targetId) {
-        path.push(...newPath)
-        return true
-      }
-
-      if (node.children && findPath(targetId, node.children, newPath)) {
-        return true
-      }
-    }
-    return false
-  }
-
-  findPath(nodeId, nodes, [])
-  return path
-}
-
-const selectedNodeBreadcrumb = computed(() => {
-  if (!selectedNode.value) return ''
-  const path = getNodePath(selectedNodeId.value)
-  return path.length > 3 ? `...   / ${path.slice(-2).join('/')}` : path.join(' / ')
-})
-
-const getHierarchyPath = (nodeId, nodes = orgStore.structure) => {
-  const path = {
-    office: null,
-    office2: null,
-    group: null,
-    division: null,
-    section: null,
-    unit: null,
-  }
-
-  const hierarchyLevels = ['office', 'office2', 'group', 'division', 'section', 'unit']
-  let found = false
-
-  const traverse = (currentNodes, currentPath = []) => {
-    if (found || !currentNodes) return
-
-    for (const node of currentNodes) {
-      if (node.id === nodeId) {
-        currentPath.forEach((n) => {
-          if (hierarchyLevels.includes(n.type)) {
-            path[n.type] = {
-              id: n.id,
-              label: n.label,
-              type: n.type,
-            }
-          }
-        })
-
-        if (hierarchyLevels.includes(node.type)) {
-          path[node.type] = {
-            id: node.id,
-            label: node.label,
-            type: node.type,
-          }
-        }
-
-        found = true
-        return
-      }
-
-      if (node.children) {
-        traverse(node.children, [...currentPath, node])
-      }
-    }
-  }
-
-  traverse(nodes)
-  return path
-}
-
-const getNodeEmployees = (nodeId, nodes = orgStore.structure) => {
-  const employees = []
-
-  const traverse = (currentNodes, targetId) => {
-    if (!currentNodes) return false
-
-    for (const node of currentNodes) {
-      if (node.id === targetId) {
-        if (node.children) {
-          node.children.forEach((child) => {
-            if (child.type === 'employee') {
-              employees.push({
-                id: child.id,
-                label: child.label,
-                position: child.position,
-                rank: child.rank,
-                ipcrStatus: child.ipcrStatus,
-                isHead: child.isHead,
-                hasTargetPeriod: child.hasTargetPeriod,
-                employeeData: child.employeeData,
-              })
-            }
-          })
-        }
-        return true
-      }
-
-      if (node.children && traverse(node.children, targetId)) {
-        return true
-      }
-    }
-  }
-
-  traverse(nodes, nodeId)
-  return employees
-}
-
-// Helper function to recursively collect all employees under a node
-const getAllEmployeesUnderNode = (nodeId, nodes = orgStore.structure) => {
-  const employees = []
-
-  const collectEmployees = (node) => {
-    if (!node) return
-
-    if (node.type === 'employee') {
-      employees.push({
-        id: node.id,
-        label: node.label,
-        position: node.position,
-        rank: node.rank,
-        ipcrStatus: node.ipcrStatus,
-        isHead: node.isHead,
-        hasTargetPeriod: node.hasTargetPeriod,
-        employeeData: node.employeeData,
-      })
-    } else if (node.children) {
-      node.children.forEach((child) => collectEmployees(child))
-    }
-  }
-
-  const findAndCollect = (currentNodes, targetId) => {
-    if (!currentNodes) return false
-
-    for (const node of currentNodes) {
-      if (node.id === targetId) {
-        collectEmployees(node)
-        return true
-      }
-
-      if (node.children && findAndCollect(node.children, targetId)) {
-        return true
-      }
-    }
-    return false
-  }
-
-  findAndCollect(nodes, nodeId)
-  return employees
-}
-
-const employees = computed(() => {
-  if (!selectedNode.value) return []
-
-  if (selectedNode.value.type === 'employee') {
-    return [selectedNode.value]
-  }
-
-  return selectedNode.value.children?.filter((child) => child.type === 'employee') || []
-})
-
-const filteredEmployees = computed(() => {
-  if (!employeeFilter.value) return employees.value
-  const term = employeeFilter.value.toLowerCase()
-  return employees.value.filter(
-    (emp) =>
-      emp.label.toLowerCase().includes(term) ||
-      emp.position?.toLowerCase().includes(term) ||
-      emp.rank?.toLowerCase().includes(term),
+  return (selectedNode.value.children || []).filter(
+    (c) => c.type !== 'employee' && ORG_NODE_TYPES.includes(c.type),
   )
 })
 
-const canCreateUWP = computed(() => {
-  if (!selectedNode.value) return false
-  return ['office', 'office2', 'group', 'division', 'section', 'unit'].includes(
-    selectedNode.value.type,
-  )
-})
+// ============================================================================
+// BUTTON VISIBILITY CHECKS
+// ============================================================================
 
-const headRanks = [
-  'office-head',
-  'division-head',
-  'section-head',
-  'unit-head',
-  'group-head',
-  'office2-head',
-]
-
-const isHeadRank = (rank) => !!rank && headRanks.some((h) => rank.toLowerCase().includes(h))
-
-const getNodeColor = (node) => {
-  return (
-    {
-      office: 'green',
-      office2: 'teal',
-      group: 'purple',
-      division: 'red',
-      section: 'blue',
-      unit: 'indigo',
-      employee: node.isHead || isHeadRank(node.rank) ? 'blue' : 'grey',
-    }[node.type] || 'grey'
-  )
+const shouldCountEmployee = (employee) => {
+  if (!employee?.employeeData) return false
+  return !isExcludedStatus(employee.employeeData.status)
 }
+
+const shouldIncludeInUWP = (employee) => shouldCountEmployee(employee)
+
+/** QPEF: CASUAL, CONTRACTUAL, HONORARIUM only */
+const canShowQPEF = (employee) => {
+  if (!employee?.employeeData) return false
+  const s = employee.employeeData.status?.toUpperCase()
+  return ['CASUAL', 'CONTRACTUAL', 'HONORARIUM'].includes(s)
+}
+
+/** OPCR: Managerial rank only */
+const canShowOPCR = (employee) => {
+  if (!employee?.rank) return false
+  return employee.rank.toLowerCase().includes('managerial')
+}
+
+/** IPCR: Not excluded status, not Managerial */
+const canShowIPCR = (employee) => {
+  if (!employee?.employeeData) return false
+  if (isExcludedStatus(employee.employeeData.status)) return false
+  if (employee.rank?.toLowerCase().includes('managerial')) return false
+  return true
+}
+
+/** Edit: Not excluded status and has target period */
+const canShowEdit = (employee) => {
+  if (!employee?.employeeData) return false
+  if (!employee.hasTargetPeriod) return false
+  return !isExcludedStatus(employee.employeeData.status)
+}
+
+// ============================================================================
+// NODE TREE DISPLAY HELPERS
+// ============================================================================
 
 const getNodeIcon = (node) => {
   if (node.type === 'employee') {
     return isHeadRank(node.rank) ? 'supervisor_account' : 'person'
   }
-
   return (
     {
       office: 'account_balance',
@@ -785,82 +690,37 @@ const getNodeIcon = (node) => {
 const getStatusColor = (row) => {
   const s = row.ipcrStatus?.toLowerCase() || ''
   if (s.includes('approved')) return 'positive'
+  if (s.includes('draft')) return 'info'
   if (s.includes('pending')) return 'warning'
-  if (s.includes('review')) return 'info'
+  if (s.includes('review')) return 'purple'
   if (s.includes('rejected')) return 'negative'
+  if (s.includes('returned')) return 'negative'
   return 'grey'
 }
 
-const isLeafNode = (nodeId) => {
-  const completion = orgStore.getNodeCompletion(nodeId)
-  return completion.isLeafNode === true
-}
+const isLeafNode = (nodeId) => orgStore.getNodeCompletion(nodeId).isLeafNode === true
 
-const getNodeCompletionRatio = (nodeId) => {
-  const completion = orgStore.getNodeCompletion(nodeId)
-
-  // For leaf nodes, show employee completion (e.g., "1/5")
-  const node = orgStore._findNode(nodeId)
-  if (node && node.isLeaf) {
-    return completion.ratio
-  }
-
-  // For parent nodes, show child org unit completion
-  // Always return the ratio (even if it's '0/0')
-  return completion.ratio
-}
+const getNodeCompletionRatio = (nodeId) => orgStore.getNodeCompletion(nodeId).ratio
 
 const getCompletionColor = (nodeId) => {
-  const completion = orgStore.getNodeCompletion(nodeId)
-  if (completion.isCompleted) {
-    return 'positive'
-  }
-  if (completion.total === 0) {
-    return 'grey-7'
-  }
+  const c = orgStore.getNodeCompletion(nodeId)
+  if (c.isCompleted) return 'positive'
+  if (c.total === 0) return 'grey-7'
   return 'warning'
 }
 
 const getNodeCount = (nodeId) => {
-  try {
-    const node = orgStore._findNode(nodeId)
-    if (!node) return 0
-
-    // If it's a leaf organizational node, count all employees in it
-    if (node.isLeaf) {
-      return countAllEmployees(node)
-    }
-
-    // For non-leaf nodes (parent nodes), return direct children count
-    // This includes both direct employees + direct org child nodes
-    return node.directCount || 0
-  } catch {
-    return 0
-  }
-}
-
-// Helper function to recursively count all employees in a node
-const countAllEmployees = (node) => {
+  const node = orgStore._findNode(nodeId)
   if (!node) return 0
-
-  if (node.type === 'employee') {
-    return 1
+  const count = (n) => {
+    if (!n) return 0
+    if (n.type === 'employee') return shouldCountEmployee(n) ? 1 : 0
+    return (n.children || []).reduce((sum, c) => sum + count(c), 0)
   }
-
-  let total = 0
-  if (node.children && node.children.length > 0) {
-    for (const child of node.children) {
-      total += countAllEmployees(child)
-    }
-  }
-
-  return total
+  return count(node)
 }
 
-const getLeafBadgeColor = (nodeId) => {
-  const count = getNodeCount(nodeId)
-  return count > 0 ? 'positive' : 'grey-5'
-}
+const getLeafBadgeColor = (nodeId) => (getNodeCount(nodeId) > 0 ? 'positive' : 'grey-5')
 
 const filterMethod = (node, filter) => {
   if (!filter) return true
@@ -871,240 +731,223 @@ const filterMethod = (node, filter) => {
     (node.position?.toLowerCase().includes(term) || node.rank?.toLowerCase().includes(term))
   )
     return true
-  return node.children?.some((child) => filterMethod(child, filter))
+  return node.children?.some((c) => filterMethod(c, filter))
 }
 
-// Helper method to extract hierarchy levels from employee data
-const getEmployeeLevels = (employee) => {
-  if (!employee) {
-    return {
-      office: null,
-      office2: null,
-      group: null,
-      division: null,
-      section: null,
-      unit: null,
+// ============================================================================
+// NAVIGATION & HIERARCHY HELPERS
+// ============================================================================
+
+const getNodePath = (nodeId, nodes = orgStore.structure) => {
+  const path = []
+  const find = (targetId, currentNodes, current) => {
+    if (!currentNodes) return false
+    for (const node of currentNodes) {
+      const next = [...current, node.label]
+      if (node.id === targetId) {
+        path.push(...next)
+        return true
+      }
+      if (node.children && find(targetId, node.children, next)) return true
+    }
+    return false
+  }
+  find(nodeId, nodes, [])
+  return path
+}
+
+const getHierarchyPath = (nodeId, nodes = orgStore.structure) => {
+  const path = {
+    office: null,
+    office2: null,
+    group: null,
+    division: null,
+    section: null,
+    unit: null,
+  }
+  const levels = Object.keys(path)
+  let found = false
+
+  const traverse = (currentNodes, current = []) => {
+    if (found || !currentNodes) return
+    for (const node of currentNodes) {
+      if (node.id === nodeId) {
+        current.forEach((n) => {
+          if (levels.includes(n.type)) path[n.type] = { id: n.id, label: n.label, type: n.type }
+        })
+        if (levels.includes(node.type))
+          path[node.type] = { id: node.id, label: node.label, type: node.type }
+        found = true
+        return
+      }
+      if (node.children) traverse(node.children, [...current, node])
     }
   }
 
-  return {
-    office: employee.employeeData?.office || employee.office || null,
-    office2: employee.employeeData?.office2 || employee.office2 || null,
-    group: employee.employeeData?.group || employee.group || null,
-    division: employee.employeeData?.division || employee.division || null,
-    section: employee.employeeData?.section || employee.section || null,
-    unit: employee.employeeData?.unit || employee.unit || null,
-  }
+  traverse(nodes)
+  return path
 }
 
-// Helper to get parent organizational node for an employee
+const getEmployeeLevels = (employee) => ({
+  office: employee?.employeeData?.office || employee?.office || null,
+  office2: employee?.employeeData?.office2 || employee?.office2 || null,
+  group: employee?.employeeData?.group || employee?.group || null,
+  division: employee?.employeeData?.division || employee?.division || null,
+  section: employee?.employeeData?.section || employee?.section || null,
+  unit: employee?.employeeData?.unit || employee?.unit || null,
+})
+
 const getParentOrgNode = (employeeNode) => {
-  if (!employeeNode || employeeNode.type !== 'employee') {
-    return selectedNode.value
-  }
-
-  // Get the employee's organizational levels
+  if (!employeeNode || employeeNode.type !== 'employee') return selectedNode.value
   const levels = getEmployeeLevels(employeeNode)
-
-  console.log('🔍 Finding parent org node for levels:', levels)
-
-  // Find the lowest-level organizational unit this employee belongs to
-  // Priority: unit > section > division > group > office2 > office
-  if (levels.unit) {
-    const nodeId = `unit_${orgStore.slugify(levels.unit)}`
-    console.log('🔍 Looking for unit node:', nodeId)
-    const node = orgStore._findNode(nodeId)
-    if (node) {
-      console.log('✅ Found unit node:', node.label)
-      return node
+  const levelOrder = ['unit', 'section', 'division', 'group', 'office2', 'office']
+  for (const level of levelOrder) {
+    if (levels[level]) {
+      const node = orgStore._findNode(`${level}_${orgStore.slugify(levels[level])}`)
+      if (node) return node
     }
   }
-
-  if (levels.section) {
-    const nodeId = `section_${orgStore.slugify(levels.section)}`
-    console.log('🔍 Looking for section node:', nodeId)
-    const node = orgStore._findNode(nodeId)
-    if (node) {
-      console.log('✅ Found section node:', node.label)
-      return node
-    }
-  }
-
-  if (levels.division) {
-    const nodeId = `division_${orgStore.slugify(levels.division)}`
-    console.log('🔍 Looking for division node:', nodeId)
-    const node = orgStore._findNode(nodeId)
-    if (node) {
-      console.log('✅ Found division node:', node.label)
-      return node
-    }
-  }
-
-  if (levels.group) {
-    const nodeId = `group_${orgStore.slugify(levels.group)}`
-    console.log('🔍 Looking for group node:', nodeId)
-    const node = orgStore._findNode(nodeId)
-    if (node) {
-      console.log('✅ Found group node:', node.label)
-      return node
-    }
-  }
-
-  if (levels.office2) {
-    const nodeId = `office2_${orgStore.slugify(levels.office2)}`
-    console.log('🔍 Looking for office2 node:', nodeId)
-    const node = orgStore._findNode(nodeId)
-    if (node) {
-      console.log('✅ Found office2 node:', node.label)
-      return node
-    }
-  }
-
-  if (levels.office) {
-    const nodeId = `office_${orgStore.slugify(levels.office)}`
-    console.log('🔍 Looking for office node:', nodeId)
-    const node = orgStore._findNode(nodeId)
-    if (node) {
-      console.log('✅ Found office node:', node.label)
-      return node
-    }
-  }
-
-  console.log('❌ No parent org node found')
   return null
 }
 
-// Updated method to find supervisory signatory at the same level
+const getNodeEmployees = (nodeId) => {
+  const result = []
+  const node = orgStore._findNode(nodeId)
+  if (!node) return result
+  ;(node.children || []).forEach((child) => {
+    if (child.type === 'employee' && shouldCountEmployee(child)) {
+      result.push({
+        id: child.id,
+        label: child.label,
+        position: child.position,
+        rank: child.rank,
+        ipcrStatus: child.ipcrStatus,
+        isHead: child.isHead,
+        hasTargetPeriod: child.hasTargetPeriod,
+        employeeData: child.employeeData,
+      })
+    }
+  })
+  return result
+}
+
+const getAllEmployeesUnderNode = (nodeId) => {
+  const result = []
+  const collect = (node) => {
+    if (!node) return
+    if (node.type === 'employee') {
+      if (shouldCountEmployee(node))
+        result.push({
+          id: node.id,
+          label: node.label,
+          position: node.position,
+          rank: node.rank,
+          ipcrStatus: node.ipcrStatus,
+          isHead: node.isHead,
+          hasTargetPeriod: node.hasTargetPeriod,
+          employeeData: node.employeeData,
+        })
+    } else {
+      ;(node.children || []).forEach(collect)
+    }
+  }
+  collect(orgStore._findNode(nodeId))
+  return result
+}
+
+// ============================================================================
+// SIGNATORY FINDERS
+// ============================================================================
+
 const getSupervisoryAtSameLevel = (employee, levels, allEmployees) => {
-  if (!employee || !levels || !allEmployees) {
-    console.log('❌ Missing required parameters for supervisory search')
-    return null
-  }
-
-  const employeeRank = employee.rank?.toLowerCase()
-  console.log('📋 Employee rank:', employeeRank)
-
-  // If employee is already supervisory/managerial, they don't need a supervisory signatory
+  if (!employee || !levels || !allEmployees) return null
+  const empRank = employee.rank?.toLowerCase()
   if (
-    employeeRank === 'supervisory' ||
-    employeeRank === 'managerial' ||
-    employeeRank?.includes('supervisory') ||
-    employeeRank?.includes('managerial')
-  ) {
-    console.log('⚠️ Employee is already supervisory/managerial')
+    empRank === 'supervisory' ||
+    empRank === 'managerial' ||
+    empRank?.includes('supervisory') ||
+    empRank?.includes('managerial')
+  )
     return null
-  }
 
-  console.log('👥 Searching through employees:', allEmployees.length)
-
-  // Find supervisory employee at the same level
-  const supervisoryEmployee = allEmployees.find((emp) => {
-    // Skip if same employee
-    if (emp.id === employee.id) {
-      console.log('⏭️ Skipping same employee')
-      return false
-    }
-
-    const empRank = emp.rank?.toLowerCase()
-    console.log(`🔍 Checking employee ${emp.label} with rank ${empRank}`)
-
-    // Check if this employee has supervisory rank
-    const isSupervisory =
-      empRank === 'supervisory' ||
-      empRank?.includes('supervisory') ||
-      empRank?.includes('head') ||
-      (empRank?.includes('supervisor') && !empRank?.includes('non-supervisory'))
-
-    if (!isSupervisory) {
-      console.log(`❌ ${emp.label} is not supervisory`)
-      return false
-    }
-
-    console.log(`✅ ${emp.label} is supervisory, checking levels...`)
-
-    // Get this employee's levels
-    const empLevels = getEmployeeLevels(emp)
-
-    // Check if they're at the same level (start from lowest level)
-    if (levels.unit && empLevels.unit === levels.unit) {
-      console.log(`✅ Same unit: ${levels.unit}`)
-      return true
-    }
-    if (levels.section && empLevels.section === levels.section) {
-      console.log(`✅ Same section: ${levels.section}`)
-      return true
-    }
-    if (levels.division && empLevels.division === levels.division) {
-      console.log(`✅ Same division: ${levels.division}`)
-      return true
-    }
-    if (levels.group && empLevels.group === levels.group) {
-      console.log(`✅ Same group: ${levels.group}`)
-      return true
-    }
-    if (levels.office2 && empLevels.office2 === levels.office2) {
-      console.log(`✅ Same office2: ${levels.office2}`)
-      return true
-    }
-    if (levels.office && empLevels.office === levels.office) {
-      console.log(`✅ Same office: ${levels.office}`)
-      return true
-    }
-
-    console.log(`❌ ${emp.label} is not at same level`)
-    return false
-  })
-
-  console.log('🔍 Final supervisory employee found:', supervisoryEmployee)
-  return supervisoryEmployee
+  return (
+    allEmployees.find((emp) => {
+      if (emp.id === employee.id) return false
+      const r = emp.rank?.toLowerCase()
+      const isSuper =
+        r === 'supervisory' ||
+        r?.includes('supervisory') ||
+        r?.includes('head') ||
+        (r?.includes('supervisor') && !r?.includes('non-supervisory'))
+      if (!isSuper) return false
+      const el = getEmployeeLevels(emp)
+      return (
+        (levels.unit && el.unit === levels.unit) ||
+        (levels.section && el.section === levels.section) ||
+        (levels.division && el.division === levels.division) ||
+        (levels.group && el.group === levels.group) ||
+        (levels.office2 && el.office2 === levels.office2) ||
+        (levels.office && el.office === levels.office)
+      )
+    }) || null
+  )
 }
 
-// Updated method to find managerial signatory at office level
 const getManagerialInOffice = (levels, allEmployees) => {
-  if (!levels.office || !allEmployees) {
-    console.log('❌ No office level specified or no employees provided')
-    return null
-  }
-
-  console.log(`👥 Searching through employees for managerial: ${allEmployees.length}`)
-
-  const managerialEmployee = allEmployees.find((emp) => {
-    const empRank = emp.rank?.toLowerCase()
-    console.log(`🔍 Checking ${emp.label} with rank ${empRank}`)
-
-    // Check if this employee has managerial rank
-    const isManagerial =
-      empRank === 'managerial' ||
-      empRank?.includes('managerial') ||
-      empRank?.includes('manager') ||
-      empRank?.includes('department head') ||
-      empRank?.includes('office head')
-
-    if (!isManagerial) {
-      console.log(`❌ ${emp.label} is not managerial`)
-      return false
-    }
-
-    console.log(`✅ ${emp.label} is managerial, checking office...`)
-
-    // Get employee's office
-    const empLevels = getEmployeeLevels(emp)
-
-    // Check if in the same office
-    if (empLevels.office === levels.office) {
-      console.log(`✅ Same office: ${levels.office}`)
-      return true
-    }
-
-    console.log(`❌ ${emp.label} is not in same office`)
-    return false
-  })
-
-  console.log('🔍 Final managerial employee found:', managerialEmployee)
-  return managerialEmployee
+  if (!levels.office || !allEmployees) return null
+  return (
+    allEmployees.find((emp) => {
+      const r = emp.rank?.toLowerCase()
+      const isMgr =
+        r === 'managerial' ||
+        r?.includes('managerial') ||
+        r?.includes('manager') ||
+        r?.includes('department head') ||
+        r?.includes('office head')
+      if (!isMgr) return false
+      return getEmployeeLevels(emp).office === levels.office
+    }) || null
+  )
 }
 
-// Event handlers
+const buildSignatories = (employee) => {
+  const levels = getEmployeeLevels(employee)
+  const parentOrgNode = getParentOrgNode(employee)
+  if (!parentOrgNode) return { levels, supervisorySignatory: null, managerialSignatory: null }
+
+  const directEmployees = getNodeEmployees(parentOrgNode.id)
+  const supervisory = getSupervisoryAtSameLevel(employee, levels, directEmployees)
+
+  let managerialPool = getAllEmployeesUnderNode(parentOrgNode.id)
+  if (levels.office) {
+    const officeNode = orgStore._findNode(`office_${orgStore.slugify(levels.office)}`)
+    if (officeNode) managerialPool = getAllEmployeesUnderNode(officeNode.id)
+  }
+  const managerial = getManagerialInOffice(levels, managerialPool)
+
+  return {
+    levels,
+    supervisorySignatory: supervisory
+      ? {
+          name: supervisory.label || supervisory.name,
+          position: supervisory.position,
+          rank: supervisory.rank,
+        }
+      : null,
+    managerialSignatory: managerial
+      ? {
+          name: managerial.label || managerial.name,
+          position: managerial.position,
+          rank: managerial.rank,
+        }
+      : null,
+  }
+}
+
+// ============================================================================
+// EVENT HANDLERS: NAVIGATION
+// ============================================================================
+
 const onNodeSelect = (nodeId) => {
   selectedNodeId.value = nodeId
   employeeFilter.value = ''
@@ -1128,16 +971,16 @@ const onYearChange = async () => {
   }
 }
 
+// ============================================================================
+// EVENT HANDLERS: MODALS
+// ============================================================================
+
 const showUnitWorkPlanModal = () => {
   if (!selectedNode.value)
-    return $q.notify({
-      message: 'Please select a node first',
-      color: 'negative',
-    })
+    return $q.notify({ message: 'Please select a node first', color: 'negative' })
   filteredRows.value = employees.value
   showUnitWorkPlanModalOpen.value = true
 }
-
 const closeUnitWorkPlanModal = () => {
   showUnitWorkPlanModalOpen.value = false
 }
@@ -1146,141 +989,56 @@ const show_opcr_Modal = (employee) => {
   selectedEmployee.value = employee
   show_opcr_ModalOpen.value = true
 }
-
 const close_opcr_Modal = () => {
   show_opcr_ModalOpen.value = false
 }
 
-// FIXED: Updated show_ipcr_Modal method with proper parent org node search
-const show_ipcr_Modal = (employee) => {
-  console.log('🔍 Selected employee for IPCR:', employee)
-
-  // Get employee hierarchy levels
-  const levels = getEmployeeLevels(employee)
-  console.log('📊 Employee levels:', levels)
-
-  // FIXED: Get the parent organizational node, not the employee node itself
-  const parentOrgNode = getParentOrgNode(employee)
-  console.log('🏢 Parent organizational node:', parentOrgNode)
-
-  if (!parentOrgNode) {
-    console.error('❌ Could not find parent organizational node')
-    $q.notify({
+const show_qpef_Modal = (employee) => {
+  if (!getParentOrgNode(employee)) {
+    return $q.notify({
       message: 'Could not determine organizational hierarchy',
       color: 'negative',
       position: 'top',
     })
-    return
   }
-
-  // Get all employees in the parent organizational unit (direct children only)
-  const directEmployees = getNodeEmployees(parentOrgNode.id)
-  console.log('👥 Direct employees in parent org unit:', directEmployees.length)
-
-  // Also get ALL employees under this node (including nested units) for managerial search
-  const allEmployees = getAllEmployeesUnderNode(parentOrgNode.id)
-  console.log('👥 All employees under parent org unit:', allEmployees.length)
-  console.log(
-    '👥 All employees:',
-    allEmployees.map((e) => ({ name: e.label, rank: e.rank })),
-  )
-
-  // Find supervisory signatory (same level - search in direct employees)
-  const supervisory = getSupervisoryAtSameLevel(employee, levels, directEmployees)
-  console.log('👨‍💼 Supervisory signatory found:', supervisory)
-
-  // Find managerial signatory (office level) - need to search at office level
-  let managerialAllEmployees = allEmployees
-
-  // If we're in a lower-level unit, we need to search at the office level for managerial
-  if (levels.office) {
-    const officeNodeId = `office_${orgStore.slugify(levels.office)}`
-    const officeNode = orgStore._findNode(officeNodeId)
-    if (officeNode) {
-      managerialAllEmployees = getAllEmployeesUnderNode(officeNode.id)
-      console.log(
-        '👥 Searching for managerial in office-level employees:',
-        managerialAllEmployees.length,
-      )
-    }
-  }
-
-  const managerial = getManagerialInOffice(levels, managerialAllEmployees)
-  console.log('👩‍💼 Managerial signatory found:', managerial)
-
-  // Build the employee data with signatories
-  selectedEmployee.value = {
-    ...employee,
-    levels: levels,
-    supervisorySignatory: supervisory
-      ? {
-          name: supervisory.label || supervisory.name,
-          position: supervisory.position,
-          rank: supervisory.rank,
-        }
-      : null,
-    managerialSignatory: managerial
-      ? {
-          name: managerial.label || managerial.name,
-          position: managerial.position,
-          rank: managerial.rank,
-        }
-      : null,
-  }
-
-  console.log('✅ Final employee data with signatories:', selectedEmployee.value)
-
-  show_ipcr_ModalOpen.value = true
+  selectedEmployee.value = { ...employee, ...buildSignatories(employee) }
+  show_qpef_ModalOpen.value = true
+}
+const close_qpef_Modal = () => {
+  show_qpef_ModalOpen.value = false
 }
 
+const show_ipcr_Modal = (employee) => {
+  if (!getParentOrgNode(employee)) {
+    return $q.notify({
+      message: 'Could not determine organizational hierarchy',
+      color: 'negative',
+      position: 'top',
+    })
+  }
+  selectedEmployee.value = { ...employee, ...buildSignatories(employee) }
+  show_ipcr_ModalOpen.value = true
+}
 const close_ipcr_Modal = () => {
   show_ipcr_ModalOpen.value = false
 }
 
 const showEditModal = (employee) => {
   const controlNo = employee.employeeData?.ControlNo || employee.ControlNo || employee.control_no
+  const semester = currentTargetPeriod.value?.semester || orgStore.selectedSemester
+  const year = currentTargetPeriod.value?.year || orgStore.selectedYear
 
-  // Get current target period - ensure it exists
-  const currentPeriod = currentTargetPeriod.value
-
-  // Log for debugging
-  console.log('🔍 Current period from store:', currentPeriod)
-  console.log('🔍 Selected semester in store:', orgStore.selectedSemester)
-  console.log('🔍 Selected year in store:', orgStore.selectedYear)
-
-  // If currentPeriod is empty, try to get from store directly
-  const semester = currentPeriod?.semester || orgStore.selectedSemester
-  const year = currentPeriod?.year || orgStore.selectedYear
-
-  console.log('🔍 Final values for edit modal:', {
-    employeeName: employee.label,
-    controlNo: controlNo,
-    semester: semester,
-    year: year,
-    hasSemester: !!semester,
-    hasYear: !!year,
-  })
-
-  // Validate we have all required data
   if (!semester || !year) {
-    $q.notify({
+    return $q.notify({
       message: 'Cannot open edit mode: Semester or Year is not selected',
       color: 'negative',
       position: 'top',
     })
-    return
   }
 
-  // Pass all necessary data including semester and year
-  employeeToEdit.value = {
-    ...employee,
-    controlNo: controlNo,
-    semester: semester, // Pass semester explicitly
-    year: year, // Pass year explicitly
-  }
+  employeeToEdit.value = { ...employee, controlNo, semester, year }
   showEditModalOpen.value = true
 }
-
 const closeEditModal = () => {
   showEditModalOpen.value = false
   employeeToEdit.value = null
@@ -1289,73 +1047,64 @@ const closeEditModal = () => {
 const handleEmployeeSaved = async () => {
   try {
     await refreshData()
-    $q.notify({
-      message: 'Employee updated successfully',
-      color: 'positive',
-    })
+    $q.notify({ message: 'Employee updated successfully', color: 'positive' })
   } catch {
-    $q.notify({
-      message: 'Failed to refresh data after edit',
-      color: 'negative',
-    })
+    $q.notify({ message: 'Failed to refresh data after edit', color: 'negative' })
   }
 }
 
+const handleStatusUpdated = async () => {
+  await refreshData()
+  await orgStore.fetchListTargetPeriod()
+  $q.notify({
+    message: 'Employee status updated successfully',
+    color: 'positive',
+    position: 'top',
+    timeout: 2000,
+  })
+}
+
+// ============================================================================
+// EVENT HANDLERS: CREATE UWP
+// ============================================================================
+
 const createUnitWorkPlan = () => {
   if (!selectedNode.value)
+    return $q.notify({ message: 'Please select a node first', color: 'negative' })
+
+  // Check managerial lock at runtime
+  if (!canCreateUWP.value) {
     return $q.notify({
-      message: 'Please select a node first',
-      color: 'negative',
+      message: uwpBlockedReason.value,
+      color: 'warning',
+      position: 'top',
+      timeout: 5000,
     })
+  }
 
-  const type = ['office', 'office2', 'group', 'division', 'section', 'unit'].includes(
-    selectedNode.value.type,
-  )
-    ? selectedNode.value.type
-    : null
-
-  if (!type)
-    return $q.notify({
-      message:
-        'Please select a valid organizational unit (office, office2, group, division, section, or unit)',
-      color: 'negative',
-    })
-
-  const validation = orgStore.validateUWPCreation(selectedNode.value.id)
-
-  if (!validation.canCreate) {
-    uwpValidationMessage.value = validation.message
-    uwpIncompleteItems.value = validation.incompleteItems
-    uwpValidationDialog.value = true
-    return
+  const type = selectedNode.value.type
+  if (!ORG_NODE_TYPES.includes(type)) {
+    return $q.notify({ message: 'Please select a valid organizational unit', color: 'negative' })
   }
 
   const hierarchyPath = getHierarchyPath(selectedNode.value.id)
-  if (!hierarchyPath) {
-    return $q.notify({
-      message: 'Failed to build organizational hierarchy',
-      color: 'negative',
-    })
-  }
+  if (!hierarchyPath)
+    return $q.notify({ message: 'Failed to build organizational hierarchy', color: 'negative' })
 
-  const availableEmployees = getNodeEmployees(selectedNode.value.id)
-  const filteredAvailableEmployees = availableEmployees.filter(
-    (emp) => emp.hasTargetPeriod === true,
-  )
-  const employeesWithoutTargetPeriod = availableEmployees.filter(
-    (emp) => emp.hasTargetPeriod === false,
-  )
-  const breadcrumb = getNodePath(selectedNodeId.value)
+  const allEmployees = getNodeEmployees(selectedNode.value.id)
+  const availableEmployees = allEmployees.filter(shouldIncludeInUWP)
+  const filteredAvailableEmployees = availableEmployees.filter((e) => e.hasTargetPeriod === true)
+  const employeesWithoutTargetPeriod = availableEmployees.filter((e) => e.hasTargetPeriod === false)
 
   const uwpData = {
     type,
     selectedNodeId: selectedNode.value.id,
     selectedNodeLabel: selectedNode.value.label,
-    breadcrumb,
+    breadcrumb: getNodePath(selectedNodeId.value),
     hierarchy: hierarchyPath,
-    availableEmployees, // ALL employees (with and without target period)
-    filteredAvailableEmployees, // Only employees WITH target period
-    employeesWithoutTargetPeriod, // Only employees WITHOUT target period
+    availableEmployees,
+    filteredAvailableEmployees,
+    employeesWithoutTargetPeriod,
     totalAvailableEmployees: availableEmployees.length,
     filteredAvailableEmployeesCount: filteredAvailableEmployees.length,
     employeesWithoutTargetPeriodCount: employeesWithoutTargetPeriod.length,
@@ -1365,15 +1114,12 @@ const createUnitWorkPlan = () => {
   }
 
   sessionStorage.setItem('uwpData', JSON.stringify(uwpData))
-
-  router.push({
-    name: 'unitworkplan',
-    query: {
-      type,
-      id: selectedNode.value.id,
-    },
-  })
+  router.push({ name: 'unitworkplan', query: { type, id: selectedNode.value.id } })
 }
+
+// ============================================================================
+// EVENT HANDLERS: DELETE
+// ============================================================================
 
 const performDeleteEmployee = async () => {
   if (!employeeToDelete.value) return
@@ -1398,6 +1144,10 @@ const performDeleteEmployee = async () => {
   }
 }
 
+// ============================================================================
+// DATA REFRESH
+// ============================================================================
+
 const refreshData = async () => {
   loading.value = true
   try {
@@ -1412,7 +1162,10 @@ const refreshData = async () => {
   }
 }
 
-// Watchers
+// ============================================================================
+// WATCHERS & LIFECYCLE
+// ============================================================================
+
 watch(
   () => userStore.officeId,
   async (id) => {
@@ -1420,7 +1173,6 @@ watch(
   },
 )
 
-// Lifecycle
 onMounted(async () => {
   await userStore.loadUserData()
   await orgStore.fetchListTargetPeriod()
@@ -1431,18 +1183,6 @@ onMounted(async () => {
 <style scoped>
 .q-page {
   background-color: #f7fafc;
-}
-
-.target-period-section {
-  background: white;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.semester-select,
-.year-select {
-  min-width: 150px;
 }
 
 .clean-table {
@@ -1462,14 +1202,12 @@ onMounted(async () => {
   transition: all 0.2s ease;
   background: #f7fafc;
 }
-
 .neu-button:hover {
   box-shadow:
     2px 2px 4px rgba(0, 0, 0, 0.2),
     -2px -2px 4px rgba(255, 255, 255, 0.9);
   transform: translateY(1px);
 }
-
 .neu-button:active {
   box-shadow:
     inset 2px 2px 4px rgba(0, 0, 0, 0.2),
@@ -1486,14 +1224,12 @@ onMounted(async () => {
   background: #f7fafc;
   padding: 8px 16px;
 }
-
 .neu-button-rect:hover {
   box-shadow:
     2px 2px 4px rgba(0, 0, 0, 0.2),
     -2px -2px 4px rgba(255, 255, 255, 0.9);
   transform: translateY(1px);
 }
-
 .neu-button-rect:active {
   box-shadow:
     inset 2px 2px 4px rgba(0, 0, 0, 0.2),
@@ -1519,11 +1255,9 @@ onMounted(async () => {
 .org-tree .q-tree__node-header {
   padding: 4px 8px;
 }
-
 .tree-icon {
   flex-shrink: 0;
 }
-
 .tree-label {
   font-size: 10pt;
   min-width: 0;
@@ -1531,23 +1265,16 @@ onMounted(async () => {
 
 .node-label {
   overflow: visible;
-  text-overflow: unset;
   white-space: normal;
-  max-width: none;
 }
 
 .employee-info {
   min-width: 0;
   overflow: hidden;
 }
-
 .employee-info > div {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.font-weight-bold {
-  font-weight: bold;
 }
 </style>

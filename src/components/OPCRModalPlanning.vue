@@ -3,7 +3,7 @@
     <!-- Header section -->
     <q-card-section
       class="header-section row items-center justify-between"
-      style="background-color: #00703c; height: 50px"
+      style="background-color: #e98193; height: 50px"
     >
       <div class="text-h6 text-white">Office Performance Commitment Review (OPCR)</div>
       <q-btn flat round dense icon="close" @click="handleClose" color="white" />
@@ -29,7 +29,7 @@
       <div class="row justify-between items-center q-px-md q-py-sm bg-grey-3">
         <div class="text-body1">{{ opcrData.name }} - {{ employee?.position || 'N/A' }}</div>
         <div class="flex justify-end q-gutter-sm">
-          <q-btn color="blue-9" icon="edit" label="Input" @click="openEditModal" />
+          <!-- <q-btn color="blue-9" icon="edit" label="Input" @click="openEditModal" /> -->
           <q-btn color="green-9" icon="print" label="Print" @click="handlePrint" />
         </div>
       </div>
@@ -585,9 +585,9 @@ const handleClose = () => {
   emit('close')
 }
 
-const openEditModal = () => {
-  editModalOpen.value = true
-}
+// const openEditModal = () => {
+//   editModalOpen.value = true
+// }
 
 const closeEditModal = async () => {
   editModalOpen.value = false

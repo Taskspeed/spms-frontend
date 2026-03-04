@@ -59,11 +59,17 @@
 
           <q-separator class="q-my-md" />
           <q-item>
-            <q-btn
+            <!-- <q-btn
               color="orange"
               label="Update Status"
               class="full-width"
               :disable="employee?.ipcrStatus === 'Approved'"
+              @click="openStatusModal"
+            /> -->
+            <q-btn
+              color="orange"
+              label="Update Status"
+              class="full-width"
               @click="openStatusModal"
             />
           </q-item>
@@ -82,12 +88,6 @@
               </div>
             </div>
             <div class="flex justify-end q-gutter-sm">
-              <q-btn
-                color="blue-9"
-                icon="edit"
-                label="Input Attendance"
-                @click="attendanceModalRef?.openModal()"
-              />
               <q-btn
                 color="green-9"
                 icon="print"
@@ -2381,7 +2381,7 @@
             <q-icon name="arrow_forward" size="16px" color="green-8" />
             <span class="text-caption text-grey-7">
               New:
-              <q-badge color="green-8" label="Approved" class="q-ml-xs" />
+              <q-badge color="purple-8" label="Reviewed" class="q-ml-xs" />
             </span>
           </div>
         </div>
@@ -2412,9 +2412,9 @@
           style="border-radius: 8px; padding: 8px 20px"
         />
         <q-btn
-          label="Approve"
+          label="Reviewed"
           icon="check_circle"
-          color="green-8"
+          color="purple-8"
           unelevated
           :loading="monitorStore.loading"
           :disable="monitorStore.loading"
@@ -3267,7 +3267,7 @@ const confirmApprove = async () => {
     }
 
     const payload = {
-      status: 'Approved',
+      status: 'Reviewed',
     }
 
     await monitorStore.ipcrApproveStatus({
@@ -3276,7 +3276,7 @@ const confirmApprove = async () => {
     })
 
     // Notify parent to update employee status
-    emit('status-updated', { ...props.employee, ipcrStatus: 'Approved' })
+    emit('status-updated', { ...props.employee, ipcrStatus: 'Reviewed' })
 
     $q.notify({
       type: 'positive',
@@ -6944,7 +6944,7 @@ watch(
 }
 
 .app-header {
-  background-color: #00703c;
+  background-color: #722b2b;
   color: white;
   padding: 12px 16px;
   display: flex;

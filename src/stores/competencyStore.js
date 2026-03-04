@@ -249,9 +249,28 @@ export const useCompetencyStore = defineStore('competency', {
     },
 
     getBySG: (state) => (sg) => {
+      // Convert sg to number for comparison
+      const sgNum = parseInt(sg)
+
       for (const level of Object.keys(state.byLevel)) {
-        if (state.byLevel[level][sg]) {
-          return state.byLevel[level][sg]
+        const levelData = state.byLevel[level]
+
+        // Check each SG key in this level
+        for (const sgKey of Object.keys(levelData)) {
+          // If it's a range (contains '-')
+          if (typeof sgKey === 'string' && sgKey.includes('-')) {
+            const [min, max] = sgKey.split('-').map(Number)
+            if (sgNum >= min && sgNum <= max) {
+              return levelData[sgKey]
+            }
+          }
+          // If it's a single number (as string or number)
+          else {
+            const keyNum = parseInt(sgKey)
+            if (keyNum === sgNum) {
+              return levelData[sgKey]
+            }
+          }
         }
       }
       return null

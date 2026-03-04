@@ -1,265 +1,248 @@
+// src/stores/office/IpcrStore.js
 import { defineStore } from 'pinia'
 import { api } from 'src/boot/axios'
 
 export const useIpcrStore = defineStore('Ipcr', {
   state: () => ({
-    // Data for each tab
+    // Data stores
     employeeIpcr: null,
     performanceStandard: null,
     monthlyPerformance: null,
     summaryMonthlyPerformance: null,
 
-    // Loading states for each tab
-    loadingIpcr: false,
-    loadingPerformanceStandard: false,
-    loadingMonthlyPerformance: false,
-    loadingSummaryMonthlyPerformance: false,
+    // Loading states
+    loadingStates: {
+      ipcr: false,
+      performanceStandard: false,
+      monthlyPerformance: false,
+      summaryMonthlyPerformance: false,
+    },
 
     // Error states
-    error: null,
-
-    // Cache to avoid redundant API calls
-    cache: {
-      ipcr: {},
-      performanceStandard: {},
-      monthlyPerformance: {},
-      summaryMonthlyPerformance: {},
+    errors: {
+      ipcr: null,
+      performanceStandard: null,
+      monthlyPerformance: null,
+      summaryMonthlyPerformance: null,
     },
   }),
 
   getters: {
-    // Check if any data is loading
-    isLoading: (state) =>
-      state.loadingIpcr ||
-      state.loadingPerformanceStandard ||
-      state.loadingMonthlyPerformance ||
-      state.loadingSummaryMonthlyPerformance,
+    // Individual loading getters
+    isLoadingIpcr: (state) => state.loadingStates.ipcr,
+    isLoadingPerformanceStandard: (state) => state.loadingStates.performanceStandard,
+    isLoadingMonthlyPerformance: (state) => state.loadingStates.monthlyPerformance,
+    isLoadingSummaryMonthlyPerformance: (state) => state.loadingSummaryMonthlyPerformance,
 
-    // Get target period ID from IPCR data
+    // Combined loading getter
+    isLoading: (state) => Object.values(state.loadingStates).some((status) => status),
+
+    // Individual error getters
+    ipcrError: (state) => state.errors.ipcr,
+    performanceStandardError: (state) => state.errors.performanceStandard,
+    monthlyPerformanceError: (state) => state.errors.monthlyPerformance,
+    summaryMonthlyPerformanceError: (state) => state.errors.summaryMonthlyPerformance,
+
+    // Target period ID extraction
     targetPeriodId: (state) => {
       if (!state.employeeIpcr) return null
 
-      // Check if target_periods array exists and has items
-      if (state.employeeIpcr.target_periods && state.employeeIpcr.target_periods.length > 0) {
-        return state.employeeIpcr.target_periods[0].id
+      // Check various possible locations for the target period ID
+      const sources = [
+        () => state.employeeIpcr.target_periods?.[0]?.id,
+        () => state.employeeIpcr.targetPeriodId,
+        () => state.employeeIpcr.TargetPeriodId,
+        () => state.employeeIpcr.target_period_id,
+        () => state.employeeIpcr.id,
+      ]
+
+      for (const source of sources) {
+        const id = source()
+        if (id) return id
       }
 
-      // Fallback to checking other possible locations
-      return (
-        state.employeeIpcr.targetPeriodId ||
-        state.employeeIpcr.TargetPeriodId ||
-        state.employeeIpcr.target_period_id ||
-        state.employeeIpcr.id ||
-        null
-      )
+      return null
     },
   },
 
   actions: {
+    // ================ DATA FETCHING ================
+
     /**
-     * Fetch Employee IPCR data
-     * @param {string} controlNo - Employee control number
-     * @param {number} year - Target year
-     * @param {string} semester - Semester (e.g., "January-June")
+     * Generic fetch method
      */
-    async fetchEmployeeIpcr(controlNo, year, semester) {
-      const cacheKey = `${controlNo}_${year}_${semester}`
-
-      // Return cached data if available
-      if (this.cache.ipcr[cacheKey]) {
-        this.employeeIpcr = this.cache.ipcr[cacheKey]
-        return this.employeeIpcr
-      }
-
-      this.loadingIpcr = true
-      this.error = null
+    async fetchData({ endpoint, dataKey, loadingKey, errorKey, params = {} }) {
+      // Set loading state
+      this.loadingStates[loadingKey] = true
+      this.errors[errorKey] = null
 
       try {
-        const response = await api.get(`/ipcr/employee/${controlNo}/${year}/${semester}`)
+        // Make API call with timestamp to prevent browser caching
+        const timestamp = new Date().getTime()
+        const finalParams = { ...params, _t: timestamp }
 
-        console.log('✅ IPCR Data fetched:', response.data)
+        const response = await api.get(endpoint, { params: finalParams })
 
-        // Extract targetPeriodId from target_periods array
-        const targetPeriodId = response.data?.target_periods?.[0]?.id
+        // Update store state
+        this[dataKey] = response.data
 
-        console.log('🔍 Target Period ID extracted:', {
-          targetPeriodId: targetPeriodId,
-          hasTargetPeriods: !!response.data?.target_periods,
-          targetPeriodsLength: response.data?.target_periods?.length || 0,
-          firstTargetPeriod: response.data?.target_periods?.[0],
-        })
-
-        this.employeeIpcr = response.data
-        this.cache.ipcr[cacheKey] = response.data
+        console.log(`✅ ${dataKey} data fetched successfully`)
 
         return response.data
       } catch (error) {
-        console.error('❌ Error fetching IPCR data:', error)
-        this.error = error.response?.data?.message || error.message || 'Failed to fetch IPCR data'
+        // Handle error
+        const errorMessage =
+          error.response?.data?.message || error.message || `Failed to fetch ${dataKey}`
+        this.errors[errorKey] = errorMessage
+
+        console.error(`❌ Error fetching ${dataKey}:`, error)
         throw error
       } finally {
-        this.loadingIpcr = false
+        // Clear loading state
+        this.loadingStates[loadingKey] = false
       }
+    },
+
+    /**
+     * Fetch Employee IPCR data
+     */
+    async fetchEmployeeIpcr(controlNo, year, semester) {
+      return this.fetchData({
+        endpoint: `/ipcr/employee/${controlNo}/${year}/${semester}`,
+        dataKey: 'employeeIpcr',
+        loadingKey: 'ipcr',
+        errorKey: 'ipcr',
+      })
     },
 
     /**
      * Fetch Performance Standard data
-     * @param {number} targetPeriodId - Target period ID
      */
     async fetchPerformanceStandard(targetPeriodId) {
-      const cacheKey = `${targetPeriodId}`
-
-      // Return cached data if available
-      if (this.cache.performanceStandard[cacheKey]) {
-        this.performanceStandard = this.cache.performanceStandard[cacheKey]
-        return this.performanceStandard
-      }
-
-      this.loadingPerformanceStandard = true
-      this.error = null
-
-      try {
-        const response = await api.get(`/ipcr/performance-standard/${targetPeriodId}`)
-
-        console.log('✅ Performance Standard data fetched:', response.data)
-
-        this.performanceStandard = response.data
-        this.cache.performanceStandard[cacheKey] = response.data
-
-        return response.data
-      } catch (error) {
-        console.error('❌ Error fetching Performance Standard:', error)
-        this.error =
-          error.response?.data?.message || error.message || 'Failed to fetch Performance Standard'
-        throw error
-      } finally {
-        this.loadingPerformanceStandard = false
-      }
+      return this.fetchData({
+        endpoint: `/ipcr/performance-standard/${targetPeriodId}`,
+        dataKey: 'performanceStandard',
+        loadingKey: 'performanceStandard',
+        errorKey: 'performanceStandard',
+      })
     },
 
     /**
      * Fetch Monthly Performance data
-     * The API returns an array with this structure:
-     * [
-     *   {
-     *     id, target_period_id, category, mfo,
-     *     monthly_ratings: {
-     *       monthly: [
-     *         {
-     *           month: "January 2026",
-     *           quantity: { week1, week2, week3, week4, week5, average },
-     *           effectiveness: { week1, week2, week3, week4, week5, average },
-     *           timeliness: { week1, week2, week3, week4, week5, average }
-     *         },
-     *         ...
-     *       ],
-     *       whole_average: { quantity, effectiveness, timeliness, overall }
-     *     }
-     *   },
-     *   ...
-     * ]
-     *
-     * @param {number} targetPeriodId - Target period ID
      */
     async fetchMonthlyPerformance(targetPeriodId) {
-      const cacheKey = `${targetPeriodId}`
-
-      // Return cached data if available
-      if (this.cache.monthlyPerformance[cacheKey]) {
-        this.monthlyPerformance = this.cache.monthlyPerformance[cacheKey]
-        return this.monthlyPerformance
-      }
-
-      this.loadingMonthlyPerformance = true
-      this.error = null
-
-      try {
-        const response = await api.get(`/ipcr/monthly-performance/${targetPeriodId}`)
-
-        console.log('✅ Monthly Performance data fetched:', response.data)
-        console.log('📊 Data structure check:', {
-          isArray: Array.isArray(response.data),
-          length: response.data?.length,
-          firstItem: response.data?.[0],
-          hasMonthlyRatings: !!response.data?.[0]?.monthly_ratings,
-          hasMonthly: !!response.data?.[0]?.monthly_ratings?.monthly,
-          monthlyLength: response.data?.[0]?.monthly_ratings?.monthly?.length,
-        })
-
-        // Store the raw array response
-        this.monthlyPerformance = response.data
-        this.cache.monthlyPerformance[cacheKey] = response.data
-
-        return response.data
-      } catch (error) {
-        console.error('❌ Error fetching Monthly Performance:', error)
-        this.error =
-          error.response?.data?.message || error.message || 'Failed to fetch Monthly Performance'
-        throw error
-      } finally {
-        this.loadingMonthlyPerformance = false
-      }
+      return this.fetchData({
+        endpoint: `/ipcr/monthly-performance/${targetPeriodId}`,
+        dataKey: 'monthlyPerformance',
+        loadingKey: 'monthlyPerformance',
+        errorKey: 'monthlyPerformance',
+      })
     },
 
     /**
      * Fetch Summary Monthly Performance data
-     * @param {number} targetPeriodId - Target period ID
      */
     async fetchSummaryMonthlyPerformance(targetPeriodId) {
-      const cacheKey = `${targetPeriodId}`
+      return this.fetchData({
+        endpoint: `/ipcr/summary-monthly-performance/${targetPeriodId}`,
+        dataKey: 'summaryMonthlyPerformance',
+        loadingKey: 'summaryMonthlyPerformance',
+        errorKey: 'summaryMonthlyPerformance',
+      })
+    },
 
-      // Return cached data if available
-      if (this.cache.summaryMonthlyPerformance[cacheKey]) {
-        this.summaryMonthlyPerformance = this.cache.summaryMonthlyPerformance[cacheKey]
-        return this.summaryMonthlyPerformance
-      }
+    // ================ DATA MANAGEMENT ================
 
-      this.loadingSummaryMonthlyPerformance = true
-      this.error = null
-
-      try {
-        const response = await api.get(`/ipcr/summary-monthly-performance/${targetPeriodId}`)
-
-        console.log('✅ Summary Monthly Performance data fetched:', response.data)
-
-        this.summaryMonthlyPerformance = response.data
-        this.cache.summaryMonthlyPerformance[cacheKey] = response.data
-
-        return response.data
-      } catch (error) {
-        console.error('❌ Error fetching Summary Monthly Performance:', error)
-        this.error =
-          error.response?.data?.message ||
-          error.message ||
-          'Failed to fetch Summary Monthly Performance'
-        throw error
-      } finally {
-        this.loadingSummaryMonthlyPerformance = false
+    /**
+     * Clear specific data
+     */
+    clearData(dataKey) {
+      if (this[dataKey] !== undefined) {
+        this[dataKey] = null
+        console.log(`🗑️ Cleared ${dataKey} data`)
       }
     },
 
     /**
-     * Clear all cached data
+     * Clear all IPCR data
      */
-    clearCache() {
-      this.cache = {
-        ipcr: {},
-        performanceStandard: {},
-        monthlyPerformance: {},
-        summaryMonthlyPerformance: {},
-      }
+    clearAllData() {
+      this.employeeIpcr = null
+      this.performanceStandard = null
+      this.monthlyPerformance = null
+      this.summaryMonthlyPerformance = null
+
+      // Clear errors
+      Object.keys(this.errors).forEach((key) => {
+        this.errors[key] = null
+      })
+
+      console.log('🗑️ Cleared all IPCR data')
+    },
+
+    /**
+     * Clear loading states
+     */
+    clearLoadingStates() {
+      Object.keys(this.loadingStates).forEach((key) => {
+        this.loadingStates[key] = false
+      })
+    },
+
+    /**
+     * Clear error states
+     */
+    clearErrors() {
+      Object.keys(this.errors).forEach((key) => {
+        this.errors[key] = null
+      })
     },
 
     /**
      * Reset store to initial state
      */
     resetStore() {
-      this.employeeIpcr = null
-      this.performanceStandard = null
-      this.monthlyPerformance = null
-      this.summaryMonthlyPerformance = null
-      this.error = null
-      this.clearCache()
+      this.clearAllData()
+      this.clearLoadingStates()
+      this.clearErrors()
+      console.log('🔄 Store reset to initial state')
+    },
+
+    // ================ UTILITY METHODS ================
+
+    /**
+     * Force refresh specific data
+     */
+    async forceRefresh(dataType, ...params) {
+      // Clear the data first
+      this.clearData(this.getDataKey(dataType))
+
+      // Fetch fresh data
+      switch (dataType) {
+        case 'ipcr':
+          return this.fetchEmployeeIpcr(...params)
+        case 'performanceStandard':
+          return this.fetchPerformanceStandard(...params)
+        case 'monthlyPerformance':
+          return this.fetchMonthlyPerformance(...params)
+        case 'summaryMonthlyPerformance':
+          return this.fetchSummaryMonthlyPerformance(...params)
+        default:
+          throw new Error(`Unknown data type: ${dataType}`)
+      }
+    },
+
+    /**
+     * Get data key from data type
+     */
+    getDataKey(dataType) {
+      const map = {
+        ipcr: 'employeeIpcr',
+        performanceStandard: 'performanceStandard',
+        monthlyPerformance: 'monthlyPerformance',
+        summaryMonthlyPerformance: 'summaryMonthlyPerformance',
+      }
+      return map[dataType]
     },
   },
 })

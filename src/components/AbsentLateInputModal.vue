@@ -6,6 +6,9 @@
       <q-card-section class="bg-green-9 text-white">
         <div class="text-h6">{{ employeeName }}</div>
         <div class="text-subtitle2">{{ targetPeriodLabel }}</div>
+        <div class="text-subtitle1 text-yellow">
+          Note: Once saved, it cannot be undone or updated.
+        </div>
       </q-card-section>
 
       <!-- Tabs -->
@@ -114,16 +117,19 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
+import { useAttendanceStore } from 'src/stores/attendanceStore.js'
 
 // Props
 const props = defineProps({
   employee: Object,
   targetPeriod: Object,
+  targetPeriodId: Number,
   existingData: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['save', 'close'])
 const $q = useQuasar()
+const attendanceStore = useAttendanceStore()
 
 // State
 const showModal = ref(false)
@@ -260,46 +266,93 @@ const validate = () => {
   return errors
 }
 
-const save = () => {
+const save = async () => {
   const errors = validate()
   if (errors.length) {
     $q.notify({ type: 'negative', message: errors.join('\n'), position: 'top' })
     return
   }
 
+  // Check if target_period_id is available
+  if (!props.targetPeriodId) {
+    $q.notify({
+      type: 'negative',
+      message: 'Target period ID is required',
+      position: 'top',
+    })
+    return
+  }
+
   saving.value = true
 
-  const result = {}
+  const monthsData = []
 
   displayMonths.value.forEach((month) => {
-    const monthData = []
+    const absentValues = []
+    const lateValues = []
 
     for (let i = 0; i < 5; i++) {
       const absentVal = parseValue(data.value[month.value].absent[i])
       const lateVal = parseValue(data.value[month.value].late[i])
 
-      monthData.push({
-        [`Wk${i + 1}`]: {
-          absent: absentVal,
-          late: lateVal,
-        },
-      })
+      absentValues.push(absentVal)
+      lateValues.push(lateVal)
     }
 
-    result[month.label] = monthData
+    const totalAbsent = absentValues.reduce((sum, val) => sum + val, 0)
+    const totalLate = lateValues.reduce((sum, val) => sum + val, 0)
+
+    monthsData.push({
+      month: month.label,
+      absent: {
+        week1: absentValues[0],
+        week2: absentValues[1],
+        week3: absentValues[2],
+        week4: absentValues[3],
+        week5: absentValues[4],
+        total_absent: totalAbsent,
+      },
+      late: {
+        week1: lateValues[0],
+        week2: lateValues[1],
+        week3: lateValues[2],
+        week4: lateValues[3],
+        week5: lateValues[4],
+        total_late: totalLate,
+      },
+    })
   })
 
-  emit('save', {
-    employeeId: props.employee?.id,
-    controlNo: props.employee?.controlNo || props.employee?.employeeData?.ControlNo,
-    targetPeriod: props.targetPeriod,
-    attendanceData: result,
-    timestamp: new Date().toISOString(),
-  })
+  // Create payload with target_period_id
+  const payload = {
+    target_period_id: props.targetPeriodId, // Use the passed ID
+    months: monthsData,
+  }
 
-  $q.notify({ type: 'positive', message: 'Saved successfully!', position: 'top' })
-  saving.value = false
-  showModal.value = false
+  try {
+    await attendanceStore.saveAttendance(payload)
+
+    // Emit to parent if needed
+    emit('save', {
+      employeeId: props.employee?.id,
+      controlNo: props.employee?.controlNo || props.employee?.employeeData?.ControlNo,
+      targetPeriod: props.targetPeriod,
+      targetPeriodId: props.targetPeriodId, // Pass back the ID
+      attendanceData: payload,
+      timestamp: new Date().toISOString(),
+    })
+
+    $q.notify({ type: 'positive', message: 'Saved successfully!', position: 'top' })
+    showModal.value = false
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: attendanceStore.error || 'Failed to save attendance',
+      position: 'top',
+    })
+  } finally {
+    saving.value = false
+  }
 }
 
 const openModal = () => {

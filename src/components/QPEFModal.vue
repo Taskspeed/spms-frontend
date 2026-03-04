@@ -1,5 +1,5 @@
 <template>
-  <div class="preview-container q-pa-md" style="width: 100%; max-width: 1200px">
+  <div class="preview-container q-pa-md" style="width: 100%; max-width: 1500px">
     <q-card flat bordered>
       <!-- Header Section -->
       <q-card-section
@@ -20,7 +20,7 @@
               View Mode - This evaluation has been saved
             </div>
             <div v-else class="text-subtitle2 text-orange">
-              Note: Once been saved it can't be edited
+              Assess the employee’s performance and contributions using the criteria provided below.
             </div>
             <div v-if="currentDivisionPath" class="text-caption text-grey-7">
               Path: {{ currentDivisionPath }}
@@ -61,14 +61,17 @@
               <div class="text-green-9 text-caption padded-text">REPUBLIC OF THE PHILIPPINES</div>
               <div class="text-green-9 text-caption padded-text">PROVINCE OF DAVAO DEL NORTE</div>
               <div class="text-green-9 text-h5 text-weight-bold padded-text">CITY OF TAGUM</div>
-              <div class="green-banner"></div>
+              <div class="green-banner">{{ levels?.office || 'N/A' }}</div>
             </div>
           </div>
 
           <!-- Main Content -->
           <div class="q-mt-md">
             <h2 class="text-center text-weight-bold text-h5">
-              Quarterly Performance Evaluation Form
+              {{
+                getDisplayStatus(employee?.employeeData?.status || employee?.Status || 'Quarterly')
+              }}
+              PERFORMANCE EVALUATION FORM
             </h2>
 
             <!-- Employee Information -->
@@ -847,6 +850,7 @@ const formData = reactive({
     task3Remarks: '',
     task4: null,
     task4Remarks: '',
+    itemIds: [], // Store IDs for editing
   },
   competencies: {
     item1: null,
@@ -865,6 +869,7 @@ const formData = reactive({
     item7Remarks: '',
     item8: null,
     item8Remarks: '',
+    itemIds: [], // Store IDs for editing
   },
   physical: {
     item1: null,
@@ -873,6 +878,7 @@ const formData = reactive({
     item2Remarks: '',
     item3: null,
     item3Remarks: '',
+    itemIds: [], // Store IDs for editing
   },
   recommendations: {
     retention: false,
@@ -949,28 +955,43 @@ const handleQuarterChange = async (quarter) => {
 const loadExistingData = (data) => {
   // Job Performance
   if (data.job_performance?.items) {
+    formData.jobPerformance.itemIds = [] // Reset IDs array
     data.job_performance.items.forEach((item, index) => {
       const taskKey = `task${index + 1}`
       formData.jobPerformance[taskKey] = Number(item.rating)
       formData.jobPerformance[`${taskKey}Remarks`] = item.remarks || ''
+      // Store the ID for editing
+      if (item.id) {
+        formData.jobPerformance.itemIds[index] = item.id
+      }
     })
   }
 
   // Competencies
   if (data.competencies_attitude?.items) {
+    formData.competencies.itemIds = [] // Reset IDs array
     data.competencies_attitude.items.forEach((item, index) => {
       const itemKey = `item${index + 1}`
       formData.competencies[itemKey] = Number(item.rating)
       formData.competencies[`${itemKey}Remarks`] = item.remarks || ''
+      // Store the ID for editing
+      if (item.id) {
+        formData.competencies.itemIds[index] = item.id
+      }
     })
   }
 
   // Physical & Mental
   if (data.physical_mental?.items) {
+    formData.physical.itemIds = [] // Reset IDs array
     data.physical_mental.items.forEach((item, index) => {
       const itemKey = `item${index + 1}`
       formData.physical[itemKey] = Number(item.rating)
       formData.physical[`${itemKey}Remarks`] = item.remarks || ''
+      // Store the ID for editing
+      if (item.id) {
+        formData.physical.itemIds[index] = item.id
+      }
     })
   }
 
@@ -997,17 +1018,29 @@ const loadExistingData = (data) => {
 const clearForm = () => {
   // Reset job performance
   Object.keys(formData.jobPerformance).forEach((key) => {
-    formData.jobPerformance[key] = key.includes('Remarks') ? '' : null
+    if (key === 'itemIds') {
+      formData.jobPerformance[key] = []
+    } else {
+      formData.jobPerformance[key] = key.includes('Remarks') ? '' : null
+    }
   })
 
   // Reset competencies
   Object.keys(formData.competencies).forEach((key) => {
-    formData.competencies[key] = key.includes('Remarks') ? '' : null
+    if (key === 'itemIds') {
+      formData.competencies[key] = []
+    } else {
+      formData.competencies[key] = key.includes('Remarks') ? '' : null
+    }
   })
 
   // Reset physical
   Object.keys(formData.physical).forEach((key) => {
-    formData.physical[key] = key.includes('Remarks') ? '' : null
+    if (key === 'itemIds') {
+      formData.physical[key] = []
+    } else {
+      formData.physical[key] = key.includes('Remarks') ? '' : null
+    }
   })
 
   // Reset recommendations
@@ -1110,6 +1143,18 @@ const adjectivalRating = computed(() => {
   if (rating >= 1.5) return 'Unsatisfactory'
   return 'Poor'
 })
+
+const getDisplayStatus = (status) => {
+  if (!status) return 'Quarterly'
+
+  // Convert CONTRACTUAL to JOB ORDER
+  if (status.toUpperCase() === 'CONTRACTUAL') {
+    return 'JOB ORDER'
+  }
+
+  // Return other statuses as-is (CASUAL, HONORARIUM, etc.)
+  return status
+}
 
 // Event handlers
 const handleClose = () => emit('close')
@@ -1221,8 +1266,8 @@ const handlePrint = async () => {
                       alignment: 'left',
                     },
                     {
-                      text: '',
-                      fontSize: 10,
+                      text: props.levels?.office,
+                      fontSize: 8,
                       bold: true,
                       color: 'white',
                       margin: [0, 5, 0, 0],
@@ -1238,11 +1283,11 @@ const handlePrint = async () => {
       content: [
         // Title
         {
-          text: 'Quarterly Performance Evaluation Form',
+          text: `${getDisplayStatus(props.employee?.Status || props.employee?.employeeData?.status || '')} PERFORMANCE EVALUATION FORM`,
           fontSize: 10,
           bold: true,
           alignment: 'center',
-          margin: [0, -30, 0, 5],
+          margin: [0, -30, 0, 10],
         },
 
         // Employee Information
@@ -1253,24 +1298,21 @@ const handlePrint = async () => {
               stack: [
                 {
                   text: [
-                    { text: 'NAME: ', bold: true },
+                    { text: 'NAME: ' },
                     props.employee?.label || props.employee?.name || 'N/A',
                   ],
-                  fontSize: 6,
-                  margin: [0, 0, 0, 3],
+                  fontSize: 7,
+                  margin: [0, 0, 3, 3],
                 },
                 {
-                  text: [{ text: 'POSITION: ', bold: true }, props.employee?.position || 'N/A'],
-                  fontSize: 6,
-                  margin: [0, 0, 0, 3],
+                  text: [{ text: 'POSITION: ' }, props.employee?.position || 'N/A'],
+                  fontSize: 7,
+                  margin: [0, 0, 3, 3],
                 },
                 {
-                  text: [
-                    { text: 'DEPARTMENT/OFFICE: ', bold: true },
-                    props.levels?.office || 'N/A',
-                  ],
-                  fontSize: 6,
-                  margin: [0, 0, 0, 3],
+                  text: [{ text: 'DEPARTMENT/OFFICE: ' }, props.levels?.office || 'N/A'],
+                  fontSize: 7,
+                  margin: [0, 0, 3, 3],
                 },
               ],
             },
@@ -1278,21 +1320,21 @@ const handlePrint = async () => {
               width: '50%',
               stack: [
                 {
-                  text: [{ text: 'PERIOD COVERED: ', bold: true }, selectedQuarter.value || 'N/A'],
-                  fontSize: 6,
+                  text: [{ text: 'PERIOD COVERED: ' }, selectedQuarter.value || 'N/A'],
+                  fontSize: 7,
                   margin: [0, 0, 0, 3],
                 },
                 {
-                  text: [{ text: 'RATING YEAR: ', bold: true }, currentYear.value.toString()],
-                  fontSize: 6,
+                  text: [{ text: 'RATING YEAR: ' }, currentYear.value.toString()],
+                  fontSize: 7,
                   margin: [0, 0, 0, 3],
                 },
                 {
                   text: [
-                    { text: 'IMMEDIATE SUPERVISOR: ', bold: true },
+                    { text: 'IMMEDIATE SUPERVISOR: ' },
                     props.supervisorySignatory?.name || props.managerialSignatory?.name || 'N/A',
                   ],
-                  fontSize: 6,
+                  fontSize: 7,
                   margin: [0, 0, 0, 3],
                 },
               ],
@@ -1428,7 +1470,14 @@ const handlePrint = async () => {
                 {},
               ],
               [
-                { text: 'Indicators', bold: true, fontSize: 7, fillColor: '#f0f0f0', colSpan: 2 },
+                {
+                  text: 'Indicators',
+                  bold: true,
+                  alignment: 'center',
+                  fontSize: 7,
+                  fillColor: '#f0f0f0',
+                  colSpan: 2,
+                },
                 {},
                 {
                   text: 'Rating (1-5)',
@@ -1437,7 +1486,13 @@ const handlePrint = async () => {
                   fillColor: '#f0f0f0',
                   alignment: 'center',
                 },
-                { text: 'Remarks/Comments', bold: true, fontSize: 7, fillColor: '#f0f0f0' },
+                {
+                  text: 'Remarks/Comments',
+                  bold: true,
+                  alignment: 'center',
+                  fontSize: 7,
+                  fillColor: '#f0f0f0',
+                },
               ],
               [
                 {
@@ -1548,7 +1603,14 @@ const handlePrint = async () => {
                 {},
               ],
               [
-                { text: 'Indicators', bold: true, fontSize: 7, fillColor: '#f0f0f0', colSpan: 2 },
+                {
+                  text: 'Indicators',
+                  bold: true,
+                  alignment: 'center',
+                  fontSize: 7,
+                  fillColor: '#f0f0f0',
+                  colSpan: 2,
+                },
                 {},
                 {
                   text: 'Rating (1-5)',
@@ -1557,7 +1619,13 @@ const handlePrint = async () => {
                   fillColor: '#f0f0f0',
                   alignment: 'center',
                 },
-                { text: 'Remarks/Comments', bold: true, fontSize: 7, fillColor: '#f0f0f0' },
+                {
+                  text: 'Remarks/Comments',
+                  bold: true,
+                  alignment: 'center',
+                  fontSize: 7,
+                  fillColor: '#f0f0f0',
+                },
               ],
               [
                 {
@@ -1724,7 +1792,14 @@ const handlePrint = async () => {
                 {},
               ],
               [
-                { text: 'Indicators', bold: true, fontSize: 7, fillColor: '#f0f0f0', colSpan: 2 },
+                {
+                  text: 'Indicators',
+                  bold: true,
+                  alignment: 'center',
+                  fontSize: 7,
+                  fillColor: '#f0f0f0',
+                  colSpan: 2,
+                },
                 {},
                 {
                   text: 'Rating (1-5)',
@@ -1733,7 +1808,13 @@ const handlePrint = async () => {
                   fillColor: '#f0f0f0',
                   alignment: 'center',
                 },
-                { text: 'Remarks/Comments', bold: true, fontSize: 7, fillColor: '#f0f0f0' },
+                {
+                  text: 'Remarks/Comments',
+                  bold: true,
+                  alignment: 'center',
+                  fontSize: 7,
+                  fillColor: '#f0f0f0',
+                },
               ],
               [
                 {
@@ -1833,7 +1914,7 @@ const handlePrint = async () => {
                 { text: '', border: [true, true, true, true] },
                 {
                   text: [
-                    { text: formData.recommendations.retention ? '☑' : '☐', fontSize: 8 },
+                    { text: formData.recommendations.retention ? '[X]' : '[  ]', fontSize: 8 },
                     { text: ' For retention / contract renewal', fontSize: 7 },
                   ],
                   border: [true, true, true, true],
@@ -1841,7 +1922,7 @@ const handlePrint = async () => {
 
                 {
                   text: [
-                    { text: formData.recommendations.improvement ? '☑' : '☐', fontSize: 8 },
+                    { text: formData.recommendations.improvement ? '[X]' : '[  ]', fontSize: 8 },
                     { text: ' For improvement (coaching/mentoring) needed', fontSize: 7 },
                   ],
                   border: [true, true, true, true],
@@ -1853,7 +1934,7 @@ const handlePrint = async () => {
                 { text: '', border: [true, true, true, true] },
                 {
                   text: [
-                    { text: formData.recommendations.commendation ? '☑' : '☐', fontSize: 8 },
+                    { text: formData.recommendations.commendation ? '[X]' : '[  ]', fontSize: 8 },
                     { text: ' For commendation', fontSize: 7 },
                   ],
                   border: [true, true, true, true],
@@ -1861,7 +1942,7 @@ const handlePrint = async () => {
 
                 {
                   text: [
-                    { text: formData.recommendations.nonRenewal ? '☑' : '☐', fontSize: 8 },
+                    { text: formData.recommendations.nonRenewal ? '[X]' : '[  ]', fontSize: 8 },
                     {
                       text: ' For non-renewal (due to unsatisfactory or poor performance)',
                       fontSize: 7,
@@ -1951,72 +2032,6 @@ const handlePrint = async () => {
                 { text: adjectivalRating.value, bold: true, fontSize: 7, alignment: 'center' },
                 {},
               ],
-
-              // Signatures
-              [
-                {
-                  text: 'Discussed with:',
-                  bold: true,
-                  fontSize: 7,
-                  fillColor: '#f0f0f0',
-                  alignment: 'center',
-                },
-                {
-                  text: 'Assessed by:',
-                  bold: true,
-                  fontSize: 7,
-                  fillColor: '#f0f0f0',
-                  alignment: 'center',
-                },
-                {
-                  text: 'Final Rating by:',
-                  bold: true,
-                  fontSize: 7,
-                  fillColor: '#f0f0f0',
-                  alignment: 'center',
-                  colSpan: 2,
-                },
-                {},
-              ],
-              [
-                {
-                  text: props.employee?.label || props.employee?.name || 'N/A',
-                  fontSize: 7,
-                  alignment: 'center',
-                },
-                {
-                  text:
-                    props.supervisorySignatory?.name || props.managerialSignatory?.name || 'N/A',
-                  fontSize: 7,
-                  alignment: 'center',
-                },
-                {
-                  text: props.managerialSignatory?.name || 'N/A',
-                  fontSize: 7,
-                  alignment: 'center',
-                  colSpan: 2,
-                },
-                {},
-              ],
-              [
-                {
-                  text: 'N/A',
-                  fontSize: 7,
-                  alignment: 'center',
-                },
-                {
-                  text: 'N/A',
-                  fontSize: 7,
-                  alignment: 'center',
-                },
-                {
-                  text: 'N/A',
-                  fontSize: 7,
-                  alignment: 'center',
-                  colSpan: 2,
-                },
-                {},
-              ],
             ],
           },
           layout: {
@@ -2034,10 +2049,143 @@ const handlePrint = async () => {
             },
           },
         },
+
+        // SIGNATURE SECTION - ADDED HERE
+        {
+          table: {
+            widths: ['33.33%', '33.33%', '33.34%'],
+            body: [
+              // Header row
+              [
+                {
+                  text: 'Discussed with:',
+                  style: 'signatureHeader',
+                  border: [true, false, true, true], // [left, top, right, bottom]
+                },
+                {
+                  text: 'Assessed by:',
+                  style: 'signatureHeader',
+                  border: [false, false, true, true],
+                },
+                {
+                  text: 'Final Rating by:',
+                  style: 'signatureHeader',
+                  border: [false, false, true, true],
+                },
+              ],
+              // Signature row
+              [
+                {
+                  text: props.employee?.label || props.employee?.name || 'N/A',
+                  style: 'signatureName',
+                  border: [true, true, true, false],
+                  margin: [0, 30, 0, -10],
+                },
+                {
+                  text:
+                    props.supervisorySignatory?.name ||
+                    props.managerialSignatory?.name ||
+                    '___________________',
+                  style: 'signatureName',
+                  border: [false, true, true, false],
+                  margin: [0, 30, 0, -10],
+                },
+                {
+                  text: props.managerialSignatory?.name || '___________________',
+                  style: 'signatureName',
+                  border: [false, true, true, false],
+                  margin: [0, 30, 0, -10],
+                },
+              ],
+              // Title/Position row
+              [
+                {
+                  text: 'Employee',
+                  style: 'signatureTitle',
+                  border: [true, false, true, false],
+                },
+                {
+                  text: 'Immediate Supervisor',
+                  style: 'signatureTitle',
+                  border: [true, false, true, false],
+                },
+                {
+                  text: 'Department/Office Head',
+                  style: 'signatureTitle',
+                  border: [true, false, true, false],
+                },
+              ],
+              [
+                {
+                  text: 'Date:',
+                  border: [true, false, false, true],
+                  margin: [0, -10, 0, 0],
+                },
+                {
+                  text: 'Date:',
+                  border: [true, false, false, true],
+                  margin: [0, -10, 0, 0],
+                },
+                {
+                  text: 'Date:',
+                  border: [true, false, true, true],
+                  margin: [0, -10, 0, 0],
+                },
+              ],
+            ],
+          },
+          layout: {
+            hLineWidth: function () {
+              // Return 1 for all horizontal lines to make them visible
+              return 1
+            },
+            vLineWidth: function () {
+              // Return 1 for all vertical lines to make them visible
+              return 1
+            },
+            hLineColor: function () {
+              return '#333'
+            },
+            vLineColor: function () {
+              return '#333'
+            },
+            paddingLeft: function () {
+              return 5
+            },
+            paddingRight: function () {
+              return 5
+            },
+            paddingTop: function () {
+              return 5
+            },
+            paddingBottom: function () {
+              return 5
+            },
+          },
+          margin: [0, 0, 0, 0],
+        },
       ],
 
       defaultStyle: {
         fontSize: 7,
+      },
+
+      styles: {
+        signatureHeader: {
+          fontSize: 7,
+          bold: true,
+          alignment: 'left',
+        },
+        signatureName: {
+          fontSize: 7,
+          bold: true,
+          alignment: 'left',
+          decoration: 'underline',
+        },
+        signatureTitle: {
+          fontSize: 7,
+          alignment: 'left',
+        },
       },
     }
 
@@ -2091,95 +2239,134 @@ const handleSave = async () => {
       return
     }
 
+    // Build job performance array (with IDs if editing)
+    const jobPerformanceItems = [
+      {
+        indicators: 'Accomplishes assigned tasks efficiently and on time',
+        rating: formData.jobPerformance.task1 || 0,
+        remarks: formData.jobPerformance.task1Remarks || '',
+      },
+      {
+        indicators: 'Demonstrates quality and accuracy in work output',
+        rating: formData.jobPerformance.task2 || 0,
+        remarks: formData.jobPerformance.task2Remarks || '',
+      },
+      {
+        indicators: 'Observes proper work processes and procedures',
+        rating: formData.jobPerformance.task3 || 0,
+        remarks: formData.jobPerformance.task3Remarks || '',
+      },
+      {
+        indicators: 'Shows initiative and resourcefulness in completing tasks',
+        rating: formData.jobPerformance.task4 || 0,
+        remarks: formData.jobPerformance.task4Remarks || '',
+      },
+    ]
+
+    // If editing, add IDs to existing items
+    if (currentQPEFId.value && formData.jobPerformance.itemIds) {
+      jobPerformanceItems.forEach((item, index) => {
+        if (formData.jobPerformance.itemIds[index]) {
+          item.id = formData.jobPerformance.itemIds[index]
+          item.qpef_id = currentQPEFId.value.toString()
+        }
+      })
+    }
+
+    // Build competencies array (with IDs if editing)
+    const competenciesItems = [
+      {
+        indicators: 'Demonstrates cooperation and teamwork',
+        rating: formData.competencies.item1 || 0,
+        remarks: formData.competencies.item1Remarks || '',
+      },
+      {
+        indicators:
+          'Exhibits professionalism, courtesy, and respect in dealing with co-workers and clients',
+        rating: formData.competencies.item2 || 0,
+        remarks: formData.competencies.item2Remarks || '',
+      },
+      {
+        indicators: 'Demonstrates reliability, honesty, and integrity',
+        rating: formData.competencies.item3 || 0,
+        remarks: formData.competencies.item3Remarks || '',
+      },
+      {
+        indicators: 'Adapts well to changing work assignments and challenges',
+        rating: formData.competencies.item4 || 0,
+        remarks: formData.competencies.item4Remarks || '',
+      },
+      {
+        indicators:
+          'Reports accurate information and spot errors in documents and other forms of communication',
+        rating: formData.competencies.item5 || 0,
+        remarks: formData.competencies.item5Remarks || '',
+      },
+      {
+        indicators: "Adheres to agency's internal policies, office rules and regulations",
+        rating: formData.competencies.item6 || 0,
+        remarks: formData.competencies.item6Remarks || '',
+      },
+      {
+        indicators:
+          'Apply and adapt record management standards which maintains and organized records',
+        rating: formData.competencies.item7 || 0,
+        remarks: formData.competencies.item7Remarks || '',
+      },
+      {
+        indicators: 'Demonstrates attention to detail on documents, task and procedures',
+        rating: formData.competencies.item8 || 0,
+        remarks: formData.competencies.item8Remarks || '',
+      },
+    ]
+
+    // If editing, add IDs to existing items
+    if (currentQPEFId.value && formData.competencies.itemIds) {
+      competenciesItems.forEach((item, index) => {
+        if (formData.competencies.itemIds[index]) {
+          item.id = formData.competencies.itemIds[index]
+          item.qpef_id = currentQPEFId.value.toString()
+        }
+      })
+    }
+
+    // Build physical/mental array (with IDs if editing)
+    const physicalItems = [
+      {
+        indicators: 'Maintains focus, alertness and manages work-related stress effectively',
+        rating: formData.physical.item1 || 0,
+        remarks: formData.physical.item1Remarks || '',
+      },
+      {
+        indicators: 'Demonstrates physical ability to perform assigned tasks',
+        rating: formData.physical.item2 || 0,
+        remarks: formData.physical.item2Remarks || '',
+      },
+      {
+        indicators: 'Observes proper grooming and personal hygiene',
+        rating: formData.physical.item3 || 0,
+        remarks: formData.physical.item3Remarks || '',
+      },
+    ]
+
+    // If editing, add IDs to existing items
+    if (currentQPEFId.value && formData.physical.itemIds) {
+      physicalItems.forEach((item, index) => {
+        if (formData.physical.itemIds[index]) {
+          item.id = formData.physical.itemIds[index]
+          item.qpef_id = currentQPEFId.value.toString()
+        }
+      })
+    }
+
     // Build payload
     const payload = {
       control_no: employeeControlNo,
       quarterly: selectedQuarter.value,
       year: currentYear.value,
-      job_performance: [
-        {
-          indicators: 'Accomplishes assigned tasks efficiently and on time',
-          rating: formData.jobPerformance.task1 || 0,
-          remarks: formData.jobPerformance.task1Remarks || '',
-        },
-        {
-          indicators: 'Demonstrates quality and accuracy in work output',
-          rating: formData.jobPerformance.task2 || 0,
-          remarks: formData.jobPerformance.task2Remarks || '',
-        },
-        {
-          indicators: 'Observes proper work processes and procedures',
-          rating: formData.jobPerformance.task3 || 0,
-          remarks: formData.jobPerformance.task3Remarks || '',
-        },
-        {
-          indicators: 'Shows initiative and resourcefulness in completing tasks',
-          rating: formData.jobPerformance.task4 || 0,
-          remarks: formData.jobPerformance.task4Remarks || '',
-        },
-      ],
-      competencies_attitude: [
-        {
-          indicators: 'Demonstrates cooperation and teamwork',
-          rating: formData.competencies.item1 || 0,
-          remarks: formData.competencies.item1Remarks || '',
-        },
-        {
-          indicators:
-            'Exhibits professionalism, courtesy, and respect in dealing with co-workers and clients',
-          rating: formData.competencies.item2 || 0,
-          remarks: formData.competencies.item2Remarks || '',
-        },
-        {
-          indicators: 'Demonstrates reliability, honesty, and integrity',
-          rating: formData.competencies.item3 || 0,
-          remarks: formData.competencies.item3Remarks || '',
-        },
-        {
-          indicators: 'Adapts well to changing work assignments and challenges',
-          rating: formData.competencies.item4 || 0,
-          remarks: formData.competencies.item4Remarks || '',
-        },
-        {
-          indicators:
-            'Reports accurate information and spot errors in documents and other forms of communication',
-          rating: formData.competencies.item5 || 0,
-          remarks: formData.competencies.item5Remarks || '',
-        },
-        {
-          indicators: "Adheres to agency's internal policies, office rules and regulations",
-          rating: formData.competencies.item6 || 0,
-          remarks: formData.competencies.item6Remarks || '',
-        },
-        {
-          indicators:
-            'Apply and adapt record management standards which maintains and organized records',
-          rating: formData.competencies.item7 || 0,
-          remarks: formData.competencies.item7Remarks || '',
-        },
-        {
-          indicators: 'Demonstrates attention to detail on documents, task and procedures',
-          rating: formData.competencies.item8 || 0,
-          remarks: formData.competencies.item8Remarks || '',
-        },
-      ],
-      physical_mental: [
-        {
-          indicators: 'Maintains focus, alertness and manages work-related stress effectively',
-          rating: formData.physical.item1 || 0,
-          remarks: formData.physical.item1Remarks || '',
-        },
-        {
-          indicators: 'Demonstrates physical ability to perform assigned tasks',
-          rating: formData.physical.item2 || 0,
-          remarks: formData.physical.item2Remarks || '',
-        },
-        {
-          indicators: 'Observes proper grooming and personal hygiene',
-          rating: formData.physical.item3 || 0,
-          remarks: formData.physical.item3Remarks || '',
-        },
-      ],
+      job_performance: jobPerformanceItems,
+      competencies_attitude: competenciesItems,
+      physical_mental: physicalItems,
       recommendation_development: {
         for_retention: formData.recommendations.retention,
         for_commendation: formData.recommendations.commendation,
@@ -2320,6 +2507,7 @@ const handleSave = async () => {
   font-weight: bold;
   font-size: 18px;
   padding: 8px 0;
+  padding-left: 10px;
   height: 45px;
   text-align: left;
   margin-top: 10px;

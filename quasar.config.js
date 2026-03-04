@@ -66,9 +66,7 @@ export default defineConfig((/* ctx */) => {
             },
           },
           { server: false },
-
         ],
-        
       ],
     },
 

@@ -15,10 +15,12 @@
       <!-- Fixed Left Navigation -->
       <div class="division-nav">
         <div class="division-nav-header">
-          <div class="text-h6">Level</div>
+          <div class="row items-center no-wrap q-gutter-sm">
+            <div class="text-h6">Division/Section/Unit</div>
+          </div>
         </div>
 
-        <!-- Use firstSubLevel if provided, otherwise use divisions -->
+        <!-- Navigation List -->
         <q-list padding class="division-list">
           <q-item
             v-for="(division, index) in navigationItems || []"
@@ -40,14 +42,9 @@
           <q-spinner color="primary" size="2em" />
           <div class="q-mt-sm text-caption">Loading divisions...</div>
         </div>
-
-        <!-- Approved Button at the bottom -->
-        <div v-if="showApprovedButton" class="row justify-center q-mt-lg q-pb-lg">
-          <q-btn label="Approve" color="green" class="q-mt-md" />
-        </div>
       </div>
 
-      <!-- Report Content Area - Single Scrollable Container -->
+      <!-- Report Content Area -->
       <div class="report-container">
         <!-- Loading State -->
         <div v-if="store?.loading && selectedDivision" class="full-height flex flex-center">
@@ -74,15 +71,27 @@
             <div class="row items-center no-wrap">
               <div class="col">
                 <div class="text-h6">{{ currentDivisionData?.name || 'Division Report' }}</div>
+                <div class="text-subtitle2 text-weight-medium">
+                  Status:
+                  <q-badge
+                    :color="
+                      getStatusBadgeColor(officeData?.unitworkplan_status || targetPeriod?.status)
+                    "
+                    :label="officeData?.unitworkplan_status || targetPeriod?.status || 'N/A'"
+                    class="q-ml-xs"
+                  />
+                </div>
                 <div class="text-subtitle2">
                   Target Period: {{ targetPeriod?.semester || '' }} {{ targetPeriod?.year || '' }}
                 </div>
-                <!-- Show hierarchy path -->
                 <div v-if="currentDivisionPath" class="text-caption text-grey-7">
                   Path: {{ currentDivisionPath }}
                 </div>
               </div>
               <div class="flex justify-end q-gutter-sm">
+                <q-btn color="orange-9" icon="edit" label="Update Status" @click="openStatusModal">
+                  <q-tooltip>Change Status</q-tooltip>
+                </q-btn>
                 <q-btn color="green-9" icon="print" label="Print" @click="handlePrint" />
               </div>
             </div>
@@ -111,7 +120,6 @@
                     PROVINCE OF DAVAO DEL NORTE
                   </div>
                   <div class="text-green-9 text-h5 text-weight-bold padded-text">CITY OF TAGUM</div>
-
                   <div class="green-banner">
                     <div class="padded-text">{{ currentDivisionPath.split(' / ')[0] }}</div>
                   </div>
@@ -122,7 +130,6 @@
               <div class="q-mt-md">
                 <h2 class="text-center text-weight-bold text-h4">UNIT WORK PLAN</h2>
 
-                <!-- Show message if no employees found -->
                 <div
                   v-if="
                     !currentDivisionData.employees || currentDivisionData.employees.length === 0
@@ -130,7 +137,12 @@
                   class="text-center q-py-xl"
                 >
                   <q-icon name="info" size="2em" color="grey" />
-                  <div class="q-mt-md">No work plan data available for this division.</div>
+                  <div class="q-mt-md">
+                    {{
+                      currentDivisionData.errorMessage ||
+                      'No work plan data available for this division.'
+                    }}
+                  </div>
                 </div>
 
                 <template v-else>
@@ -182,7 +194,6 @@
                           v-for="(mfoSection, sectionIndex) in getOrganizedData()"
                           :key="sectionIndex"
                         >
-                          <!-- Office Head Section for this MFO -->
                           <tr>
                             <td>Employee:</td>
                             <td colspan="10">{{ mfoSection.officeHead.name || 'N/A' }}</td>
@@ -199,7 +210,6 @@
                             <td colspan="10">{{ mfoSection.officeHead.rank || 'N/A' }}</td>
                           </tr>
 
-                          <!-- Office Head MFO Output -->
                           <tr v-if="mfoSection.officeOutput">
                             <td>MFO: {{ mfoSection.mfoName || 'N/A' }}</td>
                             <td>
@@ -236,12 +246,10 @@
                             </td>
                           </tr>
 
-                          <!-- Organization Employees for this MFO -->
                           <template
                             v-for="(orgEmployee, empIndex) in mfoSection.orgEmployees"
                             :key="empIndex"
                           >
-                            <!-- Only show employee header if different from previous -->
                             <template
                               v-if="
                                 empIndex === 0 ||
@@ -265,12 +273,10 @@
                               </tr>
                             </template>
 
-                            <!-- Organization Employee Outputs -->
                             <tr
                               v-for="(output, outIndex) in orgEmployee.outputs"
                               :key="`${empIndex}-${outIndex}`"
                             >
-                              <!-- Show output name in CORE FUNCTIONS column for organization employees -->
                               <td>Output: {{ output?.name || 'N/A' }}</td>
                               <td>
                                 <div v-html="formatCompetencies(orgEmployee.sg, 'core')"></div>
@@ -300,7 +306,6 @@
 
                 <!-- Signature Section -->
                 <div class="q-mt-xl">
-                  <!-- Conformed and Agreed by (Rank-in-File) -->
                   <div v-if="getEmployeesByRank('Rank-in-File').length > 0" class="q-mb-lg">
                     <div class="text-weight-bold">Conformed and Agreed by:</div>
                     <div class="row q-mt-md">
@@ -321,7 +326,6 @@
                     </div>
                   </div>
 
-                  <!-- Reviewed and Assessed by (Supervisory rank) -->
                   <div v-if="getEmployeesByRank('Supervisory').length > 0" class="q-mb-lg">
                     <div class="text-weight-bold">Reviewed and Assessed by:</div>
                     <div class="row q-mt-md">
@@ -340,7 +344,6 @@
                     </div>
                   </div>
 
-                  <!-- Noted by (Managerial rank) -->
                   <div v-if="getEmployeesByRank('Managerial').length > 0" class="q-mb-lg">
                     <div class="text-weight-bold">Noted by:</div>
                     <div class="row q-mt-md">
@@ -375,6 +378,106 @@
       </div>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       STATUS CONFIRMATION MODAL
+  ═══════════════════════════════════════════════════════════════════ -->
+  <q-dialog v-model="showStatusModal" persistent>
+    <q-card style="min-width: 380px; border-radius: 12px; overflow: hidden">
+      <!-- Modal Header -->
+      <div
+        style="
+          background: linear-gradient(135deg, #e65100, #f57c00);
+          padding: 20px 24px 16px;
+          position: relative;
+        "
+      >
+        <div class="row items-center no-wrap">
+          <q-icon name="edit_notifications" color="white" size="28px" class="q-mr-sm" />
+          <div>
+            <div class="text-white text-weight-bold" style="font-size: 16px">Change Status</div>
+            <div class="text-orange-2 text-caption">Target Period Update</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <q-card-section class="q-pt-lg q-pb-md q-px-lg">
+        <div class="text-body1 text-grey-8 q-mb-md">
+          Are you sure you want to change the status of this target period?
+        </div>
+
+        <!-- Period Summary -->
+        <div
+          class="q-pa-sm rounded-borders q-mb-md"
+          style="background: #f5f5f5; border-left: 4px solid #f57c00; border-radius: 6px"
+        >
+          <div class="row items-center q-gutter-xs">
+            <q-icon name="calendar_today" size="16px" color="orange-9" />
+            <span class="text-caption text-weight-medium text-grey-7">
+              {{ targetPeriod?.semester || 'N/A' }} {{ targetPeriod?.year || '' }}
+            </span>
+          </div>
+          <div class="row items-center q-gutter-xs q-mt-xs">
+            <q-icon name="badge" size="16px" color="orange-9" />
+            <span class="text-caption text-grey-7">
+              Current:
+              <q-badge
+                :color="
+                  getStatusBadgeColor(officeData?.unitworkplan_status || targetPeriod?.status)
+                "
+                :label="officeData?.unitworkplan_status || targetPeriod?.status || 'N/A'"
+                class="q-ml-xs"
+              />
+            </span>
+          </div>
+          <div class="row items-center q-gutter-xs q-mt-xs">
+            <q-icon name="arrow_forward" size="16px" color="green-8" />
+            <span class="text-caption text-grey-7">
+              New:
+              <q-badge color="green-8" label="monitored" class="q-ml-xs" />
+            </span>
+          </div>
+        </div>
+
+        <!-- Error Alert -->
+        <q-banner
+          v-if="monitorStore.error"
+          dense
+          rounded
+          class="text-white q-mb-md"
+          style="background: #c62828"
+        >
+          <template v-slot:avatar>
+            <q-icon name="error" />
+          </template>
+          {{ monitorStore.error }}
+        </q-banner>
+      </q-card-section>
+
+      <!-- Modal Actions -->
+      <q-card-actions align="right" class="q-px-lg q-pb-lg q-pt-none">
+        <q-btn
+          flat
+          label="Cancel"
+          color="grey-7"
+          :disable="monitorStore.loading"
+          @click="closeStatusModal"
+          style="border-radius: 8px; padding: 8px 20px"
+        />
+        <q-btn
+          label="Monitored"
+          icon="check_circle"
+          color="green-8"
+          unelevated
+          :loading="monitorStore.loading"
+          :disable="monitorStore.loading"
+          @click="confirmSetMonitored"
+          style="border-radius: 8px; padding: 8px 20px"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script>
@@ -383,6 +486,8 @@ import tagumLogo from 'src/assets/tagumlogo.png'
 import { onMounted, ref, computed, watch } from 'vue'
 import { useUnitWorkPlanReportStore } from 'src/stores/office/uwpDataStore'
 import { useCompetencyStore } from 'src/stores/competencyStore'
+import { useMonitorStatusStore } from 'src/stores/monitorStatusStore'
+import { useQuasar } from 'quasar'
 
 export default {
   name: 'UnitWorkPlanReport',
@@ -393,6 +498,7 @@ export default {
       default: () => ({
         semester: '',
         year: '',
+        status: '',
       }),
     },
     filteredDivisions: {
@@ -411,25 +517,97 @@ export default {
       type: String,
       default: '',
     },
-    showApprovedButton: {
-      type: Boolean,
-      default: false,
+    officeId: {
+      type: [Number, String],
+      default: null,
     },
   },
 
-  setup(props) {
+  emits: ['close', 'status-updated'],
+
+  setup(props, { emit }) {
+    const $q = useQuasar()
     const store = useUnitWorkPlanReportStore()
     const competencyStore = useCompetencyStore()
+    const monitorStore = useMonitorStatusStore()
+
     const currentDivisionData = ref(null)
     const selectedDivision = ref('')
     const currentDivisionPath = ref('')
+    const showStatusModal = ref(false)
 
-    // Dynamic user data - will be populated from API response
     const staticUserData = ref({
-      officeName: 'City Human Resource Management Office', // Default fallback
+      officeName: 'City Human Resource Management Office',
     })
 
-    // Proficiency level to number mapping
+    // ✅ officeData is now sourced from store.data.office which preserves unitworkplan_status
+    const officeData = ref(null)
+
+    // ── Status helpers ──────────────────────────────────────────────────────
+    const getStatusBadgeColor = (status) => {
+      if (!status) return 'grey-5'
+      const s = status.toLowerCase()
+      if (s === 'monitored') return 'green-8'
+      if (s === 'pending') return 'orange-8'
+      if (s === 'approved') return 'blue-8'
+      if (s === 'rejected') return 'red-8'
+      return 'grey-7'
+    }
+
+    // ── Status Modal ────────────────────────────────────────────────────────
+    const openStatusModal = () => {
+      monitorStore.error = ''
+      showStatusModal.value = true
+    }
+
+    const closeStatusModal = () => {
+      showStatusModal.value = false
+    }
+
+    const confirmSetMonitored = async () => {
+      const officeId =
+        props.officeId || store.data?.office?.id || store.data?.organization?.id || null
+
+      if (!officeId) {
+        $q.notify({
+          message: 'Office ID not found. Cannot update status.',
+          color: 'negative',
+          position: 'top',
+          icon: 'error',
+        })
+        return
+      }
+
+      const today = new Date().toISOString().split('T')[0]
+
+      const success = await monitorStore.storeStatus({
+        office_id: officeId,
+        year: props.targetPeriod?.year || '',
+        semester: props.targetPeriod?.semester || '',
+        date: today,
+        status: 'monitored',
+      })
+
+      if (success) {
+        showStatusModal.value = false
+
+        // ✅ Also update officeData locally so the badge reflects immediately
+        if (officeData.value) {
+          officeData.value = { ...officeData.value, unitworkplan_status: 'monitored' }
+        }
+
+        $q.notify({
+          message: 'Status updated to Monitored successfully.',
+          color: 'positive',
+          position: 'top',
+          icon: 'check_circle',
+        })
+
+        emit('status-updated', { status: 'monitored' })
+      }
+    }
+
+    // ── Proficiency mapping ─────────────────────────────────────────────────
     const proficiencyLevelMap = {
       Superior: 5,
       Advanced: 4,
@@ -438,79 +616,41 @@ export default {
       '-': '-',
     }
 
-    // Function to format competencies based on SG
     const formatCompetencies = (sg, type) => {
-      // Handle null, undefined, and other invalid SGs
-      if (sg === null || sg === undefined || sg === 'null' || sg === 'undefined') {
-        return 'N/A'
-      }
-
+      if (sg === null || sg === undefined || sg === 'null' || sg === 'undefined') return 'N/A'
       const sgStr = String(sg).trim()
-
-      if (sgStr === '' || sgStr === '0' || sgStr === 'N/A') {
-        return 'N/A'
-      }
-
-      // Clean the SG value
+      if (sgStr === '' || sgStr === '0' || sgStr === 'N/A') return 'N/A'
       const cleanSG = sgStr.replace(/\D/g, '')
-
-      if (!cleanSG || cleanSG === '') {
-        return 'N/A'
-      }
-
+      if (!cleanSG) return 'N/A'
       const sgNum = parseInt(cleanSG)
       const level = sgNum >= 15 ? '2nd Level' : '1st Level'
       const competencyRow = findCompetencyBySGRange(level, sgNum)
-
-      if (!competencyRow) {
-        return 'N/A'
-      }
-
-      // Get descriptions for the type
+      if (!competencyRow) return 'N/A'
       const descriptions = competencyStore.descriptions[type]
-      if (!descriptions) {
-        return 'N/A'
-      }
-
+      if (!descriptions) return 'N/A'
       const competencies = []
-
-      // Loop through each competency code in descriptions
       for (const [code] of Object.entries(descriptions)) {
         const proficiencyLevel = competencyRow[code]
         const proficiencyNumber = proficiencyLevelMap[proficiencyLevel] || '-'
-
         if (proficiencyLevel && proficiencyLevel !== '-') {
           competencies.push(`${code} - ${proficiencyNumber}`)
         }
       }
-
       return competencies.length > 0 ? competencies.join('<br>') : 'N/A'
     }
 
-    // Helper function to find the correct SG range
     const findCompetencyBySGRange = (level, sgNum) => {
       const levelData = competencyStore.byLevel[level]
       if (!levelData) return null
-
-      // Check single SGs first (e.g., "14", "13")
-      if (levelData[sgNum.toString()]) {
-        return levelData[sgNum.toString()]
-      }
-
-      // Check SG ranges (e.g., "15-17", "18-19")
+      if (levelData[sgNum.toString()]) return levelData[sgNum.toString()]
       for (const [range, competencies] of Object.entries(levelData)) {
         if (range.includes('-')) {
           const [minStr, maxStr] = range.split('-')
           const min = parseInt(minStr)
           const max = parseInt(maxStr)
-
-          if (!isNaN(min) && !isNaN(max) && sgNum >= min && sgNum <= max) {
-            return competencies
-          }
+          if (!isNaN(min) && !isNaN(max) && sgNum >= min && sgNum <= max) return competencies
         }
       }
-
-      // For 2nd Level, check these specific ranges
       if (level === '2nd Level') {
         if (sgNum >= 23 && sgNum <= 25) return levelData['23-25']
         if (sgNum >= 20 && sgNum <= 22) return levelData['20-22']
@@ -520,8 +660,6 @@ export default {
         if (sgNum >= 12 && sgNum <= 13) return levelData['12-13']
         if (sgNum >= 9 && sgNum <= 11) return levelData['9-11']
       }
-
-      // For 1st Level
       if (level === '1st Level') {
         if (sgNum === 18) return levelData['18']
         if (sgNum === 14) return levelData['14']
@@ -531,11 +669,10 @@ export default {
         if (sgNum >= 8 && sgNum <= 9) return levelData['8-9']
         if (sgNum >= 3 && sgNum <= 7) return levelData['3-7']
       }
-
       return null
     }
 
-    // Navigation items
+    // ── Navigation ──────────────────────────────────────────────────────────
     const navigationItems = computed(() => {
       if (props.firstSubLevel && Array.isArray(props.firstSubLevel)) {
         return props.firstSubLevel.map((node) => ({
@@ -546,70 +683,44 @@ export default {
         }))
       } else if (props.filteredDivisions && Array.isArray(props.filteredDivisions)) {
         return props.filteredDivisions
-      } else {
-        return [
-          {
-            id: 'hr-development',
-            label: 'Human Resource Development',
-            type: 'division',
-          },
-          {
-            id: 'personnel-management',
-            label: 'Personnel Management',
-            type: 'division',
-          },
-          {
-            id: 'records-management',
-            label: 'Records Management',
-            type: 'division',
-          },
-        ]
       }
+      return [
+        { id: 'hr-development', label: 'Human Resource Development', type: 'division' },
+        { id: 'personnel-management', label: 'Personnel Management', type: 'division' },
+        { id: 'records-management', label: 'Records Management', type: 'division' },
+      ]
     })
 
-    // Function to get hierarchy path
     const getHierarchyPath = (nodeId, nodes = props.officeStructure) => {
       if (!nodeId || !nodes || !Array.isArray(nodes)) return ''
-
       const path = []
-
       const findPath = (targetId, currentNodes, currentPath) => {
         if (!currentNodes || !Array.isArray(currentNodes)) return false
-
         for (const node of currentNodes) {
           if (!node) continue
-
           const newPath = [...currentPath, node?.label || '']
-
           if (node?.id === targetId) {
             path.push(...newPath)
             return true
           }
-
-          if (node?.children && findPath(targetId, node.children, newPath)) {
-            return true
-          }
+          if (node?.children && findPath(targetId, node.children, newPath)) return true
         }
         return false
       }
-
       findPath(nodeId, nodes, [])
       return path.filter(Boolean).join(' / ')
     }
 
+    // ── Data organisation ───────────────────────────────────────────────────
     const getOrganizedData = () => {
       if (!currentDivisionData.value || !Array.isArray(currentDivisionData.value.employees)) {
         return []
       }
-
       const employees = currentDivisionData.value.employees
       const organized = []
       let currentSection = null
-
-      // Group employees by MFO
       employees.forEach((employee) => {
         if (employee.isMfoHeader && employee.outputs && employee.outputs[0]) {
-          // Start a new MFO section
           currentSection = {
             mfoName: employee.mfoName || employee.outputs[0].name || 'Unnamed MFO',
             officeHead: {
@@ -623,7 +734,6 @@ export default {
           }
           organized.push(currentSection)
         } else if (!employee.isOfficeHead && currentSection) {
-          // Add org employee to current MFO section
           currentSection.orgEmployees.push({
             name: employee.name || 'N/A',
             position: employee.position || 'N/A',
@@ -634,23 +744,17 @@ export default {
           })
         }
       })
-
       return organized
     }
 
-    // FIXED: Function to get employees by rank for signature section
     const getEmployeesByRank = (rank) => {
       if (!currentDivisionData.value || !Array.isArray(currentDivisionData.value.employees)) {
         return []
       }
-
       const uniqueEmployees = new Map()
-
       currentDivisionData.value.employees.forEach((employee) => {
-        // Case-insensitive comparison and trim whitespace
         const employeeRank = String(employee.rank || '').trim()
         const targetRank = String(rank).trim()
-
         if (
           employeeRank.toLowerCase() === targetRank.toLowerCase() &&
           employee.name &&
@@ -665,37 +769,24 @@ export default {
           }
         }
       })
-
       return Array.from(uniqueEmployees.values())
     }
 
-    // Retry function
+    // ── Fetch / Select ──────────────────────────────────────────────────────
     const retryFetch = async () => {
       if (selectedDivision.value) {
         const currentDivision = navigationItems.value?.find(
           (div) => div?.id === selectedDivision.value,
         )
-        if (currentDivision) {
-          await fetchCurrentDivisionData(currentDivision)
-        }
+        if (currentDivision) await fetchCurrentDivisionData(currentDivision)
       }
     }
 
-    // Fetch data from store
     const fetchCurrentDivisionData = async (division) => {
       try {
-        if (!division || !division.id) {
-          console.warn('No valid division provided')
-          return
-        }
-
-        // Clear previous data
+        if (!division || !division.id) return
         currentDivisionData.value = null
-
-        // Set hierarchy path
         currentDivisionPath.value = getHierarchyPath(division.id)
-
-        // Prepare filters for the store
         const filters = {
           organization: division.label || '',
           semester: props.targetPeriod?.semester || '',
@@ -704,38 +795,39 @@ export default {
           nodeType: division.type || '',
           hierarchyPath: currentDivisionPath.value || '',
         }
-
-        // Fetch data from store
         await store.fetchUnitWorkPlan(filters)
 
-        // Update office name from API response
+        // ✅ FIX: store.data.office now contains unitworkplan_status because
+        // transformDataForReport preserves it. This will correctly show "Pending".
+        officeData.value = store.data?.office || null
+
         if (store.data?.office?.name) {
           staticUserData.value.officeName = store.data.office.name
         } else if (store.data?.organization?.name) {
           staticUserData.value.officeName = store.data.organization.name
         }
 
-        // Get transformed data from store
         const reportData = store.getReportData
-
         if (reportData && Array.isArray(reportData.employees)) {
           currentDivisionData.value = {
             name: reportData.name || division.label || 'Division Report',
             employees: reportData.employees || [],
+            office: store.data?.office,
           }
         } else {
-          // Fallback if no data returned
           currentDivisionData.value = {
             name: division.label || 'Division Report',
             employees: [],
+            office: store.data?.office,
           }
         }
       } catch (error) {
-        console.error('Error in fetchCurrentDivisionData:', error)
-        // Set empty data to prevent rendering errors
+        const msg = error?.response?.data?.message || ''
         currentDivisionData.value = {
           name: division?.label || 'Division Report',
           employees: [],
+          office: store.data?.office,
+          errorMessage: msg || 'Failed to load data.',
         }
       }
     }
@@ -749,20 +841,15 @@ export default {
       }
     }
 
+    // ── Print / PDF ─────────────────────────────────────────────────────────
     const handlePrint = async () => {
       try {
-        // Import pdfmake
         const pdfMake = await import('pdfmake/build/pdfmake')
         const pdfMakeInstance = pdfMake.default || pdfMake
-
-        // Import fonts
         const vfsFonts = await import('pdfmake/build/vfs_fonts')
         pdfMakeInstance.vfs = vfsFonts.default || vfsFonts.pdfMake?.vfs
 
-        // Use the imported logo
         let logoBase64 = tagumLogo
-
-        // If for some reason it's not base64, try to convert it
         if (logoBase64 && !logoBase64.startsWith('data:image')) {
           try {
             const response = await fetch(logoBase64)
@@ -779,18 +866,39 @@ export default {
           }
         }
 
-        // Prepare table data for PDF
         const organizedData = getOrganizedData()
-
-        // Get employees grouped by rank - USING CORRECT RANK NAMES
         const rankInFileEmployees = getEmployeesByRank('Rank-in-File')
         const supervisoryRank = getEmployeesByRank('Supervisory')
         const managerialRank = getEmployeesByRank('Managerial')
 
-        // Build PDF table rows
-        const tableRows = []
+        const formatCompetenciesForPDF = (sg, type) => {
+          try {
+            if (sg === null || sg === undefined || sg === 'null' || sg === 'undefined') return 'N/A'
+            const sgStr = String(sg).trim()
+            if (sgStr === '' || sgStr === '0' || sgStr === 'N/A') return 'N/A'
+            const cleanSG = sgStr.replace(/\D/g, '')
+            if (!cleanSG) return 'N/A'
+            const sgNum = parseInt(cleanSG)
+            const level = sgNum >= 15 ? '2nd Level' : '1st Level'
+            const competencyRow = findCompetencyBySGRange(level, sgNum)
+            if (!competencyRow) return 'N/A'
+            const descriptions = competencyStore.descriptions[type]
+            if (!descriptions) return 'N/A'
+            const competencies = []
+            for (const [code] of Object.entries(descriptions)) {
+              const proficiencyLevel = competencyRow[code]
+              const proficiencyNumber = proficiencyLevelMap[proficiencyLevel] || '-'
+              if (proficiencyLevel && proficiencyLevel !== '-') {
+                competencies.push(`${code} - ${proficiencyNumber}`)
+              }
+            }
+            return competencies.length > 0 ? competencies.join('\n') : 'N/A'
+          } catch {
+            return 'N/A'
+          }
+        }
 
-        // Add table headers
+        const tableRows = []
         tableRows.push([
           { text: 'MFO', style: 'tableHeader', colSpan: 1, rowSpan: 2, alignment: 'center' },
           {
@@ -814,7 +922,6 @@ export default {
           '',
           '',
         ])
-
         tableRows.push([
           { text: 'CORE FUNCTIONS', style: 'tableSubHeader', alignment: 'left' },
           { text: 'CORE', style: 'tableSubHeader', alignment: 'left' },
@@ -829,59 +936,39 @@ export default {
           { text: '1', style: 'tableSubHeader', alignment: 'center' },
         ])
 
-        // Add data rows for each MFO section
-        organizedData.forEach((mfoSection) => {
-          // Add office head information
-          tableRows.push([
-            { text: 'Employee:', style: 'labelCell', colSpan: 1 },
-            { text: mfoSection.officeHead.name || 'N/A', style: 'dataCell', colSpan: 10 },
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-          ])
+        const span10 = (text, style = 'dataCell') => [
+          { text, style, colSpan: 10 },
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ]
 
+        organizedData.forEach((mfoSection) => {
+          tableRows.push([
+            { text: 'Employee:', style: 'labelCell' },
+            ...span10(mfoSection.officeHead.name || 'N/A').slice(1),
+          ])
           tableRows.push([
             { text: 'Position/SG:', style: 'labelCell' },
-            {
-              text: `${mfoSection.officeHead.position || 'N/A'} - ${mfoSection.officeHead.sg || '0'}`,
-              style: 'dataCell',
-              colSpan: 10,
-            },
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
+            ...span10(
+              `${mfoSection.officeHead.position || 'N/A'} - ${mfoSection.officeHead.sg || '0'}`,
+            ).slice(1),
           ])
-
           tableRows.push([
             { text: 'Employee Rank:', style: 'labelCell' },
-            { text: mfoSection.officeHead.rank || 'N/A', style: 'dataCell', colSpan: 10 },
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
+            ...span10(mfoSection.officeHead.rank || 'N/A').slice(1),
           ])
 
-          // Add office head MFO output
           if (mfoSection.officeOutput) {
             tableRows.push([
-              { text: `MFO: ${mfoSection.mfoName || 'N/A'}`, style: 'mfoCell', vAlign: 'center' },
+              { text: `MFO: ${mfoSection.mfoName || 'N/A'}`, style: 'mfoCell' },
               {
                 text: formatCompetenciesForPDF(mfoSection.officeHead.sg, 'core'),
                 style: 'competencyCell',
@@ -896,88 +983,31 @@ export default {
               },
               { text: mfoSection.officeOutput.indicator || 'N/A', style: 'dataCell' },
               { text: mfoSection.officeOutput.required || 'N/A', style: 'dataCell' },
-              {
-                text: mfoSection.officeOutput.standard5 || 'N/A',
-                style: 'standardCell',
-                alignment: 'left',
-              },
-              {
-                text: mfoSection.officeOutput.standard4 || 'N/A',
-                style: 'standardCell',
-                alignment: 'left',
-              },
-              {
-                text: mfoSection.officeOutput.standard3 || 'N/A',
-                style: 'standardCell',
-                alignment: 'left',
-              },
-              {
-                text: mfoSection.officeOutput.standard2 || 'N/A',
-                style: 'standardCell',
-                alignment: 'left',
-              },
-              {
-                text: mfoSection.officeOutput.standard1 || 'N/A',
-                style: 'standardCell',
-                alignment: 'left',
-              },
+              { text: mfoSection.officeOutput.standard5 || 'N/A', style: 'standardCell' },
+              { text: mfoSection.officeOutput.standard4 || 'N/A', style: 'standardCell' },
+              { text: mfoSection.officeOutput.standard3 || 'N/A', style: 'standardCell' },
+              { text: mfoSection.officeOutput.standard2 || 'N/A', style: 'standardCell' },
+              { text: mfoSection.officeOutput.standard1 || 'N/A', style: 'standardCell' },
             ])
           }
 
-          // Add organization employees
           mfoSection.orgEmployees.forEach((orgEmployee, empIndex) => {
             const isNewEmployee =
               empIndex === 0 || orgEmployee.name !== mfoSection.orgEmployees[empIndex - 1]?.name
-
             if (isNewEmployee) {
               tableRows.push([
                 { text: 'Employee:', style: 'labelCell' },
-                { text: orgEmployee.name || 'N/A', style: 'dataCell', colSpan: 10 },
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
+                ...span10(orgEmployee.name || 'N/A').slice(1),
               ])
-
               tableRows.push([
                 { text: 'Position/SG:', style: 'labelCell' },
-                {
-                  text: `${orgEmployee.position || 'N/A'} - ${orgEmployee.sg || 'N/A'}`,
-                  style: 'dataCell',
-                  colSpan: 10,
-                },
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
+                ...span10(`${orgEmployee.position || 'N/A'} - ${orgEmployee.sg || 'N/A'}`).slice(1),
               ])
-
               tableRows.push([
                 { text: 'Employee Rank:', style: 'labelCell' },
-                { text: orgEmployee.rank || 'N/A', style: 'dataCell', colSpan: 10 },
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
+                ...span10(orgEmployee.rank || 'N/A').slice(1),
               ])
             }
-
-            // Add outputs for this employee
             orgEmployee.outputs.forEach((output) => {
               tableRows.push([
                 { text: `Output: ${output?.name || 'N/A'}`, style: 'outputCell' },
@@ -992,33 +1022,24 @@ export default {
                 },
                 { text: output?.indicator || 'N/A', style: 'dataCell' },
                 { text: output?.required || 'N/A', style: 'dataCell' },
-                { text: output?.standard5 || 'N/A', style: 'standardCell', alignment: 'left' },
-                { text: output?.standard4 || 'N/A', style: 'standardCell', alignment: 'left' },
-                { text: output?.standard3 || 'N/A', style: 'standardCell', alignment: 'left' },
-                { text: output?.standard2 || 'N/A', style: 'standardCell', alignment: 'left' },
-                { text: output?.standard1 || 'N/A', style: 'standardCell', alignment: 'left' },
+                { text: output?.standard5 || 'N/A', style: 'standardCell' },
+                { text: output?.standard4 || 'N/A', style: 'standardCell' },
+                { text: output?.standard3 || 'N/A', style: 'standardCell' },
+                { text: output?.standard2 || 'N/A', style: 'standardCell' },
+                { text: output?.standard1 || 'N/A', style: 'standardCell' },
               ])
             })
           })
         })
 
-        // Build signature section content
+        // Signature helpers
         const signatureSections = []
-
-        // Helper function to create signature columns
         const createSignatureColumn = (title, employees) => {
           if (employees.length === 0) return null
-
           return {
             width: '*',
             stack: [
-              {
-                text: title,
-                fontSize: 9,
-                bold: true,
-                margin: [0, 0, 0, 10],
-                alignment: 'center',
-              },
+              { text: title, fontSize: 9, bold: true, margin: [0, 0, 0, 10], alignment: 'center' },
               ...employees.map((emp) => ({
                 stack: [
                   {
@@ -1029,64 +1050,43 @@ export default {
                     alignment: 'center',
                     margin: [0, 20, 0, 5],
                   },
-                  {
-                    text: emp.position,
-                    fontSize: 8,
-                    alignment: 'center',
-                    margin: [0, 0, 0, 0],
-                  },
+                  { text: emp.position, fontSize: 8, alignment: 'center' },
                 ],
               })),
             ],
           }
         }
 
-        // Estimate heights for layout decision
         const rankInFileHeight = rankInFileEmployees.length * 40 + 30
         const supervisoryHeight = supervisoryRank.length * 40 + 30
         const managerialHeight = managerialRank.length * 40 + 30
-        const maxHeight = Math.max(rankInFileHeight, supervisoryHeight, managerialHeight)
         const useHorizontalLayout =
-          maxHeight < 150 && rankInFileHeight + supervisoryHeight + managerialHeight < 250
+          Math.max(rankInFileHeight, supervisoryHeight, managerialHeight) < 150 &&
+          rankInFileHeight + supervisoryHeight + managerialHeight < 250
 
         if (
           useHorizontalLayout &&
-          (rankInFileEmployees.length > 0 ||
-            supervisoryRank.length > 0 ||
-            managerialRank.length > 0)
+          (rankInFileEmployees.length || supervisoryRank.length || managerialRank.length)
         ) {
-          // HORIZONTAL LAYOUT
-          const columns = []
-
-          const rankFileCol = createSignatureColumn('Conformed and Agreed by:', rankInFileEmployees)
-          if (rankFileCol) columns.push(rankFileCol)
-
-          const supCol = createSignatureColumn('Reviewed and Assessed by:', supervisoryRank)
-          if (supCol) columns.push(supCol)
-
-          const mgrCol = createSignatureColumn('Noted by:', managerialRank)
-          if (mgrCol) columns.push(mgrCol)
-
-          if (columns.length > 0) {
-            signatureSections.push({
-              columns: columns,
-              columnGap: 20,
-              margin: [0, 20, 0, 0],
-            })
-          }
+          const columns = [
+            createSignatureColumn('Conformed and Agreed by:', rankInFileEmployees),
+            createSignatureColumn('Reviewed and Assessed by:', supervisoryRank),
+            createSignatureColumn('Noted by:', managerialRank),
+          ].filter(Boolean)
+          if (columns.length)
+            signatureSections.push({ columns, columnGap: 20, margin: [0, 20, 0, 0] })
         } else {
-          // VERTICAL LAYOUT
-          if (rankInFileEmployees.length > 0) {
+          const addSig = (title, employees) => {
+            if (!employees.length) return
             signatureSections.push({
-              text: 'Conformed and Agreed by:',
+              text: title,
               fontSize: 9,
               bold: true,
               margin: [0, 20, 0, 10],
               alignment: 'center',
             })
-
             signatureSections.push({
-              columns: rankInFileEmployees.map((emp) => ({
+              columns: employees.map((emp) => ({
                 width: '*',
                 stack: [
                   {
@@ -1097,179 +1097,87 @@ export default {
                     alignment: 'center',
                     margin: [0, 20, 0, 5],
                   },
-                  {
-                    text: emp.position,
-                    fontSize: 8,
-                    alignment: 'center',
-                    margin: [0, 0, 0, 0],
-                  },
+                  { text: emp.position, fontSize: 8, alignment: 'center' },
                 ],
               })),
               columnGap: 10,
-              margin: [0, 0, 0, 0],
             })
           }
-
-          if (supervisoryRank.length > 0) {
-            signatureSections.push({
-              text: 'Reviewed and Assessed by:',
-              fontSize: 9,
-              bold: true,
-              margin: [0, 20, 0, 10],
-              alignment: 'center',
-            })
-
-            signatureSections.push({
-              columns: supervisoryRank.map((emp) => ({
-                width: '*',
-                stack: [
-                  {
-                    text: emp.name.toUpperCase(),
-                    fontSize: 9,
-                    bold: true,
-                    decoration: 'underline',
-                    alignment: 'center',
-                    margin: [0, 20, 0, 5],
-                  },
-                  {
-                    text: emp.position,
-                    fontSize: 8,
-                    alignment: 'center',
-                    margin: [0, 0, 0, 0],
-                  },
-                ],
-              })),
-              columnGap: 10,
-              margin: [0, 0, 0, 0],
-            })
-          }
-
-          if (managerialRank.length > 0) {
-            signatureSections.push({
-              text: 'Noted by:',
-              fontSize: 9,
-              bold: true,
-              margin: [0, 20, 0, 10],
-              alignment: 'center',
-            })
-
-            signatureSections.push({
-              columns: managerialRank.map((emp) => ({
-                width: '*',
-                stack: [
-                  {
-                    text: emp.name.toUpperCase(),
-                    fontSize: 9,
-                    bold: true,
-                    decoration: 'underline',
-                    alignment: 'center',
-                    margin: [0, 20, 0, 5],
-                  },
-                  {
-                    text: emp.position,
-                    fontSize: 8,
-                    alignment: 'center',
-                    margin: [0, 0, 0, 0],
-                  },
-                ],
-              })),
-              columnGap: 10,
-              margin: [0, 0, 0, 0],
-            })
-          }
+          addSig('Conformed and Agreed by:', rankInFileEmployees)
+          addSig('Reviewed and Assessed by:', supervisoryRank)
+          addSig('Noted by:', managerialRank)
         }
 
         const docDefinition = {
           pageSize: 'LEGAL',
           pageOrientation: 'landscape',
           pageMargins: [40, 100, 40, 60],
-          header: function () {
-            return {
-              stack: [
-                {
-                  canvas: [
-                    {
-                      type: 'rect',
-                      x: (1008 - 936) / 2,
-                      y: 60,
-                      w: 936,
-                      h: 25,
-                      color: '#036431',
-                    },
-                  ],
-                },
-                {
-                  margin: [72, -65, 72, 0],
-                  columns: [
-                    {
-                      width: 65,
-                      stack: [
-                        {
-                          canvas: [
+          header: () => ({
+            stack: [
+              {
+                canvas: [
+                  { type: 'rect', x: (1008 - 936) / 2, y: 60, w: 936, h: 25, color: '#036431' },
+                ],
+              },
+              {
+                margin: [72, -65, 72, 0],
+                columns: [
+                  {
+                    width: 65,
+                    stack: [
+                      { canvas: [{ type: 'rect', x: 0, y: 0, w: 75, h: 80, color: '#ffffff' }] },
+                      ...(logoBase64
+                        ? [
                             {
-                              type: 'rect',
-                              x: 0,
-                              y: 0,
-                              w: 75,
-                              h: 80,
-                              color: '#ffffff',
+                              image: logoBase64,
+                              width: 65,
+                              height: 65,
+                              absolutePosition: { x: 77, y: 22 },
                             },
-                          ],
-                        },
-                        ...(logoBase64
-                          ? [
-                              {
-                                image: logoBase64,
-                                width: 65,
-                                height: 65,
-                                absolutePosition: { x: 77, y: 22 },
-                              },
-                            ]
-                          : []),
-                      ],
-                    },
-                    {
-                      width: '*',
-                      margin: [15, -15, 0, 0],
-                      stack: [
-                        {
-                          text: 'REPUBLIC OF THE PHILIPPINES',
-                          fontSize: 8,
-                          color: '#00703c',
-                          alignment: 'left',
-                          margin: [0, 20, 0, 2],
-                        },
-                        {
-                          text: 'PROVINCE OF DAVAO DEL NORTE',
-                          fontSize: 8,
-                          color: '#00703c',
-                          alignment: 'left',
-                          margin: [0, 0, 0, 2],
-                        },
-                        {
-                          text: 'CITY OF TAGUM',
-                          fontSize: 10,
-                          bold: true,
-                          color: '#00703c',
-                          alignment: 'left',
-                        },
-                        {
-                          text:
-                            currentDivisionPath.value.split(' / ')[0] ||
-                            staticUserData.value.officeName,
-                          fontSize: 13,
-                          bold: true,
-                          color: 'white',
-                          margin: [0, 5, 0, 0],
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            }
-          },
-
+                          ]
+                        : []),
+                    ],
+                  },
+                  {
+                    width: '*',
+                    margin: [15, -15, 0, 0],
+                    stack: [
+                      {
+                        text: 'REPUBLIC OF THE PHILIPPINES',
+                        fontSize: 8,
+                        color: '#00703c',
+                        alignment: 'left',
+                        margin: [0, 20, 0, 2],
+                      },
+                      {
+                        text: 'PROVINCE OF DAVAO DEL NORTE',
+                        fontSize: 8,
+                        color: '#00703c',
+                        alignment: 'left',
+                        margin: [0, 0, 0, 2],
+                      },
+                      {
+                        text: 'CITY OF TAGUM',
+                        fontSize: 10,
+                        bold: true,
+                        color: '#00703c',
+                        alignment: 'left',
+                      },
+                      {
+                        text:
+                          currentDivisionPath.value.split(' / ')[0] ||
+                          staticUserData.value.officeName,
+                        fontSize: 13,
+                        bold: true,
+                        color: 'white',
+                        margin: [0, 5, 0, 0],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
           content: [
             {
               text: 'UNIT WORK PLAN',
@@ -1310,74 +1218,31 @@ export default {
                 widths: ['12%', '8%', '8%', '8%', '12%', '12%', '8%', '8%', '8%', '8%', '8%'],
                 body: tableRows,
               },
-              margin: [0, 0, 0, 0],
               layout: {
-                hLineWidth: function (i, node) {
-                  return i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5
-                },
-                vLineWidth: function (i, node) {
-                  return i === 0 || i === node.table.widths.length ? 1 : 0.5
-                },
-                hLineColor: function () {
-                  return '#000000'
-                },
-                vLineColor: function () {
-                  return '#000000'
-                },
-                paddingLeft: function () {
-                  return 3
-                },
-                paddingRight: function () {
-                  return 3
-                },
-                paddingTop: function () {
-                  return 2
-                },
-                paddingBottom: function () {
-                  return 2
-                },
+                hLineWidth: (i, node) =>
+                  i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5,
+                vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length ? 1 : 0.5),
+                hLineColor: () => '#000000',
+                vLineColor: () => '#000000',
+                paddingLeft: () => 3,
+                paddingRight: () => 3,
+                paddingTop: () => 2,
+                paddingBottom: () => 2,
               },
             },
             ...signatureSections,
           ],
-
           styles: {
-            tableHeader: {
-              bold: true,
-              fontSize: 9,
-              fillColor: '#f2f2f2',
-              alignment: 'center',
-            },
-            tableSubHeader: {
-              bold: true,
-              fontSize: 9,
-              fillColor: '#f2f2f2',
-            },
-            labelCell: {
-              fontSize: 9,
-              bold: true,
-            },
-            dataCell: {
-              fontSize: 9,
-            },
-            mfoCell: {
-              fontSize: 9,
-              bold: true,
-            },
-            outputCell: {
-              fontSize: 9,
-            },
-            competencyCell: {
-              fontSize: 9,
-            },
-            standardCell: {
-              fontSize: 9,
-            },
+            tableHeader: { bold: true, fontSize: 9, fillColor: '#f2f2f2', alignment: 'center' },
+            tableSubHeader: { bold: true, fontSize: 9, fillColor: '#f2f2f2' },
+            labelCell: { fontSize: 9, bold: true },
+            dataCell: { fontSize: 9 },
+            mfoCell: { fontSize: 9, bold: true },
+            outputCell: { fontSize: 9 },
+            competencyCell: { fontSize: 9 },
+            standardCell: { fontSize: 9 },
           },
-
-          defaultStyle: {
-            fontSize: 9,
-          },
+          defaultStyle: { fontSize: 9 },
         }
 
         pdfMakeInstance.createPdf(docDefinition).open()
@@ -1387,58 +1252,11 @@ export default {
       }
     }
 
-    // Helper function for PDF competency formatting (no HTML)
-    const formatCompetenciesForPDF = (sg, type) => {
-      try {
-        if (sg === null || sg === undefined || sg === 'null' || sg === 'undefined') {
-          return 'N/A'
-        }
-
-        const sgStr = String(sg).trim()
-        if (sgStr === '' || sgStr === '0' || sgStr === 'N/A') {
-          return 'N/A'
-        }
-
-        const cleanSG = sgStr.replace(/\D/g, '')
-        if (!cleanSG || cleanSG === '') {
-          return 'N/A'
-        }
-
-        const sgNum = parseInt(cleanSG)
-        const level = sgNum >= 15 ? '2nd Level' : '1st Level'
-        const competencyRow = findCompetencyBySGRange(level, sgNum)
-
-        if (!competencyRow) {
-          return 'N/A'
-        }
-
-        const descriptions = competencyStore.descriptions[type]
-        if (!descriptions) {
-          return 'N/A'
-        }
-
-        const competencies = []
-        for (const [code] of Object.entries(descriptions)) {
-          const proficiencyLevel = competencyRow[code]
-          const proficiencyNumber = proficiencyLevelMap[proficiencyLevel] || '-'
-
-          if (proficiencyLevel && proficiencyLevel !== '-') {
-            competencies.push(`${code} - ${proficiencyNumber}`)
-          }
-        }
-
-        return competencies.length > 0 ? competencies.join('\n') : 'N/A'
-      } catch (error) {
-        console.error('Error formatting competencies for PDF:', error)
-        return 'N/A'
-      }
-    }
-
+    // ── Lifecycle ───────────────────────────────────────────────────────────
     onMounted(() => {
       try {
         if (navigationItems.value && navigationItems.value.length > 0) {
-          const firstDivision = navigationItems.value[0]
-          selectDivision(firstDivision)
+          selectDivision(navigationItems.value[0])
         }
       } catch (error) {
         console.error('Error in onMounted:', error)
@@ -1453,9 +1271,7 @@ export default {
             const currentDivision = navigationItems.value?.find(
               (div) => div?.id === selectedDivision.value,
             )
-            if (currentDivision) {
-              fetchCurrentDivisionData(currentDivision)
-            }
+            if (currentDivision) fetchCurrentDivisionData(currentDivision)
           }
         } catch (error) {
           console.error('Error watching target period:', error)
@@ -1466,11 +1282,18 @@ export default {
 
     return {
       store,
+      monitorStore,
       currentDivisionData,
       selectedDivision,
       currentDivisionPath,
       navigationItems,
       staticUserData,
+      officeData,
+      showStatusModal,
+      getStatusBadgeColor,
+      openStatusModal,
+      closeStatusModal,
+      confirmSetMonitored,
       getOrganizedData,
       getEmployeesByRank,
       selectDivision,
@@ -1483,4 +1306,4 @@ export default {
 }
 </script>
 
-<style scoped src="../assets/office/UnitWorkPlanReport.css"></style>
+<style scoped src="../assets/office/UnitWorkPlanReportHR.css"></style>

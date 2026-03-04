@@ -23,32 +23,50 @@
         <div class="row justify-between items-center q-mb-md">
           <div class="col-auto">
             <div class="text-h6 text-grey-7">Verbs for Performance Indicators</div>
-            <div class="text-caption text-grey-6">
-              Add action verbs to use in performance indicators
-            </div>
+            <div class="text-caption text-grey-6">Add action verbs categorized by type</div>
           </div>
 
           <div class="col-auto row items-center q-col-gutter-sm">
+            <div>
+              <q-select
+                dense
+                outlined
+                color="green"
+                v-model="newVerb.categoryId"
+                :options="verbCategoryOptions"
+                label="Category"
+                style="min-width: 180px"
+                emit-value
+                map-options
+              />
+            </div>
             <div>
               <q-input
                 dense
                 outlined
                 color="green"
-                v-model="newVerb"
+                v-model="newVerb.name"
                 label="Add verb (e.g., facilitate)"
                 @keyup.enter="addVerb"
                 clearable
+                style="min-width: 220px"
               />
             </div>
-
             <div class="col-auto">
-              <q-btn color="green-9" label="Add" @click="addVerb" :loading="libraryStore.loading" />
+              <q-btn
+                color="green-9"
+                label="Add"
+                @click="addVerb"
+                :loading="libraryStore.loading"
+                :disable="!newVerb.name || !newVerb.categoryId"
+              />
             </div>
           </div>
         </div>
 
         <q-card flat bordered class="q-pa-md">
-          <div class="row items-center q-col-gutter-sm">
+          <!-- Search and Filter Controls -->
+          <div class="row items-center q-col-gutter-sm q-mb-md">
             <div class="col-12 col-md-4">
               <q-input
                 dense
@@ -57,13 +75,26 @@
                 v-model="verbSearch"
                 placeholder="Search verbs..."
                 clearable
-                class="q-pr-md"
                 debounce="150"
               >
                 <template v-slot:prepend>
                   <q-icon name="search" />
                 </template>
               </q-input>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <q-select
+                dense
+                outlined
+                color="green"
+                v-model="verbCategoryFilter"
+                :options="verbCategoryFilterOptions"
+                label="Filter by category"
+                clearable
+                emit-value
+                map-options
+              />
             </div>
 
             <div class="col" />
@@ -80,16 +111,31 @@
             </div>
           </div>
 
-          <div class="q-mt-xl">
+          <!-- Categorized Verbs Display -->
+          <div v-for="category in visibleCategories" :key="category.value" class="q-mb-lg">
+            <div class="row items-center q-mb-sm">
+              <q-icon :name="category.icon" :color="category.color" size="24px" class="q-mr-sm" />
+              <div class="text-subtitle1 text-weight-medium" :class="`text-${category.color}`">
+                {{ category.label }}
+              </div>
+              <q-space />
+              <q-badge :color="category.color" :label="getCategoryCount(category.value)" />
+            </div>
+
             <q-list class="verbs-grid">
               <q-item
-                v-for="verb in filteredVerbs"
+                v-for="verb in getVerbsByCategory(category.value)"
                 :key="verb.id"
                 class="item-card verb-card q-pa-sm"
                 clickable
               >
                 <q-item-section side class="col-auto">
-                  <q-checkbox dense v-model="selectedVerbIds" :val="verb.id" color="primary" />
+                  <q-checkbox
+                    dense
+                    v-model="selectedVerbIds"
+                    :val="verb.id"
+                    :color="category.color"
+                  />
                 </q-item-section>
 
                 <q-item-section class="q-pl-sm">
@@ -99,24 +145,51 @@
                 </q-item-section>
 
                 <q-item-section side>
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    icon="delete"
-                    color="negative"
-                    size="sm"
-                    @click.
-                    stop="confirmDelete('verbs', [verb.id])"
-                  />
+                  <div class="row q-gutter-xs no-wrap">
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="edit"
+                      color="primary"
+                      size="sm"
+                      @click.stop="editVerb(verb)"
+                    >
+                      <q-tooltip>Edit category</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click.stop="confirmDelete('verbs', [verb.id])"
+                    >
+                      <q-tooltip>Delete</q-tooltip>
+                    </q-btn>
+                  </div>
                 </q-item-section>
               </q-item>
             </q-list>
 
-            <div v-if="!filteredVerbs.length" class="text-center q-pa-md text-grey-6">
-              <q-icon name="search_off" size="48px" class="q-mb-sm" />
-              <div>No verbs found. Add one above or adjust your search.</div>
+            <div
+              v-if="getVerbsByCategory(category.value).length === 0"
+              class="text-center q-pa-md text-grey-6 bg-grey-1 rounded-borders"
+            >
+              <q-icon name="inbox" size="32px" class="q-mb-xs" />
+              <div class="text-caption">No verbs in this category yet</div>
             </div>
+          </div>
+
+          <!-- Empty State -->
+          <div
+            v-if="filteredVerbs.length === 0 && !visibleCategories.length"
+            class="text-center q-pa-xl text-grey-6"
+          >
+            <q-icon name="search_off" size="64px" class="q-mb-md" />
+            <div class="text-h6">No verbs found</div>
+            <div class="text-caption">Try adjusting your search or filter</div>
           </div>
         </q-card>
       </q-tab-panel>
@@ -136,7 +209,7 @@
                 outlined
                 color="green"
                 v-model="newRank"
-                label="Add rank (e. g., Office Head)"
+                label="Add rank (e.g., Office Head)"
                 @keyup.enter="addRank"
                 clearable
               />
@@ -245,7 +318,7 @@
               <q-select
                 dense
                 outlined
-                colo="green"
+                color="green"
                 v-model="newTargetPeriod.semester"
                 :options="semesterOptions"
                 label="Select Semester"
@@ -363,6 +436,48 @@
       </q-tab-panel>
     </q-tab-panels>
 
+    <!-- ========== EDIT VERB DIALOG ========== -->
+    <q-dialog v-model="dialogEditVerb">
+      <q-card style="min-width: 400px">
+        <q-card-section>
+          <div class="text-h6">Edit Verb Category</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-input
+            dense
+            outlined
+            color="green"
+            v-model="editingVerb.indicator_name"
+            label="Verb Name"
+            readonly
+            class="q-mb-md"
+          />
+          <q-select
+            dense
+            outlined
+            color="green"
+            v-model="editingVerb.categoryId"
+            :options="verbCategoryOptions"
+            label="Category"
+            emit-value
+            map-options
+            autofocus
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="green-9"
+            label="Save"
+            @click="saveVerbEdit"
+            :loading="libraryStore.loading"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- ========== EDIT RANK DIALOG ========== -->
     <q-dialog v-model="dialogEditRank">
       <q-card style="min-width: 400px">
@@ -399,19 +514,42 @@
 import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
 import { useQuasar } from 'quasar'
 
+// Category icon and color mapping
+const CATEGORY_STYLES = {
+  Production: { icon: 'factory', color: 'blue' },
+  'Quality Control': { icon: 'verified', color: 'purple' },
+  'Decision-Making': { icon: 'psychology', color: 'orange' },
+}
+
 export default {
   name: 'LibraryPage',
+
   setup() {
     const libraryStore = useLibraryStore()
     const $q = useQuasar()
     return { libraryStore, $q }
   },
+
   data() {
     return {
       activeTab: 'verbs',
+
+      // Verbs
       selectedVerbIds: [],
-      newVerb: '',
+      newVerb: {
+        name: '',
+        categoryId: null,
+      },
       verbSearch: '',
+      verbCategoryFilter: null,
+      dialogEditVerb: false,
+      editingVerb: {
+        id: null,
+        indicator_name: '',
+        categoryId: null,
+      },
+
+      // Ranks
       selectedRankIds: [],
       newRank: '',
       rankSearch: '',
@@ -420,7 +558,8 @@ export default {
         id: null,
         rank_name: '',
       },
-      // Target Period Data
+
+      // Target Periods
       selectedTargetPeriodIds: [],
       newTargetPeriod: {
         semester: null,
@@ -433,19 +572,73 @@ export default {
       ],
     }
   },
+
   computed: {
+    // Map API categories to select options with styles
+    verbCategoryOptions() {
+      return this.libraryStore.categories.map((cat) => {
+        const style = CATEGORY_STYLES[cat.categories_name] || { icon: 'label', color: 'grey' }
+        return {
+          label: cat.categories_name,
+          value: cat.id,
+          icon: style.icon,
+          color: style.color,
+        }
+      })
+    },
+
+    verbCategoryFilterOptions() {
+      return [
+        { label: 'All Categories', value: null },
+        ...this.verbCategoryOptions,
+        { label: 'Uncategorized', value: 'uncategorized', icon: 'help_outline', color: 'grey' },
+      ]
+    },
+
     filteredVerbs() {
       const search = (this.verbSearch || '').toLowerCase().trim()
-      const verbs = this.libraryStore.sortedVerbs
-      if (!search) return verbs
-      return verbs.filter((v) => (v.indicator_name || '').toLowerCase().includes(search))
+      let verbs = this.libraryStore.sortedVerbs
+
+      if (search) {
+        verbs = verbs.filter((v) => (v.indicator_name || '').toLowerCase().includes(search))
+      }
+
+      if (this.verbCategoryFilter === 'uncategorized') {
+        verbs = verbs.filter((v) => !v.category_id)
+      } else if (this.verbCategoryFilter) {
+        verbs = verbs.filter((v) => v.category_id === this.verbCategoryFilter)
+      }
+
+      return verbs
     },
+
+    visibleCategories() {
+      const categories = [...this.verbCategoryOptions]
+
+      const hasUncategorized = this.libraryStore.sortedVerbs.some((v) => !v.category_id)
+      if (hasUncategorized) {
+        categories.push({
+          label: 'Uncategorized',
+          value: 'uncategorized',
+          icon: 'help_outline',
+          color: 'grey',
+        })
+      }
+
+      if (this.verbCategoryFilter) {
+        return categories.filter((cat) => cat.value === this.verbCategoryFilter)
+      }
+
+      return categories
+    },
+
     filteredRanks() {
       const search = (this.rankSearch || '').toLowerCase().trim()
       const ranks = this.libraryStore.sortedRanks
       if (!search) return ranks
       return ranks.filter((r) => (r.rank_name || '').toLowerCase().includes(search))
     },
+
     filteredTargetPeriods() {
       const search = (this.targetperiodSearch || '').toLowerCase().trim()
       const periods = this.libraryStore.sortedTargetPeriods
@@ -456,18 +649,22 @@ export default {
           (p.year || '').toString().includes(search),
       )
     },
+
     yearOptions() {
       const currentYear = new Date().getFullYear()
       return [currentYear, currentYear + 1, currentYear + 2]
     },
   },
+
   async created() {
     await this.loadData()
   },
+
   methods: {
     async loadData() {
       try {
         await Promise.all([
+          this.libraryStore.fetchCategories(),
           this.libraryStore.fetchVerbs(),
           this.libraryStore.fetchRanks(),
           this.libraryStore.fetchTargetPeriods(),
@@ -481,82 +678,136 @@ export default {
       }
     },
 
+    // ==================== VERBS ====================
+    getVerbsByCategory(categoryValue) {
+      if (categoryValue === 'uncategorized') {
+        return this.filteredVerbs.filter((verb) => !verb.category_id)
+      }
+      return this.filteredVerbs.filter((verb) => verb.category_id === categoryValue)
+    },
+
+    getCategoryCount(categoryValue) {
+      return this.getVerbsByCategory(categoryValue).length
+    },
+
     async addVerb() {
-      const text = (this.newVerb || '').trim()
-      if (!text) {
-        this.$q.notify({ type: 'warning', message: 'Please enter a verb.' })
+      const name = (this.newVerb.name || '').trim()
+      const categoryId = this.newVerb.categoryId
+
+      if (!name) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'Please enter a verb name.',
+          position: 'top',
+        })
         return
       }
 
-      if (this.libraryStore.verbExists(text)) {
-        this.$q.notify({ type: 'warning', message: 'This verb already exists.' })
+      if (!categoryId) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'Please select a category.',
+          position: 'top',
+        })
+        return
+      }
+
+      if (this.libraryStore.verbExists(name, categoryId)) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'This verb already exists in this category.',
+          position: 'top',
+        })
         return
       }
 
       try {
-        await this.libraryStore.addVerb(text)
-        this.newVerb = ''
-        this.$q.notify({ type: 'positive', message: 'Verb added successfully.' })
+        await this.libraryStore.addVerb(name, categoryId)
+        this.newVerb = { name: '', categoryId: null }
+        this.$q.notify({
+          type: 'positive',
+          message: 'Verb added successfully.',
+          position: 'top',
+        })
       } catch (error) {
         this.$q.notify({
           type: 'negative',
           message: error.response?.data?.message || 'Failed to add verb.',
+          position: 'top',
         })
       }
     },
 
+    editVerb(verb) {
+      this.editingVerb = {
+        id: verb.id,
+        indicator_name: verb.indicator_name,
+        categoryId: verb.category_id || null,
+      }
+      this.dialogEditVerb = true
+    },
+
+    async saveVerbEdit() {
+      if (!this.editingVerb.categoryId) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'Please select a category.',
+          position: 'top',
+        })
+        return
+      }
+
+      try {
+        await this.libraryStore.updateVerbCategory(this.editingVerb.id, this.editingVerb.categoryId)
+        this.dialogEditVerb = false
+        this.$q.notify({
+          type: 'positive',
+          message: 'Verb category updated successfully.',
+          position: 'top',
+        })
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || 'Failed to update verb category.',
+          position: 'top',
+        })
+      }
+    },
+
+    // ==================== RANKS ====================
     async addRank() {
       const text = (this.newRank || '').trim()
       if (!text) {
-        this.$q.notify({ type: 'warning', message: 'Please enter a rank name.' })
+        this.$q.notify({
+          type: 'warning',
+          message: 'Please enter a rank name.',
+          position: 'top',
+        })
         return
       }
 
       if (this.libraryStore.rankExists(text)) {
-        this.$q.notify({ type: 'warning', message: 'This rank already exists.' })
+        this.$q.notify({
+          type: 'warning',
+          message: 'This rank already exists.',
+          position: 'top',
+        })
         return
       }
 
       try {
         await this.libraryStore.addRank(text)
         this.newRank = ''
-        this.$q.notify({ type: 'positive', message: 'Rank added successfully.' })
+        this.$q.notify({
+          type: 'positive',
+          message: 'Rank added successfully.',
+          position: 'top',
+        })
       } catch (error) {
         this.$q.notify({
           type: 'negative',
           message: error.response?.data?.message || 'Failed to add rank.',
-        })
-      }
-    },
-
-    async addTargetPeriod() {
-      const { semester, year } = this.newTargetPeriod
-
-      if (!semester || !year) {
-        this.$q.notify({
-          type: 'warning',
-          message: 'Please select both semester and year.',
-        })
-        return
-      }
-
-      // FIX: Check if target period already exists
-      if (this.libraryStore.targetPeriodExists(semester, year)) {
-        this.$q.notify({
-          type: 'warning',
-          message: 'This target period already exists.',
-        })
-        return
-      }
-
-      try {
-        await this.libraryStore.addTargetPeriod(semester, year)
-        this.newTargetPeriod = { semester: null, year: null }
-        this.$q.notify({ type: 'positive', message: 'Target period added successfully.' })
-      } catch (error) {
-        this.$q.notify({
-          type: 'negative',
-          message: error.response?.data?.message || 'Failed to add target period.',
+          position: 'top',
         })
       }
     },
@@ -568,22 +819,71 @@ export default {
 
     async saveRankEdit() {
       if (!this.editingRank.rank_name.trim()) {
-        this.$q.notify({ type: 'warning', message: 'Rank name cannot be empty.' })
+        this.$q.notify({
+          type: 'warning',
+          message: 'Rank name cannot be empty.',
+          position: 'top',
+        })
         return
       }
 
       try {
         await this.libraryStore.updateRank(this.editingRank.id, this.editingRank.rank_name)
         this.dialogEditRank = false
-        this.$q.notify({ type: 'positive', message: 'Rank updated successfully.' })
+        this.$q.notify({
+          type: 'positive',
+          message: 'Rank updated successfully.',
+          position: 'top',
+        })
       } catch (error) {
         this.$q.notify({
           type: 'negative',
           message: error.response?.data?.message || 'Failed to update rank.',
+          position: 'top',
         })
       }
     },
 
+    // ==================== TARGET PERIODS ====================
+    async addTargetPeriod() {
+      const { semester, year } = this.newTargetPeriod
+
+      if (!semester || !year) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'Please select both semester and year.',
+          position: 'top',
+        })
+        return
+      }
+
+      if (this.libraryStore.targetPeriodExists(semester, year)) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'This target period already exists.',
+          position: 'top',
+        })
+        return
+      }
+
+      try {
+        await this.libraryStore.addTargetPeriod(semester, year)
+        this.newTargetPeriod = { semester: null, year: null }
+        this.$q.notify({
+          type: 'positive',
+          message: 'Target period added successfully.',
+          position: 'top',
+        })
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || 'Failed to add target period.',
+          position: 'top',
+        })
+      }
+    },
+
+    // ==================== DELETE OPERATIONS ====================
     confirmDeleteSelected(type) {
       let ids = []
       if (type === 'verbs') {
@@ -623,11 +923,16 @@ export default {
           await this.libraryStore.deleteTargetPeriods(ids)
           this.selectedTargetPeriodIds = []
         }
-        this.$q.notify({ type: 'positive', message: 'Deleted successfully.' })
+        this.$q.notify({
+          type: 'positive',
+          message: 'Deleted successfully.',
+          position: 'top',
+        })
       } catch (error) {
         this.$q.notify({
           type: 'negative',
           message: error.response?.data?.message || 'Failed to delete items.',
+          position: 'top',
         })
       }
     },
@@ -679,7 +984,7 @@ export default {
 
 /* ========== VERTICAL LINE SEPARATORS ========== */
 
-/* VERBS - 4 columns:  Add left border except first column */
+/* VERBS - 4 columns: Add left border except first column */
 .verb-card {
   border-left: 2px solid var(--q-color-grey-4);
 }
@@ -697,7 +1002,7 @@ export default {
   border-left: 1px solid var(--q-color-grey-3);
 }
 
-/* TARGET PERIOD - 2 columns:  Add left border except first column */
+/* TARGET PERIOD - 2 columns: Add left border except first column */
 .targetperiod-card {
   border-left: 2px solid var(--q-color-grey-4);
 }
@@ -774,5 +1079,9 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.rounded-borders {
+  border-radius: 8px;
 }
 </style>
