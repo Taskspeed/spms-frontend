@@ -31,7 +31,7 @@
 
         <q-card-section class="q-pa-sm">
           <div class="row q-col-gutter-md">
-            <!-- Left Side:  Division, Section, Unit -->
+            <!-- Left Side: Division, Section, Unit -->
             <div class="col-12 col-md-6">
               <div class="column q-gutter-sm">
                 <q-input
@@ -60,7 +60,7 @@
                 <!-- Office2 -->
                 <q-input
                   v-model="hierarchyLabels.office2"
-                  label="Sub-Ofiice"
+                  label="Sub-Office"
                   outlined
                   dense
                   readonly
@@ -79,7 +79,7 @@
               </div>
             </div>
 
-            <!-- Right Side:  Semester, Year -->
+            <!-- Right Side: Semester, Year -->
             <div class="col-12 col-md-6">
               <div class="column q-gutter-sm">
                 <q-input
@@ -249,15 +249,27 @@
                 <template v-slot:option="scope">
                   <q-item v-bind="scope.itemProps" dense>
                     <q-item-section avatar>
-                      <q-avatar color="primary" text-color="white" size="sm">
+                      <q-avatar
+                        :color="getEmployeeBadgeColor(scope.opt)"
+                        text-color="white"
+                        size="sm"
+                      >
                         {{ (scope.opt.label || 'U').charAt(0).toUpperCase() }}
                       </q-avatar>
                     </q-item-section>
                     <q-item-section>
-                      <q-item-label>{{ scope.opt.label || 'Unnamed Employee' }}</q-item-label>
-                      <q-item-label caption lines="1">{{
-                        scope.opt.position || 'No position'
-                      }}</q-item-label>
+                      <q-item-label>
+                        {{ scope.opt.label || 'Unnamed Employee' }}
+                        <q-badge
+                          v-if="isHeadPosition(scope.opt.job_title || scope.opt.position)"
+                          color="green"
+                          class="q-ml-xs"
+                          label="Head"
+                        />
+                      </q-item-label>
+                      <q-item-label caption lines="1">
+                        {{ scope.opt.position || scope.opt.rank || 'No position' }}
+                      </q-item-label>
                     </q-item-section>
                   </q-item>
                 </template>
@@ -397,7 +409,11 @@
                                     input-debounce="300"
                                     @filter="(val, update) => filterMfos(val, update, index)"
                                     clearable
-                                    @update:model-value="clearDependentFields(index, 2)"
+                                    @update:model-value="
+                                      (value) => {
+                                        clearDependentFields(index, 2)
+                                      }
+                                    "
                                   >
                                     <template v-slot:prepend>
                                       <q-icon name="list_alt" size="xs" />
@@ -474,7 +490,7 @@
                             <q-card flat bordered class="full-height">
                               <q-card-section class="q-pa-sm">
                                 <div class="text-subtitle2">
-                                  Competencies(for IPCR each MFO should have competency)
+                                  Competencies (for IPCR each MFO should have competency)
                                 </div>
 
                                 <!-- Competency Error Message -->
@@ -499,7 +515,6 @@
                                           <div class="text-caption text-weight-medium">
                                             Core (Auto-populated)
                                           </div>
-                                          <!-- Removed the add button -->
                                         </div>
                                       </q-card-section>
                                       <q-separator />
@@ -526,7 +541,6 @@
                                                   comp.level
                                                 }})
                                               </div>
-                                              <!-- Core competencies cannot be removed as they're auto-populated -->
                                             </div>
                                           </div>
                                         </div>
@@ -702,7 +716,15 @@
                                     multiple
                                     use-chips
                                     clearable
-                                    @update:model-value="generateSuccessIndicator(index)"
+                                    @update:model-value="
+                                      (value) => {
+                                        generateSuccessIndicator(index)
+                                        // Cascade logic still runs but modal is hidden
+                                        if (value && value.length > 0) {
+                                          checkAndShowCascadeModal(index)
+                                        }
+                                      }
+                                    "
                                   >
                                     <template v-slot:prepend>
                                       <q-icon name="flag" size="xs" />
@@ -933,18 +955,22 @@
                                   class="input-cell"
                                   :style="`width: ${props.col.width}`"
                                 >
-                                  <q-input
-                                    v-if="standard.quantityIndicatorType === 'numeric'"
-                                    v-model="props.row.quantity"
-                                    dense
-                                    outlined
-                                    placeholder="Enter target"
-                                    :rules="[validateStrictNumeric]"
-                                    @keydown="blockInvalidChars"
-                                    @update:model-value="
-                                      onQuantityUpdate(props.row, 'quantity', index)
-                                    "
-                                  />
+                                  <div v-if="standard.quantityIndicatorType === 'numeric'">
+                                    <q-input
+                                      v-model="props.row.quantity"
+                                      dense
+                                      outlined
+                                      placeholder="Enter target"
+                                      :rules="[validateStrictNumeric]"
+                                      @keydown="blockInvalidChars"
+                                      @update:model-value="
+                                        onQuantityUpdate(props.row, 'quantity', index)
+                                      "
+                                      :hint="getQuantityHint(standard, index)"
+                                      :error="isQuantityExceeded(standard, props.row, index)"
+                                      :error-message="getQuantityErrorMessage(standard, index)"
+                                    />
+                                  </div>
                                   <div v-else class="numeric-display">
                                     {{ props.row.quantity || '-' }}
                                   </div>
@@ -1127,6 +1153,36 @@
                             >
                               At least 2 effectiveness values must be filled out.
                             </div>
+
+                            <!-- Quantity Restriction Info -->
+                            <div
+                              v-if="
+                                standard.quantityRestriction &&
+                                standard.quantityIndicatorType !== 'C'
+                              "
+                              class="q-mt-sm"
+                            >
+                              <q-banner
+                                :class="
+                                  standard.quantityRestriction.restrictionType === 'error'
+                                    ? 'bg-negative'
+                                    : 'bg-info'
+                                "
+                                class="text-white q-pa-sm"
+                                dense
+                              >
+                                <template v-slot:avatar>
+                                  <q-icon
+                                    :name="
+                                      standard.quantityRestriction.restrictionType === 'error'
+                                        ? 'error'
+                                        : 'info'
+                                    "
+                                  />
+                                </template>
+                                {{ standard.quantityRestriction.message }}
+                              </q-banner>
+                            </div>
                           </div>
                         </div>
                       </q-card-section>
@@ -1155,6 +1211,9 @@
       <q-card style="min-width: 400px; border-radius: 8px">
         <q-card-section class="modal-header">
           <div class="text-h6">Enter Target Output</div>
+          <div v-if="currentQuantityRestriction" class="text-caption text-red-9 q-mt-xs">
+            Max allowed: {{ currentQuantityRestriction.maxQuantity || 'Unlimited' }}
+          </div>
         </q-card-section>
 
         <q-card-section class="modal-body">
@@ -1164,17 +1223,111 @@
             type="number"
             outlined
             dense
-            :rules="[(val) => val > 0 || 'Must be greater than 0']"
+            :rules="[
+              (val) => val > 0 || 'Must be greater than 0',
+              (val) =>
+                !currentQuantityRestriction?.maxQuantity ||
+                val <= currentQuantityRestriction.maxQuantity ||
+                `Cannot exceed ${currentQuantityRestriction.maxQuantity}`,
+            ]"
             @keypress="blockInvalidChars"
+            :error="quantityExceedsMax"
+            :error-message="
+              quantityExceedsMax
+                ? `Maximum allowed is ${currentQuantityRestriction?.maxQuantity}`
+                : ''
+            "
           />
         </q-card-section>
 
         <q-card-actions align="right" class="modal-actions">
           <q-btn flat label="Cancel" color="grey-7" v-close-popup @click="cancelQuantityInput" />
-          <q-btn label="Calculate" color="green" unelevated @click="() => computeQuantities('B')" />
+          <q-btn
+            label="Calculate"
+            color="green"
+            unelevated
+            @click="() => computeQuantities('B')"
+            :disable="quantityExceedsMax"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Cascade Data Modal - Commented Out (Hidden but functionality remains) -->
+    <!--
+    <q-dialog v-model="showCascadeModal" persistent>
+      <q-card style="min-width: 500px; max-width: 600px; border-radius: 8px">
+        <q-card-section class="modal-header">
+          <div class="row items-center justify-between">
+            <div>
+              <div class="text-h6">Guide Instruction</div>
+              <div class="text-caption3 text-red-9">
+                Base your target on whats available in this MFO
+              </div>
+            </div>
+
+            <q-btn flat round dense icon="close" v-close-popup />
+          </div>
+        </q-card-section>
+
+        <q-card-section class="modal-body">
+          <div v-if="cascadeData" class="q-gutter-md">
+            <div class="text-subtitle1 text-weight-bold">MFO: {{ cascadeData.mfo }}</div>
+
+            <div v-if="cascadeData.output" class="text-subtitle2 text-grey-8">
+              Output: {{ cascadeData.output }}
+            </div>
+
+            <div class="row q-col-gutter-md">
+              <div class="col-4">
+                <q-card flat bordered class="text-center">
+                  <q-card-section>
+                    <div class="text-caption text-grey-7">Total Target</div>
+                    <div class="text-h5 text-primary">{{ cascadeData.total_target }}</div>
+                  </q-card-section>
+                </q-card>
+              </div>
+              <div class="col-4">
+                <q-card flat bordered class="text-center">
+                  <q-card-section>
+                    <div class="text-caption text-grey-7">Claimed</div>
+                    <div class="text-h5 text-secondary">{{ cascadeData.claimed }}</div>
+                  </q-card-section>
+                </q-card>
+              </div>
+              <div class="col-4">
+                <q-card flat bordered class="text-center">
+                  <q-card-section>
+                    <div class="text-caption text-grey-7">Available</div>
+                    <div
+                      class="text-h5"
+                      :class="cascadeData.available > 0 ? 'text-positive' : 'text-negative'"
+                    >
+                      {{ cascadeData.available }}
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </div>
+
+            <div v-if="cascadeData.quantityRestriction" class="q-mt-md">
+              <q-banner class="bg-info text-white" dense>
+                <template v-slot:avatar>
+                  <q-icon name="info" />
+                </template>
+                {{ cascadeData.quantityRestriction.message }}
+              </q-banner>
+            </div>
+          </div>
+          <div v-else class="text-center text-grey-7">No cascade data available</div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="modal-actions q-pa-md">
+          <q-btn label="Close" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    -->
 
     <!-- Competency Selection Modal -->
     <q-dialog v-model="showCompetencyModal" persistent>
@@ -1315,8 +1468,9 @@
     </div>
   </q-page>
 </template>
+
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { v4 as uuidv4 } from 'uuid'
@@ -1324,8 +1478,11 @@ import { useMfoStore } from 'src/stores/office/officeLibrary'
 import { useLibraryStore } from 'src/stores/hr_Store/libraryStore'
 import { useUnitWorkPlanStore } from 'src/stores/office/unitWorkPlanStore'
 import { useCompetencyStore } from 'src/stores/competencyStore'
+import { useCascadeStore } from 'src/stores/cascadeStore'
+import { useQuantityRestriction } from 'src/composables/useQuantityRestriction'
 
 export default {
+  name: 'UnitWorkPlan',
   setup() {
     const $q = useQuasar()
     const router = useRouter()
@@ -1333,6 +1490,10 @@ export default {
     const officeLibraryIndicatorStore = useLibraryStore()
     const uwpStore = useUnitWorkPlanStore()
     const competencyStore = useCompetencyStore()
+    const cascadeStore = useCascadeStore()
+
+    // Initialize the quantity restriction composable
+    const { determineRestriction } = useQuantityRestriction()
 
     // Refs
     const filteredMfoOptions = ref({})
@@ -1380,43 +1541,49 @@ export default {
     const currentStandardIndex = ref(0)
     const showQuantityModal = ref(false)
     const quantityValue = ref(null)
+    const currentQuantityRestriction = ref(null)
+    const quantityExceedsMax = computed(() => {
+      if (!currentQuantityRestriction.value?.maxQuantity) return false
+      return quantityValue.value > currentQuantityRestriction.value.maxQuantity
+    })
+
+    // Cascade Modal Refs (keep but won't show modal)
+    const showCascadeModal = ref(false)
+    const cascadeData = ref(null)
 
     // Competency Modal Refs
     const showCompetencyModal = ref(false)
-    const competencyType = ref('core') // 'core', 'technical', 'leadership'
+    const competencyType = ref('core')
     const currentStandardIndexForCompetency = ref(0)
     const selectedCompetency = ref(null)
     const selectedLevel = ref(null)
     const filteredCompetencyOptions = ref([])
     const showCompetencyError = ref([])
 
-    // NEW: Multiple competency selection refs
+    // Multiple competency selection refs
     const competencySelections = ref([{ selectedCompetency: null, selectedLevel: null }])
     const filteredCompetencyOptionsByRow = ref([])
 
-    // Organization data
-    const units = ref([
-      { id: 1, name: 'Finance Department' },
-      { id: 2, name: 'Operations Department' },
-      { id: 3, name: 'IT Department' },
-    ])
-    const sections = ref([
-      { id: 1, name: 'Accounting', unitId: 1 },
-      { id: 2, name: 'Budget', unitId: 1 },
-      { id: 3, name: 'Production', unitId: 2 },
-      { id: 4, name: 'Logistics', unitId: 2 },
-      { id: 5, name: 'Development', unitId: 3 },
-      { id: 6, name: 'Infrastructure', unitId: 3 },
-    ])
-    const divisions = ref([
-      { id: 1, name: 'Accounts Payable', sectionId: 1 },
-      { id: 2, name: 'Accounts Receivable', sectionId: 1 },
-      { id: 3, name: 'Financial Planning', sectionId: 2 },
-      { id: 4, name: 'Manufacturing', sectionId: 3 },
-      { id: 5, name: 'Quality Control', sectionId: 3 },
-      { id: 6, name: 'Frontend', sectionId: 5 },
-      { id: 7, name: 'Backend', sectionId: 5 },
-    ])
+    // Auto-selection flag to prevent multiple initializations
+    const autoSelectionPerformed = ref(false)
+    const autoSelectionAttempts = ref(0)
+    const MAX_AUTO_SELECTION_ATTEMPTS = 5
+
+    // Head position titles for auto-selection - based on your data showing "SECTION HEAD" in designation field
+    const HEAD_POSITION_TITLES = [
+      'section head',
+      'division head',
+      'unit head',
+      'office head',
+      'group head',
+      'sub-office head',
+      'section-head',
+      'division-head',
+      'unit-head',
+      'office-head',
+      'group-head',
+      'sub-office-head',
+    ]
 
     // Competency Data
     const competencyData = {
@@ -1446,18 +1613,13 @@ export default {
 
     const levelOptions = computed(() => {
       if (!selectedCompetency.value) return []
-
-      // Get the required level from the competency row
       const requiredLevel = selectedCompetency.value.requiredLevel
-
-      // Map to the level options format
       const levelMap = {
         Basic: { label: 'Basic', value: '1' },
         Intermediate: { label: 'Intermediate', value: '2' },
         Advanced: { label: 'Advanced', value: '3' },
         Superior: { label: 'Superior', value: '4' },
       }
-
       return requiredLevel ? [levelMap[requiredLevel]] : []
     })
 
@@ -1494,7 +1656,7 @@ export default {
     ]
 
     const quantityIndicator = [
-      { label: 'Quantity (A.  Custom Target)', value: 'numeric' },
+      { label: 'Quantity (A. Custom Target)', value: 'numeric' },
       { label: 'Quantity (B. Can exceed 100%)', value: 'B' },
       { label: 'Quantity (C. Cannot exceed 100%)', value: 'C' },
     ]
@@ -1538,6 +1700,7 @@ export default {
         leadership: [],
       },
       standardOutcomeRows: createDefaultStandardRows(),
+      quantityRestriction: null,
     })
 
     const createDefaultEmployeeData = () => ({
@@ -1547,6 +1710,8 @@ export default {
       employeeData: null,
       sg: null,
       level: null,
+      rank: '',
+      position: '',
       performanceStandards: [createDefaultPerformanceStandard()],
     })
 
@@ -1568,12 +1733,48 @@ export default {
       return name.charAt(0).toUpperCase()
     }
 
+    // Helper to check if position is a head position - UPDATED to check designation field first
+    const isHeadPosition = (employee) => {
+      if (!employee) return false
+
+      // Based on your console logs, the job title is in 'designation' field
+      const designation = (employee.designation || employee.employeeData?.designation || '')
+        .toLowerCase()
+        .trim()
+
+      // Check designation first (primary source)
+      if (designation && HEAD_POSITION_TITLES.some((title) => designation.includes(title))) {
+        return true
+      }
+
+      // Fallback to other fields
+      const otherFields = (
+        employee.job_title ||
+        employee.jobTitle ||
+        employee.position ||
+        employee.rank ||
+        employee.employeeData?.job_title ||
+        employee.employeeData?.position ||
+        ''
+      )
+        .toLowerCase()
+        .trim()
+
+      return HEAD_POSITION_TITLES.some((title) => otherFields.includes(title))
+    }
+
+    // Helper to get badge color based on position
+    const getEmployeeBadgeColor = (employee) => {
+      return isHeadPosition(employee) ? 'green' : 'primary'
+    }
+
     const initializeUWPData = () => {
       try {
         const stored = sessionStorage.getItem('uwpData')
         if (stored) {
           const parsed = JSON.parse(stored)
           uwpData.value = parsed
+          console.log('UWP Data initialized:', parsed)
         }
       } catch (error) {
         console.error('❌ Failed to parse UWP data:', error)
@@ -1581,12 +1782,195 @@ export default {
     }
 
     const initializeEmployeeTabs = () => {
+      console.log('Initializing employee tabs...')
       const defaultEmp = createDefaultEmployeeData()
       employeeTabs.value = [defaultEmp]
       activeEmployeeTab.value = defaultEmp.id
+      console.log('Default tab created')
     }
 
-    // Computed
+    // Auto-select head employees from the available employees - UPDATED to check designation field
+    const autoSelectHeadEmployees = () => {
+      console.log('🔄 Auto-selection triggered - Attempt:', autoSelectionAttempts.value + 1)
+
+      if (autoSelectionPerformed.value) {
+        console.log('✅ Auto-selection already performed, skipping')
+        return
+      }
+
+      if (
+        !uwpData.value.employeesWithoutTargetPeriod ||
+        uwpData.value.employeesWithoutTargetPeriod.length === 0
+      ) {
+        console.log('❌ No employees available for auto-selection')
+
+        if (autoSelectionAttempts.value < MAX_AUTO_SELECTION_ATTEMPTS) {
+          autoSelectionAttempts.value++
+          setTimeout(() => {
+            console.log(
+              `⏳ Retrying auto-selection (Attempt ${autoSelectionAttempts.value + 1})...`,
+            )
+            autoSelectHeadEmployees()
+          }, 500)
+        }
+        return
+      }
+
+      console.log('📊 Available employees:', uwpData.value.employeesWithoutTargetPeriod.length)
+
+      // Debug: Log all employees and their designation fields
+      uwpData.value.employeesWithoutTargetPeriod.forEach((emp, idx) => {
+        console.log(`Employee ${idx + 1}:`, {
+          name: emp.label || emp.name,
+          designation: emp.designation, // This is the key field!
+          employeeData_designation: emp.employeeData?.designation,
+          job_title: emp.job_title,
+          position: emp.position,
+          rank: emp.rank,
+        })
+      })
+
+      // Find head employees among available employees - check designation FIRST
+      const headEmployees = uwpData.value.employeesWithoutTargetPeriod.filter((emp) => {
+        // Check designation field (primary - from your logs)
+        const designation = (emp.designation || emp.employeeData?.designation || '')
+          .toLowerCase()
+          .trim()
+
+        // Check other fields as fallback
+        const otherFields = (
+          emp.job_title ||
+          emp.jobTitle ||
+          emp.position ||
+          emp.rank ||
+          emp.employeeData?.job_title ||
+          emp.employeeData?.position ||
+          ''
+        )
+          .toLowerCase()
+          .trim()
+
+        const isHead = HEAD_POSITION_TITLES.some(
+          (title) => designation.includes(title) || otherFields.includes(title),
+        )
+
+        if (isHead) {
+          console.log(
+            `✅ Head employee found: ${emp.label || emp.name} - Designation: ${designation}`,
+          )
+        }
+
+        return isHead
+      })
+
+      console.log(
+        `🎯 Found ${headEmployees.length} head employees:`,
+        headEmployees.map((e) => ({
+          name: e.label || e.name,
+          designation: e.designation,
+        })),
+      )
+
+      if (headEmployees.length === 0) {
+        console.log('⚠️ No head employees found for auto-selection')
+        autoSelectionPerformed.value = true
+        return
+      }
+
+      // Clear the default empty tab if it exists
+      if (employeeTabs.value.length === 1 && !employeeTabs.value[0].employeeId) {
+        employeeTabs.value = []
+      }
+
+      // Create tabs for each head employee
+      headEmployees.forEach((headEmp, index) => {
+        console.log(`Creating tab for head employee ${index + 1}:`, headEmp.label || headEmp.name)
+
+        const employeeData = createDefaultEmployeeData()
+        employeeData.name = headEmp.label || headEmp.name || ''
+        employeeData.employeeId = headEmp.id
+        employeeData.employeeData = headEmp
+        employeeData.rank = headEmp.rank || headEmp.employment_type || ''
+        employeeData.position = headEmp.designation || headEmp.position || '' // Use designation as position
+        employeeData.sg = headEmp.salary_grade || headEmp.sg || headEmp.SG || ''
+        employeeData.level = headEmp.employeeStatus || headEmp.level || ''
+
+        employeeTabs.value.push(employeeData)
+
+        // Auto-populate core competencies
+        if (employeeData.sg && employeeData.level) {
+          employeeData.performanceStandards.forEach((standard) => {
+            autoPopulateCoreCompetencies(standard, employeeData.sg, employeeData.level)
+          })
+        }
+      })
+
+      // Set active tab to the first head employee
+      if (employeeTabs.value.length > 0) {
+        activeEmployeeTab.value = employeeTabs.value[0].id
+      }
+
+      autoSelectionPerformed.value = true
+
+      $q.notify({
+        message: `Automatically selected ${headEmployees.length} head employee(s)`,
+        color: 'info',
+        position: 'top',
+        timeout: 3000,
+      })
+
+      console.log('✅ Auto-selection completed. Total tabs:', employeeTabs.value.length)
+    }
+
+    // Auto-populate core competencies based on employee's SG and Level
+    const autoPopulateCoreCompetencies = (standard, sg, level) => {
+      if (!sg || !level) {
+        console.log('Cannot auto-populate: missing SG or Level', { sg, level })
+        return
+      }
+
+      console.log('Auto-populating core competencies for SG:', sg, 'Level:', level)
+
+      const competencyRow = competencyStore.getBySG(sg)
+
+      if (!competencyRow) {
+        console.log('No competency row found for SG:', sg)
+        return
+      }
+
+      // Clear existing core competencies first
+      standard.competencies.core = []
+
+      // Get core competencies from competencyData
+      const coreCompetencies = competencyData.core || []
+
+      // For each core competency, check if it's required for this SG
+      coreCompetencies.forEach((comp) => {
+        const requiredLevel = competencyRow[comp.code]
+
+        // Only add if the competency is required (has a level and not '-')
+        if (requiredLevel && requiredLevel !== '-') {
+          // Map the level text to value
+          const levelMap = {
+            Basic: '1',
+            Intermediate: '2',
+            Advanced: '3',
+            Superior: '4',
+          }
+
+          standard.competencies.core.push({
+            code: comp.code,
+            description: comp.description,
+            value: levelMap[requiredLevel] || '1',
+            level: requiredLevel,
+          })
+
+          console.log(`Added ${comp.code} with level ${requiredLevel}`)
+        }
+      })
+    }
+
+    // Computed properties
     const semesterOptions = computed(() => uwpStore.getSemesterOptions)
     const yearOptions = computed(() => uwpStore.getYearOptions)
 
@@ -1668,7 +2052,6 @@ export default {
         return { rank: '', position: '', sg: '', level: '' }
       }
 
-      // Get values from the tab (which we set in onEmployeeSelected)
       return {
         rank: currentTab.rank || '',
         position: currentTab.position || '',
@@ -1696,94 +2079,21 @@ export default {
       })),
     )
 
-    const filteredSections = computed(() => {
-      if (!form.value.division) return []
-      const division = divisions.value.find((d) => d.id === form.value.division)
-      return sections.value.filter((section) => section.id === division?.sectionId)
-    })
-
-    const filteredUnits = computed(() => {
-      if (!form.value.section) return []
-      const section = sections.value.find((s) => s.id === form.value.section)
-      return units.value.filter((unit) => unit.id === section?.unitId)
-    })
-
-    // Auto-populate core competencies based on employee's SG and Level
-    const autoPopulateCoreCompetencies = (standard, sg, level) => {
-      if (!sg || !level) {
-        console.log('Cannot auto-populate: missing SG or Level', { sg, level })
-        return
-      }
-
-      console.log('Auto-populating core competencies for SG:', sg, 'Level:', level)
-
-      const competencyRow = competencyStore.getBySG(sg)
-
-      if (!competencyRow) {
-        console.log('No competency row found for SG:', sg)
-        return
-      }
-
-      console.log('Competency row:', competencyRow)
-
-      // Clear existing core competencies first
-      standard.competencies.core = []
-
-      // Get core competencies from competencyData
-      const coreCompetencies = competencyData.core || []
-
-      console.log('Core competencies from data:', coreCompetencies)
-
-      // For each core competency, check if it's required for this SG
-      coreCompetencies.forEach((comp) => {
-        const requiredLevel = competencyRow[comp.code]
-
-        console.log(`Checking ${comp.code}:`, { requiredLevel })
-
-        // Only add if the competency is required (has a level and not '-')
-        if (requiredLevel && requiredLevel !== '-') {
-          // Map the level text to value
-          const levelMap = {
-            Basic: '1',
-            Intermediate: '2',
-            Advanced: '3',
-            Superior: '4',
-          }
-
-          standard.competencies.core.push({
-            code: comp.code,
-            description: comp.description,
-            value: levelMap[requiredLevel] || '1',
-            level: requiredLevel,
-          })
-
-          console.log(`Added ${comp.code} with level ${requiredLevel}`)
-        }
-      })
-
-      console.log('Final core competencies:', standard.competencies.core)
-    }
-
     const competencyOptions = computed(() => {
       if (!currentEmployee.value?.sg || !currentEmployee.value?.level) {
         return []
       }
 
       const sg = currentEmployee.value.sg
-      // const level = currentEmployee.value.level
-
-      // Get the competency row for this SG and Level
       const competencyRow = competencyStore.getBySG(sg)
 
       if (!competencyRow) return []
 
-      // Get competencies based on type and filter only those with values
       const typeCompetencies = competencyData[competencyType.value] || []
 
       return typeCompetencies
         .filter((comp) => {
           const competencyLevel = competencyRow[comp.code]
-          // Only include competencies that are required (have a level value)
           return competencyLevel && competencyLevel !== '-'
         })
         .map((comp) => ({
@@ -1801,15 +2111,6 @@ export default {
         (row) => row.effectiveness && row.effectiveness.trim().length > 0,
       ).length
       return filledValues >= 2
-    }
-
-    const getEffectivenessErrorCount = (index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      return !standard
-        ? 5
-        : standard.standardOutcomeRows.filter(
-            (row) => !row.effectiveness || row.effectiveness.trim().length === 0,
-          ).length
     }
 
     const hasMinimumCompetencies = (employee, standardIndex) => {
@@ -1840,16 +2141,13 @@ export default {
       const allEmployeesValid = employeeTabs.value.every((emp) => {
         if (!emp.employeeId) return false
 
-        // Check performance standards
         const allStandardsValid = emp.performanceStandards.every((standard) => {
-          // Check effectiveness values (at least 2)
           if (!standard.standardOutcomeRows) return false
           const filledEffectivenessValues = standard.standardOutcomeRows.filter(
             (row) => row.effectiveness && row.effectiveness.trim().length > 0,
           ).length
           if (filledEffectivenessValues < 2) return false
 
-          // Check competencies (at least 1 from any category)
           const { core, technical, leadership } = standard.competencies
           const totalCompetencies =
             (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
@@ -1863,17 +2161,6 @@ export default {
       return hasTargetPeriod && allEmployeesValid
     })
 
-    const hasMfosForCategory = (index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard || !standard.rows.category) return false
-      const categoryId = standard.rows.category
-      const mfosInCategory = officeLibraryStore.mfos.filter(
-        (mfo) => mfo.f_category_id === categoryId,
-      )
-      return mfosInCategory.length > 0
-    }
-
-    // NEW: Computed property to check if any competency selection is valid
     const isAnyCompetencyValid = computed(() => {
       return competencySelections.value.some(
         (comp) => comp.selectedCompetency && comp.selectedLevel,
@@ -1912,7 +2199,218 @@ export default {
       }
     }
 
-    // Helper to detect Support Function (Category C)
+    const getQuantityHint = (standard) => {
+      if (standard.quantityRestriction?.maxQuantity) {
+        return `Max: ${standard.quantityRestriction.maxQuantity}`
+      }
+      return ''
+    }
+
+    const isQuantityExceeded = (standard, row) => {
+      if (standard.quantityIndicatorType !== 'numeric') return false
+      if (!standard.quantityRestriction?.maxQuantity) return false
+
+      const value = parseInt(row.quantity)
+      if (isNaN(value)) return false
+
+      return value > standard.quantityRestriction.maxQuantity
+    }
+
+    const getQuantityErrorMessage = (standard) => {
+      if (standard.quantityRestriction?.maxQuantity) {
+        return `Cannot exceed ${standard.quantityRestriction.maxQuantity}`
+      }
+      return ''
+    }
+
+    // Cascade Modal Method - Use Office Head when no supervisories
+    const checkAndShowCascadeModal = async (standardIndex) => {
+      const standard = currentEmployee.value.performanceStandards[standardIndex]
+
+      if (!standard) {
+        console.log('Standard not found')
+        return
+      }
+
+      if (!standard.rows.mfo) {
+        $q.notify({
+          message: 'Please select an MFO first',
+          color: 'warning',
+          position: 'top',
+          timeout: 3000,
+        })
+        return
+      }
+
+      if (!standard.indicatorName || standard.indicatorName.length === 0) {
+        console.log('No performance indicators selected')
+        return
+      }
+
+      const mfoId = standard.rows.mfo
+      const selectedMfo = officeLibraryStore.mfos.find((m) => m.id === mfoId)
+      const mfoValue = selectedMfo?.name || mfoId
+
+      const loadingNotif = $q.notify({
+        message: 'Loading cascade data...',
+        color: 'info',
+        position: 'top',
+        timeout: 0,
+        spinner: true,
+        group: false,
+      })
+
+      try {
+        const semester = uwpData.value.targetPeriod?.semester
+        const year = uwpData.value.targetPeriod?.year
+
+        if (!semester || !year) {
+          throw new Error('Semester and year are required')
+        }
+
+        await cascadeStore.fetchCascade(semester, year, mfoValue)
+        const fetchedData = cascadeStore.cascadeData
+
+        if (!fetchedData) {
+          throw new Error('No cascade data found')
+        }
+
+        const indicatorIds = Array.isArray(standard.indicatorName) ? standard.indicatorName : []
+        const matchedMfo = fetchedData.mfos?.find(
+          (mfo) => mfo.mfo === selectedMfo?.name || mfo.mfo === mfoValue,
+        )
+
+        const indicatorNames = indicatorIds.map((id) => {
+          const verb = officeLibraryIndicatorStore.verbs.find((v) => v.id === Number(id))
+          return verb?.indicator_name || verb?.name || id
+        })
+
+        // Determine which supervisor to use for restriction
+        let supervisorToUse = null
+
+        // Priority 1: Check if employee has their own supervisorySignatory
+        if (currentEmployee.value.supervisorySignatory) {
+          supervisorToUse = currentEmployee.value.supervisorySignatory
+          console.log("Using employee's supervisory signatory:", supervisorToUse)
+        }
+        // Priority 2: If no employee supervisor, check if cascade has supervisories array with data
+        else if (fetchedData.supervisories && fetchedData.supervisories.length > 0) {
+          supervisorToUse = fetchedData.supervisories[0]
+          console.log('Using first supervisor from cascade:', supervisorToUse)
+        }
+        // Priority 3: If no supervisors at all, use the Office Head from the main cascade response
+        else {
+          // Use the main cascade person (Office Head) as the supervisor reference
+          // IMPORTANT: Include the mfos array from fetchedData
+          supervisorToUse = {
+            name: fetchedData.name,
+            rank: fetchedData.rank,
+            job_title: fetchedData.job_title,
+            office: fetchedData.office,
+            controlNo: fetchedData.controlNo,
+            mfos: fetchedData.mfos || [], // Include MFOs for category checking
+            // Calculate total available from all MFOs
+            available:
+              fetchedData.mfos?.reduce((total, mfo) => total + (mfo.available || 0), 0) || 0,
+          }
+          console.log('No supervisors found, using Office Head as reference:', supervisorToUse)
+
+          $q.notify({
+            message: `Using Office Head (${fetchedData.name}) as reference for quantity restriction`,
+            color: 'info',
+            position: 'top',
+            timeout: 5000,
+            icon: 'info',
+          })
+        }
+
+        // Create employee object for restriction calculation with the determined supervisor
+        const employeeForRestriction = {
+          ...currentEmployee.value,
+          supervisorySignatory: supervisorToUse,
+        }
+
+        // Calculate restriction using the determined supervisor
+        const restriction = determineRestriction({
+          selectedEmployee: employeeForRestriction,
+          selectedIndicators: standard.indicatorName,
+          quantityType: standard.quantityIndicatorType,
+          verbs: officeLibraryIndicatorStore.verbs,
+          cascadeData: fetchedData,
+        })
+
+        // Assign the restriction to the standard
+        standard.quantityRestriction = restriction
+
+        // Prepare cascade data
+        cascadeData.value = {
+          controlNo: fetchedData.controlNo,
+          name: fetchedData.name,
+          rank: fetchedData.rank,
+          job_title: fetchedData.job_title,
+          office: fetchedData.office,
+          year: fetchedData.year || year,
+          semester: fetchedData.semester || semester,
+          mfo: selectedMfo?.name,
+          output: standard.rows.output
+            ? officeLibraryStore.outputs.find((o) => o.id === standard.rows.output)?.name
+            : null,
+          output_name: standard.outputName || matchedMfo?.output_name || '',
+          performance_indicator: indicatorNames,
+          success_indicator: matchedMfo?.success_indicator || standard.successIndicator || '',
+          total_target: matchedMfo?.total_target || 0,
+          claimed: matchedMfo?.claimed || 0,
+          available: matchedMfo?.available || 0,
+          quantityRestriction: standard.quantityRestriction,
+          supervisorUsed: supervisorToUse,
+        }
+
+        if (loadingNotif) {
+          loadingNotif()
+        }
+
+        // Show appropriate notification
+        if (!currentEmployee.value.supervisorySignatory) {
+          if (fetchedData.supervisories && fetchedData.supervisories.length > 0) {
+            $q.notify({
+              message: `Using ${fetchedData.supervisories[0].name} as reference for quantity restriction`,
+              color: 'info',
+              position: 'top',
+              timeout: 4000,
+            })
+          } else {
+            $q.notify({
+              message: `Using Office Head (${fetchedData.name}) as reference for quantity restriction`,
+              color: 'info',
+              position: 'top',
+              timeout: 4000,
+            })
+          }
+        }
+
+        $q.notify({
+          message: 'Cascade data loaded successfully',
+          color: 'positive',
+          position: 'top',
+          timeout: 2000,
+        })
+
+        console.log('Quantity restriction applied:', restriction)
+      } catch (error) {
+        if (loadingNotif) {
+          loadingNotif()
+        }
+
+        console.error('Error fetching cascade data:', error)
+
+        $q.notify({
+          message: error.message || 'Failed to load cascade data',
+          color: 'negative',
+          position: 'top',
+        })
+      }
+    }
+
     const isSupportCategory = (category) => {
       if (!category) return false
       const nameFromObject = category.name || category.label
@@ -1961,7 +2459,6 @@ export default {
 
       const categoryId = standard.rows.category
 
-      // For Support category, show category_outputs instead of MFO-based outputs
       if (isSupportCategory(categoryId)) {
         const filteredOutputs = officeLibraryStore.category_outputs.filter(
           (output) => output.f_category_id === categoryId,
@@ -1976,7 +2473,6 @@ export default {
         }))
       }
 
-      // For other categories (A, B), show MFO-based outputs
       const mfoId = standard.rows.mfo
       if (!officeLibraryStore.outputs || officeLibraryStore.outputs.length === 0) return []
 
@@ -2056,7 +2552,6 @@ export default {
 
           const categoryId = standard.rows.category
 
-          // For Support category, filter from category_outputs
           if (isSupportCategory(categoryId)) {
             const allOutputs = officeLibraryStore.category_outputs.filter(
               (output) => output.f_category_id === categoryId,
@@ -2076,7 +2571,6 @@ export default {
                 (output.description && output.description.toLowerCase().includes(needle)),
             )
           } else {
-            // For other categories (A, B), filter from MFO-based outputs
             const mfoId = standard.rows.mfo
             const allOutputs = officeLibraryStore.outputs.filter((output) => {
               if (output.f_category_id !== categoryId) return false
@@ -2145,7 +2639,7 @@ export default {
         filteredCompetencyOptionsByRow.value[rowIndex] = competencyOptions.value
       }
     }
-    // NEW: Get available competencies for a specific row (excluding already selected)
+
     const getAvailableCompetencies = (rowIndex) => {
       const selectedCodes = competencySelections.value
         .map((sel, idx) =>
@@ -2157,13 +2651,11 @@ export default {
       return options.filter((comp) => !selectedCodes.includes(comp.code))
     }
 
-    // NEW: Add a competency row
     const addCompetencyRow = () => {
       competencySelections.value.push({ selectedCompetency: null, selectedLevel: null })
       filteredCompetencyOptionsByRow.value.push(competencyOptions.value)
     }
 
-    // NEW: Remove a competency row
     const removeCompetencyRow = (index) => {
       if (competencySelections.value.length > 1) {
         competencySelections.value.splice(index, 1)
@@ -2183,8 +2675,8 @@ export default {
           const competency = {
             code: selection.selectedCompetency.code,
             description: selection.selectedCompetency.description,
-            value: selection.selectedLevel.value, // This will be 1,2,3,4
-            level: selection.selectedLevel.label, // This will be Basic, Intermediate, etc.
+            value: selection.selectedLevel.value,
+            level: selection.selectedLevel.label,
           }
 
           const alreadyExists = standard.competencies[competencyType.value].some(
@@ -2228,7 +2720,6 @@ export default {
           color: 'positive',
           position: 'top',
         })
-        // Check if we still have at least one competency
         validateCompetencies(standardIndex)
       })
     }
@@ -2242,9 +2733,6 @@ export default {
         (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
 
       showCompetencyError.value[standardIndex] = totalCompetencies === 0
-
-      // Core competencies are auto-populated, so we don't need to validate them separately
-      // The total count already includes core competencies
     }
 
     const cancelCompetencySelection = () => {
@@ -2325,30 +2813,26 @@ export default {
         (emp) => emp.id === employeeId,
       )
 
-      console.log('Selected employee data:', selectedEmp)
-
       if (selectedEmp && activeEmployeeTab.value) {
         const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
         if (tabIndex !== -1) {
           employeeTabs.value[tabIndex].name = selectedEmp.label || selectedEmp.name || ''
           employeeTabs.value[tabIndex].employeeId = selectedEmp.id
           employeeTabs.value[tabIndex].employeeData = selectedEmp
-          employeeTabs.value[tabIndex].rank = selectedEmp.rank || ''
-          employeeTabs.value[tabIndex].position = selectedEmp.position || ''
+          employeeTabs.value[tabIndex].rank = selectedEmp.rank || selectedEmp.employment_type || ''
+          employeeTabs.value[tabIndex].position =
+            selectedEmp.designation || selectedEmp.position || '' // Use designation
+          employeeTabs.value[tabIndex].sg =
+            selectedEmp.salary_grade || selectedEmp.sg || selectedEmp.SG || ''
+          employeeTabs.value[tabIndex].level = selectedEmp.employeeStatus || selectedEmp.level || ''
 
-          // Capture SG and Level
-          const sg = selectedEmp.employeeData?.sg || selectedEmp.sg || selectedEmp.SG || ''
-          const level = selectedEmp.employeeData?.level || selectedEmp.level || ''
-
-          employeeTabs.value[tabIndex].sg = sg
-          employeeTabs.value[tabIndex].level = level
-
-          console.log('Captured SG and Level:', { sg, level })
-
-          // Auto-populate core competencies for all performance standards
           if (employeeTabs.value[tabIndex].performanceStandards) {
             employeeTabs.value[tabIndex].performanceStandards.forEach((standard) => {
-              autoPopulateCoreCompetencies(standard, sg, level)
+              autoPopulateCoreCompetencies(
+                standard,
+                employeeTabs.value[tabIndex].sg,
+                employeeTabs.value[tabIndex].level,
+              )
             })
           }
         }
@@ -2361,7 +2845,7 @@ export default {
           const needle = (val || '').toLowerCase()
           filteredEmployees.value = availableEmployeesForTab.value.filter((emp) => {
             const name = (emp.label || emp.name || '').toLowerCase()
-            const position = (emp.position || emp.rank || '').toLowerCase()
+            const position = (emp.designation || emp.position || emp.rank || '').toLowerCase()
             return name.includes(needle) || position.includes(needle)
           })
         })
@@ -2375,18 +2859,15 @@ export default {
       if (!standard) return ''
 
       if (standard.quantityIndicatorType === 'numeric') {
-        // Type A: Get value from rating row 5
         const row5 = standard.standardOutcomeRows.find((row) => row.rating === '5')
         return row5?.quantity || ''
       }
 
       if (standard.quantityIndicatorType === 'B') {
-        // Type B: Get the target output value from the standard
         return standard.targetOutputValue?.toString() || ''
       }
 
       if (standard.quantityIndicatorType === 'C') {
-        // Type C: Fixed at 100%
         return '100%'
       }
 
@@ -2441,10 +2922,8 @@ export default {
         const quantityPart = getQuantityComponent(i)
         const outputNamePart = standard.outputName?.trim() || ''
 
-        // Handle multiple indicators with "and" before the last one
         let indicatorNamePart = ''
         if (Array.isArray(standard.indicatorName) && standard.indicatorName.length > 0) {
-          // Map each indicator (could be ID or string) to its name
           const indicatorNames = standard.indicatorName
             .map((idOrText) => {
               if (typeof idOrText === 'number' || !isNaN(idOrText)) {
@@ -2457,7 +2936,6 @@ export default {
             })
             .filter(Boolean)
 
-          // Join with commas and "and" before the last item
           if (indicatorNames.length === 1) {
             indicatorNamePart = indicatorNames[0]
           } else if (indicatorNames.length === 2) {
@@ -2472,7 +2950,6 @@ export default {
         const effectivenessPart = getEffectivenessComponent(i)
         const timelinessPart = getTimelinessComponent(i)
 
-        // Build success indicator parts
         const parts = []
 
         if (quantityPart && quantityPart.trim()) {
@@ -2496,17 +2973,6 @@ export default {
         }
 
         standard.successIndicator = parts.join(' ')
-
-        // Debug logging
-        console.log(`Success Indicator for standard ${i + 1}:`, {
-          quantityType: standard.quantityIndicatorType,
-          quantityValue: quantityPart,
-          outputName: outputNamePart,
-          indicatorNames: indicatorNamePart,
-          effectiveness: effectivenessPart,
-          timeliness: timelinessPart,
-          final: standard.successIndicator,
-        })
       })
     }
 
@@ -2535,6 +3001,20 @@ export default {
 
     const onQuantityUpdate = (row, field, index) => {
       sanitizeNumericInput(row, field)
+
+      const standard = currentEmployee.value.performanceStandards[index]
+      if (standard.quantityRestriction?.maxQuantity) {
+        const value = parseInt(row.quantity)
+        if (!isNaN(value) && value > standard.quantityRestriction.maxQuantity) {
+          $q.notify({
+            message: `Quantity cannot exceed ${standard.quantityRestriction.maxQuantity}`,
+            color: 'warning',
+            position: 'top',
+            timeout: 3000,
+          })
+        }
+      }
+
       generateSuccessIndicator(index)
     }
 
@@ -2623,20 +3103,16 @@ export default {
         standard.timelinessInputs.range = true
       }
 
-      // Generate timeliness for ALL rows based on the selected type
       standard.standardOutcomeRows.forEach((row) => {
-        // Clear existing timeliness data
         row.timelinessRange = ''
         row.timelinessDate = ''
         row.timelinessText = ''
-        row.timeliness = '' // Clear the combined timeliness field too
+        row.timeliness = ''
 
-        // Only set the data that's currently enabled
         if (!standard.activeTimelinessInputs.range) row.timelinessRange = ''
         if (!standard.activeTimelinessInputs.date) row.timelinessDate = ''
         if (!standard.activeTimelinessInputs.description) row.timelinessText = ''
 
-        // Rebuild timeliness for this row
         const timelinessParts = []
         if (standard.activeTimelinessInputs.range && row.timelinessRange) {
           timelinessParts.push(row.timelinessRange)
@@ -2669,23 +3145,14 @@ export default {
       currentStandardIndex.value = index
 
       if (value === 'B') {
-        // Type B: Show modal for target input
         quantityValue.value = null
+        currentQuantityRestriction.value = standard.quantityRestriction
         showQuantityModal.value = true
-
-        // Optionally, clear existing quantities when switching to B
         standard.standardOutcomeRows.forEach((row) => (row.quantity = ''))
       } else if (value === 'C') {
-        // Type C: Auto-set quantities to percentage ranges
         computeQuantities('C', index)
       } else {
-        // Type A: Clear any stored target output value
         standard.targetOutputValue = null
-
-        // For Type A, quantities are entered manually, so we don't auto-calculate
-        // Optionally, clear all quantities when switching from B/C to A
-        // standard.standardOutcomeRows.forEach((row) => (row.quantity = ''))
-
         generateSuccessIndicator(index)
       }
     }
@@ -2707,36 +3174,72 @@ export default {
           return
         }
 
-        const base = Number(quantityValue.value)
+        // Check restriction for rating 5 field
+        if (
+          standard.quantityRestriction?.maxQuantity &&
+          quantityValue.value > standard.quantityRestriction.maxQuantity
+        ) {
+          $q.notify({
+            message: `Target output cannot exceed ${standard.quantityRestriction.maxQuantity}`,
+            color: 'warning',
+            position: 'top',
+          })
+          return
+        }
 
-        // Store target output
+        const base = Number(quantityValue.value)
         standard.targetOutputValue = base.toString()
 
-        // Rounded thresholds (rounded once to avoid gaps)
+        // Calculate the ranges based on the base value
         const max130 = Math.round(base * 1.3)
         const max115 = Math.round(base * 1.15)
         const max50 = Math.round(base * 0.5)
 
-        // Continuous ranges (no gaps, no overlaps)
-        const above130Min = max130
+        // Check if any of the calculated values exceed the restriction
+        if (standard.quantityRestriction?.maxQuantity) {
+          const maxAllowed = standard.quantityRestriction.maxQuantity
 
-        const range115to129Min = max115
-        const range115to129Max = max130 - 1
+          // For rating 5, we want to show "X and above" where X is the maxAllowed if base exceeds it
+          if (max130 > maxAllowed) {
+            standard.standardOutcomeRows[0].quantity = `${maxAllowed} and above`
+          } else {
+            standard.standardOutcomeRows[0].quantity = `${max130} and above`
+          }
 
-        const range100to114Min = base
-        const range100to114Max = max115 - 1
+          // For other ratings, ensure they don't exceed maxAllowed
+          const adjusted115to129Max = Math.min(max130 - 1, maxAllowed)
+          const adjusted115to129Min = Math.min(max115, maxAllowed)
 
-        const range51to99Min = max50 + 1
-        const range51to99Max = base - 1
+          const adjusted100to114Max = Math.min(max115 - 1, maxAllowed)
+          const adjusted100to114Min = Math.min(base, maxAllowed)
 
-        const below50Max = max50
+          const adjusted51to99Max = Math.min(base - 1, maxAllowed)
+          const adjusted51to99Min = Math.min(max50 + 1, maxAllowed)
 
-        // Assign quantities
-        standard.standardOutcomeRows[0].quantity = `${above130Min} and above`
-        standard.standardOutcomeRows[1].quantity = `${range115to129Min}-${range115to129Max}`
-        standard.standardOutcomeRows[2].quantity = `${range100to114Min}-${range100to114Max}`
-        standard.standardOutcomeRows[3].quantity = `${range51to99Min}-${range51to99Max}`
-        standard.standardOutcomeRows[4].quantity = `${below50Max} and below`
+          const adjusted50Max = Math.min(max50, maxAllowed)
+
+          standard.standardOutcomeRows[0].quantity = `${adjusted115to129Min} and above`
+          standard.standardOutcomeRows[1].quantity =
+            adjusted115to129Min < adjusted115to129Max
+              ? `${adjusted115to129Min}-${adjusted115to129Max}`
+              : `${adjusted115to129Min}`
+          standard.standardOutcomeRows[2].quantity =
+            adjusted100to114Min < adjusted100to114Max
+              ? `${adjusted100to114Min}-${adjusted100to114Max}`
+              : `${adjusted100to114Min}`
+          standard.standardOutcomeRows[3].quantity =
+            adjusted51to99Min < adjusted51to99Max
+              ? `${adjusted51to99Min}-${adjusted51to99Max}`
+              : `${adjusted51to99Min}`
+          standard.standardOutcomeRows[4].quantity = `${adjusted50Max} and below`
+        } else {
+          // No restriction - use original calculation
+          standard.standardOutcomeRows[0].quantity = `${max130} and above`
+          standard.standardOutcomeRows[1].quantity = `${max115}-${max130 - 1}`
+          standard.standardOutcomeRows[2].quantity = `${base}-${max115 - 1}`
+          standard.standardOutcomeRows[3].quantity = `${max50 + 1}-${base - 1}`
+          standard.standardOutcomeRows[4].quantity = `${max50} and below`
+        }
 
         generateSuccessIndicator(idx)
 
@@ -2748,6 +3251,7 @@ export default {
 
         showQuantityModal.value = false
         quantityValue.value = null
+        currentQuantityRestriction.value = null
       } else if (currentType === 'C') {
         standard.targetOutputValue = '100%'
 
@@ -2766,7 +3270,6 @@ export default {
         })
       } else {
         standard.targetOutputValue = null
-
         generateSuccessIndicator(idx)
       }
     }
@@ -2778,12 +3281,12 @@ export default {
         standard.quantityIndicatorType = 'numeric'
       }
       showQuantityModal.value = false
+      currentQuantityRestriction.value = null
     }
 
     const addPerformanceStandard = () => {
       const newStandard = createDefaultPerformanceStandard()
 
-      // Auto-populate core competencies for the new standard using current employee's SG and Level
       if (currentEmployee.value?.sg && currentEmployee.value?.level) {
         autoPopulateCoreCompetencies(
           newStandard,
@@ -2793,8 +3296,6 @@ export default {
       }
 
       currentEmployee.value.performanceStandards.push(newStandard)
-
-      // Initialize competency error tracking for new standard
       showCompetencyError.value[currentEmployee.value.performanceStandards.length - 1] = false
 
       $q.notify({
@@ -2820,7 +3321,6 @@ export default {
         persistent: true,
       }).onOk(() => {
         currentEmployee.value.performanceStandards.splice(index, 1)
-        // Remove the corresponding competency error
         showCompetencyError.value.splice(index, 1)
         $q.notify({
           message: 'Performance standard removed',
@@ -2846,7 +3346,6 @@ export default {
           .map((standard, standardIndex) => {
             const errors = []
 
-            // Check effectiveness values
             if (!standard.standardOutcomeRows) {
               errors.push('no standard rows')
             } else {
@@ -2858,13 +3357,24 @@ export default {
               }
             }
 
-            // Check competencies
             const { core, technical, leadership } = standard.competencies
             const totalCompetencies =
               (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
 
             if (totalCompetencies < 1) {
               errors.push('requires at least 1 competency')
+            }
+
+            if (
+              standard.quantityIndicatorType === 'B' &&
+              standard.quantityRestriction?.maxQuantity
+            ) {
+              const targetValue = parseFloat(standard.targetOutputValue)
+              if (!isNaN(targetValue) && targetValue > standard.quantityRestriction.maxQuantity) {
+                errors.push(
+                  `quantity exceeds max allowed (${standard.quantityRestriction.maxQuantity})`,
+                )
+              }
             }
 
             return errors.length > 0 ? `${standardIndex + 1} (${errors.join(', ')})` : null
@@ -2927,6 +3437,7 @@ export default {
                   activeTimelinessInputs: standard.activeTimelinessInputs,
                   timelinessInputs: standard.timelinessInputs,
                   competencies: standard.competencies,
+                  quantityRestriction: standard.quantityRestriction,
                 })),
               }
             }),
@@ -2961,7 +3472,6 @@ export default {
         employeeId: currentEmployee.value?.employeeId,
       }),
       (newValues) => {
-        console.log('SG/Level changed:', newValues)
         if (
           newValues.sg &&
           newValues.level &&
@@ -2981,7 +3491,6 @@ export default {
       () => {
         competencySelections.value.forEach((selection) => {
           if (selection.selectedCompetency && !selection.selectedLevel) {
-            // Auto-populate the level from the competency's required level
             const requiredLevel = selection.selectedCompetency.requiredLevel
             const levelMap = {
               Basic: { label: 'Basic', value: '1' },
@@ -3019,7 +3528,6 @@ export default {
       filterEmployees()
     })
 
-    // Add watcher for competency validation
     watch(
       () => currentEmployee.value?.performanceStandards,
       (newStandards) => {
@@ -3032,18 +3540,66 @@ export default {
       { deep: true },
     )
 
+    // Watch for when employeesWithoutTargetPeriod is loaded to trigger auto-selection
+    watch(
+      () => uwpData.value.employeesWithoutTargetPeriod,
+      (newEmployees) => {
+        console.log(
+          '👀 Watch triggered - employeesWithoutTargetPeriod changed:',
+          newEmployees ? newEmployees.length : 0,
+        )
+
+        if (newEmployees && newEmployees.length > 0 && !autoSelectionPerformed.value) {
+          console.log('📦 Employees data loaded, triggering auto-selection')
+          nextTick(() => {
+            autoSelectHeadEmployees()
+          })
+        }
+      },
+      {
+        deep: true,
+        immediate: true,
+      },
+    )
+
+    // Also watch for uwpData itself to be fully loaded
+    watch(
+      () => uwpData.value,
+      (newVal) => {
+        console.log('👀 UWP Data changed:', {
+          hasEmployees: !!newVal.employeesWithoutTargetPeriod,
+          employeeCount: newVal.employeesWithoutTargetPeriod?.length,
+        })
+
+        if (newVal.employeesWithoutTargetPeriod?.length > 0 && !autoSelectionPerformed.value) {
+          console.log('📦 UWP Data fully loaded, triggering auto-selection')
+          nextTick(() => {
+            autoSelectHeadEmployees()
+          })
+        }
+      },
+      { deep: true, immediate: true },
+    )
+
     // Lifecycle
     onMounted(async () => {
+      console.log('🚀 Component mounted')
       initializeUWPData()
       initializeEmployeeTabs()
       const officeId = uwpData.value.hierarchy.office?.id || 1
 
       try {
-        // Load all required data
         await Promise.all([
           officeLibraryStore.fetchAllData(officeId),
           officeLibraryIndicatorStore.fetchVerbs(),
         ])
+
+        console.log('✅ Data loaded successfully')
+
+        if (uwpData.value.employeesWithoutTargetPeriod?.length > 0) {
+          console.log('📦 Employee data already available')
+          autoSelectHeadEmployees()
+        }
       } catch (error) {
         console.error('❌ Error loading data:', error)
         $q.notify({
@@ -3063,9 +3619,6 @@ export default {
       semesterOptions,
       yearOptions,
       form,
-      filteredSections,
-      filteredUnits,
-      divisionOptions: divisions.value,
       filteredEmployees,
       selectedEmployee,
       employeeTabs,
@@ -3093,6 +3646,12 @@ export default {
       quantityIndicator,
       uwpStore,
       isLoadingFilteredEmployees,
+      currentQuantityRestriction,
+      quantityExceedsMax,
+
+      // Cascade Modal Data - Keep refs but modal is commented out in template
+      showCascadeModal,
+      cascadeData,
 
       // Competency Modal Data
       showCompetencyModal,
@@ -3103,9 +3662,13 @@ export default {
       levelOptions,
       filteredCompetencyOptions,
       showCompetencyError,
-      competencySelections, // NEW
-      filteredCompetencyOptionsByRow, // NEW
-      isAnyCompetencyValid, // NEW
+      competencySelections,
+      filteredCompetencyOptionsByRow,
+      isAnyCompetencyValid,
+
+      // Helper functions
+      isHeadPosition,
+      getEmployeeBadgeColor,
 
       // Methods
       addEmployeeTab,
@@ -3115,7 +3678,6 @@ export default {
       getEmployeeIndex,
       getSelectedEmployeeIds,
       hasMinimumEffectivenessValues,
-      getEffectivenessErrorCount,
       hasMinimumCompetencies,
       hasOrganizationalSelection: computed(
         () =>
@@ -3124,7 +3686,6 @@ export default {
       isSupportCategory,
       getFilteredMfoOptions,
       getFilteredOutputOptions,
-      hasMfosForCategory,
       filterMfos,
       filterOutputs,
       filterPerformanceIndicators,
@@ -3153,17 +3714,23 @@ export default {
       getEmployeeInitial,
       validateStrictNumeric,
       blockInvalidChars,
+      getQuantityHint,
+      isQuantityExceeded,
+      getQuantityErrorMessage,
+
+      // Cascade Methods - Keep the function but modal is hidden
+      checkAndShowCascadeModal,
 
       // Competency Methods
       openCompetencyModal,
       filterCompetencies,
-      addAllSelectedCompetencies, // UPDATED
+      addAllSelectedCompetencies,
       removeCompetency,
       cancelCompetencySelection,
       validateCompetencies,
-      getAvailableCompetencies, // NEW
-      addCompetencyRow, // NEW
-      removeCompetencyRow, // NEW
+      getAvailableCompetencies,
+      addCompetencyRow,
+      removeCompetencyRow,
     }
   },
 }
@@ -3340,6 +3907,14 @@ export default {
 .table-container {
   overflow-x: auto;
   max-width: 100%;
+}
+
+.bg-info {
+  background-color: #1976d2;
+}
+
+.bg-negative {
+  background-color: #c10015;
 }
 
 @media (max-width: 768px) {

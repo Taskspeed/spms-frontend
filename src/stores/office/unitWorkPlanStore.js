@@ -108,8 +108,8 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
       }
 
       if (typeof category === 'object' && category !== null) {
-        if (category.name || category.label) {
-          return category.name || category.label
+        if (category.name || category.label || category.categories_name) {
+          return category.categories_name || category.name || category.label
         }
       }
 
@@ -118,7 +118,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
       const store = officeLibraryStore || this.officeLibraryStore
       const found = store?.categories?.find((c) => c.id === id)
-      return found?.name || found?.label || ''
+      return found?.categories_name || found?.name || found?.label || ''
     },
 
     /**
@@ -236,7 +236,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     /**
      * Build timeliness value string from row data based on active inputs
      */
-
     buildTimelinessValue(row, activeTimelinessInputs) {
       if (!row) return ''
 
@@ -397,7 +396,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         timelinessInputs: { range: true, date: false, description: false },
         activeTimelinessInputs: { range: true, date: false, description: false },
         targetOutput: standard.target_output || { baseTarget: null, calculated: [] },
-        // UPDATED: Use the new competencies structure
         competencies: {
           core: standard.core_competency || standard.core || [],
           technical: standard.technical_competency || standard.technical || [],
@@ -594,7 +592,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           // Build performance standards for this employee
           const performanceStandards = Array.isArray(emp.performanceStandards)
             ? emp.performanceStandards.map((standard) => {
-                // UPDATED: Extract competencies from the new structure
+                // Extract competencies from the structure
                 const coreCompetencies = standard.competencies?.core || []
                 const technicalCompetencies = standard.competencies?.technical || []
                 const leadershipCompetencies = standard.competencies?.leadership || []
@@ -626,6 +624,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                     standard.rows?.output ||
                     ''
 
+                // Process performance indicators - SIMPLIFIED: use nested category data
                 let performanceIndicators = []
                 if (standard.indicatorName) {
                   if (Array.isArray(standard.indicatorName)) {
@@ -636,9 +635,38 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                           typeof item === 'number' ||
                           (typeof item === 'string' && !isNaN(item))
                         ) {
-                          return this.resolveVerbLabel(Number(item))
+                          // Find the verb in the store - it already has the nested category!
+                          const verb = this.officeLibraryIndicatorStore?.verbs?.find(
+                            (v) => v.id === Number(item),
+                          )
+
+                          // The category is nested inside the verb object
+                          // Based on your data structure, it's verb.category.categories_name
+                          const categoryName = verb?.category?.categories_name || ''
+
+                          console.log(`📊 Found verb for CREATE:`, {
+                            id: verb?.id,
+                            name: verb?.indicator_name,
+                            category_id: verb?.category_id,
+                            categoryName: categoryName,
+                          })
+
+                          return {
+                            id: Number(item),
+                            name: verb?.indicator_name || verb?.name || '',
+                            category_id: verb?.category_id || null,
+                            category: categoryName, // This will have "Production", "Quality Control", etc.
+                            value: verb?.indicator_name || verb?.name || '',
+                          }
                         }
-                        return item
+                        // If it's already a string name, return as is
+                        return {
+                          name: item,
+                          id: null,
+                          category_id: null,
+                          category: '',
+                          value: item,
+                        }
                       })
                       .filter(Boolean)
                   } else if (
@@ -646,13 +674,52 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                     (typeof standard.indicatorName === 'string' && !isNaN(standard.indicatorName))
                   ) {
                     // Single ID
-                    const resolved = this.resolveVerbLabel(Number(standard.indicatorName))
-                    if (resolved) performanceIndicators = [resolved]
+                    const verb = this.officeLibraryIndicatorStore?.verbs?.find(
+                      (v) => v.id === Number(standard.indicatorName),
+                    )
+
+                    // The category is nested inside the verb object
+                    const categoryName = verb?.category?.categories_name || ''
+
+                    console.log(`📊 Found verb for CREATE (single):`, {
+                      id: verb?.id,
+                      name: verb?.indicator_name,
+                      category_id: verb?.category_id,
+                      categoryName: categoryName,
+                    })
+
+                    performanceIndicators = [
+                      {
+                        id: Number(standard.indicatorName),
+                        name: verb?.indicator_name || verb?.name || '',
+                        category_id: verb?.category_id || null,
+                        category: categoryName, // This will have "Production", "Quality Control", etc.
+                        value: verb?.indicator_name || verb?.name || '',
+                      },
+                    ]
                   } else {
                     // Single string name
-                    performanceIndicators = [standard.indicatorName]
+                    performanceIndicators = [
+                      {
+                        name: standard.indicatorName,
+                        id: null,
+                        category_id: null,
+                        category: '',
+                        value: standard.indicatorName,
+                      },
+                    ]
                   }
                 }
+
+                console.log(
+                  '📊 Final performance indicators for CREATE:',
+                  performanceIndicators.map((pi) => ({
+                    id: pi.id,
+                    name: pi.name,
+                    category_id: pi.category_id,
+                    category: pi.category,
+                  })),
+                )
 
                 const requiredOutput = standard.requiredOutput || ''
 
@@ -672,7 +739,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                       rating: Number(row.rating) || 0,
                       quantity: String(row.quantity || ''),
                       effectiveness: String(row.effectiveness || ''),
-                      timeliness: String(timelinessValue), // Save each row's timeliness
+                      timeliness: String(timelinessValue),
                       timeliness_range: String(row.timelinessRange || ''),
                       timeliness_date: String(row.timelinessDate || ''),
                       timeliness_description: String(row.timelinessText || ''),
@@ -734,7 +801,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   success_indicator: String(standard.successIndicator || ''),
                   performance_indicator: performanceIndicators,
                   required_output: String(requiredOutput),
-                  // COMPETENCIES AT PERFORMANCE STANDARD LEVEL - UPDATED structure
+                  // COMPETENCIES AT PERFORMANCE STANDARD LEVEL
                   core_competency: coreCompetencies.map((comp) => ({
                     code: comp.code || '',
                     level: comp.value || '',
@@ -751,7 +818,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                     description: comp.description || '',
                   })),
                   ratings: ratings.length > 0 ? ratings : [],
-                  config, // Matches backend expectations
+                  config,
                 }
               })
             : []
@@ -830,7 +897,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         base.performance_standards = employee.performanceStandards.map((standard, index) => {
           console.log(`📝 Processing standard ${index + 1}:`, standard)
 
-          // UPDATED: Extract competencies from the new structure
+          // Extract competencies from the structure
           const coreCompetencies = standard.competencies?.core || []
           const technicalCompetencies = standard.competencies?.technical || []
           const leadershipCompetencies = standard.competencies?.leadership || []
@@ -863,29 +930,93 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
           console.log('📝 Resolved names:', { categoryName, mfoName, outputName })
 
+          // Process performance indicators - SIMPLIFIED: use nested category data
           let performanceIndicators = []
           if (standard.indicatorName) {
             if (Array.isArray(standard.indicatorName)) {
               performanceIndicators = standard.indicatorName
                 .map((item) => {
                   if (typeof item === 'number' || (typeof item === 'string' && !isNaN(item))) {
-                    return this.resolveVerbLabel(Number(item))
+                    const verb = this.officeLibraryIndicatorStore?.verbs?.find(
+                      (v) => v.id === Number(item),
+                    )
+
+                    // The category is nested inside the verb object
+                    const categoryName = verb?.category?.categories_name || ''
+
+                    console.log(`📊 Found verb for UPDATE:`, {
+                      id: verb?.id,
+                      name: verb?.indicator_name,
+                      category_id: verb?.category_id,
+                      categoryName: categoryName,
+                    })
+
+                    return {
+                      id: Number(item),
+                      name: verb?.indicator_name || verb?.name || '',
+                      category_id: verb?.category_id || null,
+                      category: categoryName, // This will have "Production", "Quality Control", etc.
+                      value: verb?.indicator_name || verb?.name || '',
+                    }
                   }
-                  return item
+                  return {
+                    name: item,
+                    id: null,
+                    category_id: null,
+                    category: '',
+                    value: item,
+                  }
                 })
                 .filter(Boolean)
             } else if (
               typeof standard.indicatorName === 'number' ||
               (typeof standard.indicatorName === 'string' && !isNaN(standard.indicatorName))
             ) {
-              const resolved = this.resolveVerbLabel(Number(standard.indicatorName))
-              if (resolved) performanceIndicators = [resolved]
+              const verb = this.officeLibraryIndicatorStore?.verbs?.find(
+                (v) => v.id === Number(standard.indicatorName),
+              )
+
+              // The category is nested inside the verb object
+              const categoryName = verb?.category?.categories_name || ''
+
+              console.log(`📊 Found verb for UPDATE (single):`, {
+                id: verb?.id,
+                name: verb?.indicator_name,
+                category_id: verb?.category_id,
+                categoryName: categoryName,
+              })
+
+              performanceIndicators = [
+                {
+                  id: Number(standard.indicatorName),
+                  name: verb?.indicator_name || verb?.name || '',
+                  category_id: verb?.category_id || null,
+                  category: categoryName, // This will have "Production", "Quality Control", etc.
+                  value: verb?.indicator_name || verb?.name || '',
+                },
+              ]
             } else {
-              performanceIndicators = [standard.indicatorName]
+              performanceIndicators = [
+                {
+                  name: standard.indicatorName,
+                  id: null,
+                  category_id: null,
+                  category: '',
+                  value: standard.indicatorName,
+                },
+              ]
             }
           }
 
-          console.log('📝 Performance indicator:', performanceIndicators)
+          console.log(
+            '📝 Final performance indicators for UPDATE:',
+            performanceIndicators.map((pi) => ({
+              id: pi.id,
+              name: pi.name,
+              category_id: pi.category_id,
+              category: pi.category,
+            })),
+          )
 
           const ratings = []
           const activeInputs = standard.activeTimelinessInputs || standard.timelinessInputs
@@ -981,7 +1112,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             mfo: mfoName,
             output: outputName,
             output_name: standard.outputName || '',
-            // COMPETENCIES AT PERFORMANCE STANDARD LEVEL - UPDATED structure
+            // COMPETENCIES AT PERFORMANCE STANDARD LEVEL
             core_competency: coreCompetencies.map((comp) => ({
               code: comp.code || '',
               level: comp.value || '',
@@ -1234,7 +1365,12 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                 const categoryName = ps.category || ''
                 const categoryObj = this.officeLibraryStore?.categories?.find(
                   (cat) => cleanString(cat.name) === cleanString(categoryName),
-                ) || { id: ps.category_id, name: categoryName, label: categoryName }
+                ) || {
+                  id: ps.category_id,
+                  name: categoryName,
+                  label: categoryName,
+                  categories_name: categoryName,
+                }
 
                 console.log('📊 Found category:', categoryObj)
 
@@ -1329,7 +1465,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   activeTimelinessInputs: { ...timelinessInputs },
                   apiData: ps,
                   standardOutcomeRows,
-                  // UPDATED: COMPETENCIES AT PERFORMANCE STANDARD LEVEL - using the new structure
+                  // COMPETENCIES AT PERFORMANCE STANDARD LEVEL
                   competencies: {
                     core: ps.core_competency || ps.core || [],
                     technical: ps.technical_competency || ps.technical || [],

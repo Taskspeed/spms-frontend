@@ -141,6 +141,7 @@ export const useEmployeeStore = defineStore('employee', {
         itemNo: emp.ItemNo || emp.itemNo || null,
         pageNo: emp.PageNo || emp.pageNo || null,
         Status: emp.Status || emp.status || null,
+        job_title: emp.job_title || null,
       }
     },
 
@@ -268,6 +269,7 @@ export const useEmployeeStore = defineStore('employee', {
           itemNo: emp.itemNo || null,
           pageNo: emp.pageNo || null,
           Status: emp.Status || emp.status || null,
+          job_title: emp.job_title || null,
         }))
 
         return this.assignedEmployees
@@ -329,6 +331,7 @@ export const useEmployeeStore = defineStore('employee', {
             itemNo: emp.ItemNo || emp.itemNo || null,
             pageNo: emp.PageNo || emp.pageNo || null,
             Status: emp.Status || emp.status || null,
+            job_title: emp.job_title || null,
           }))
 
           if (params.unassigned_only) {
@@ -378,6 +381,7 @@ export const useEmployeeStore = defineStore('employee', {
           itemNo: emp.itemNo || null,
           pageNo: emp.pageNo || null,
           status: emp.Status || emp.status || null,
+          job_title: emp.job_title || 'Employee',
         }))
 
         console.log('Validated Employees Payload:', validatedEmployees)
@@ -434,6 +438,36 @@ export const useEmployeeStore = defineStore('employee', {
         throw new Error(response.data.message || 'Failed to update rank')
       } catch (error) {
         console.error('Failed to update employee rank:', error)
+        throw error
+      }
+    },
+
+    async updateEmployeeTitle(employeeId, newTitle) {
+      try {
+        const token = localStorage.getItem('token')
+        const response = await api.post(
+          `/employee/title/${employeeId}`,
+          { job_title: newTitle },
+          { headers: { Authorization: `Bearer ${token}` } },
+        )
+
+        if (response.data.success) {
+          const updateEmployee = (empList) => {
+            const employee = empList.find((e) => e.id === employeeId)
+            if (employee) {
+              employee.job_title = newTitle
+            }
+          }
+
+          updateEmployee(this.employees)
+          updateEmployee(this.assignedEmployees)
+          updateEmployee(this.unassignedEmployees)
+
+          return response.data
+        }
+        throw new Error(response.data.message || 'Failed to update title')
+      } catch (error) {
+        console.error('Failed to update employee title:', error)
         throw error
       }
     },
@@ -508,6 +542,7 @@ export const useEmployeeStore = defineStore('employee', {
             itemNo: emp.ItemNo || emp.itemNo || null,
             pageNo: emp.PageNo || emp.pageNo || null,
             Status: emp.Status || emp.status || null,
+            job_title: emp.job_title || null,
           }))
           return this.searchedEmployees
         }

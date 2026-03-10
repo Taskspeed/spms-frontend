@@ -3,11 +3,6 @@
   <div class="employee-container">
     <!-- Organization Panel -->
     <div class="organization-panel">
-      <!-- <div v-if="loading" class="loading-container">
-        <q-spinner-gears color="cyan" />
-        <span>Loading organization structure...</span>
-      </div> -->
-
       <div v-if="loading" class="loading-container">
         <q-spinner size="2em" class="q-mr-sm" color="green" />
         Loading organization structure...
@@ -56,11 +51,6 @@
             :rows-per-page-options="[10, 20, 50]"
           >
             <template v-slot:loading>
-              <!-- <div class="loading-container">
-                <q-spinner-gears color="cyan" />
-                <span>Loading employees...</span>
-              </div> -->
-
               <div class="loading-container">
                 <q-spinner size="2em" class="q-mr-sm" color="green" />
                 <span>Loading employees...</span>
@@ -88,6 +78,22 @@
               </q-td>
             </template>
 
+            <template v-slot:body-cell-job_title="props">
+              <q-td :props="props">
+                <q-select
+                  v-model="props.row.job_title"
+                  :options="titleOptions"
+                  option-value="value"
+                  option-label="label"
+                  emit-value
+                  map-options
+                  dense
+                  outlined
+                  @update:model-value="(val) => updateEmployeeTitle(props.row, val)"
+                />
+              </q-td>
+            </template>
+
             <template v-slot:body-cell-actions="props">
               <q-td :props="props">
                 <q-btn
@@ -100,11 +106,6 @@
               </q-td>
             </template>
           </q-table>
-
-          <!-- <div v-if="loading || employeeStore.loading" class="loading-container">
-            <q-spinner-gears color="cyan" />
-            <span>Loading employees...</span>
-          </div> -->
 
           <div v-if="loading || employeeStore.loading" class="loading-container">
             <q-spinner size="2em" class="q-mr-sm" color="green" />
@@ -159,12 +160,30 @@ export default {
           sortable: true,
         },
         { name: 'rank', label: 'Rank', align: 'left', field: (row) => row.rank, sortable: true },
-
+        {
+          name: 'job_title',
+          label: 'Position Rank',
+          align: 'left',
+          field: (row) => row.job_title,
+          sortable: true,
+        },
         { name: 'actions', label: 'Actions', align: 'center', sortable: false },
       ],
     }
   },
   computed: {
+    titleOptions() {
+      return [
+        { value: 'Office Head', label: 'Office Head' },
+        { value: 'Sub-Office Head', label: 'Sub-Office Head' },
+        { value: 'Group Head', label: 'Group Head' },
+        { value: 'Division Head', label: 'Division Head' },
+        { value: 'Section Head', label: 'Section Head' },
+        { value: 'Unit Head', label: 'Unit Head' },
+        { value: 'Employee', label: 'Employee' },
+      ]
+    },
+
     rankOptions() {
       const baseOptions = this.libraryStore.ranks.map((rank) => ({
         value: rank.rank_name,
@@ -221,6 +240,7 @@ export default {
 
       return baseOptions
     },
+
     filteredEmployees() {
       if (!this.selectedNode) return []
 
@@ -272,12 +292,13 @@ export default {
         )
       })
     },
+
     selectedNodeTitle() {
       return this.selectedNode?.label || this.selectedNode?.name || ''
     },
+
     officeName() {
       const userStore = useUserStore()
-      // FIX: Use office.Office instead of officeName
       return userStore.user?.office?.name || 'Unknown Office'
     },
   },
@@ -288,7 +309,7 @@ export default {
       console.error('Failed to fetch ranks:', error)
       this.$q.notify({
         type: 'warning',
-        message: 'Failed to load rank options.   Using default ranks.',
+        message: 'Failed to load rank options. Using default ranks.',
       })
       this.libraryStore.ranks = [
         { id: 4, rank_name: 'Office-Head' },
@@ -312,6 +333,7 @@ export default {
       }
       return null
     },
+
     isHeadOptionDisabled(employee, headType) {
       if (!this.selectedNode) return false
 
@@ -321,13 +343,16 @@ export default {
         return this.isSameOrganizationalUnit(emp, employee)
       })
     },
+
     openAddModal() {
       this.showAddModal = true
       this.employeeStore.fetchUnassignedEmployees()
     },
+
     updateExpanded(expanded) {
       this.expandedNodes = expanded
     },
+
     async selectNode(nodeId) {
       this.selectedNode = this.findNodeById(this.treeNodes, nodeId)
       this.employeeStore.currentNode = this.selectedNode
@@ -338,42 +363,7 @@ export default {
         this.$q.notify({ type: 'negative', message: 'Failed to load employees' })
       }
     },
-    // async deleteEmployee(employeeId) {
-    //   this.$q
-    //     .dialog({
-    //       title: 'Confirm Delete',
-    //       message: 'Are you sure you want to delete this employee?',
-    //       cancel: true,
-    //       persistent: true,
-    //     })
-    //     .onOk(async () => {
-    //       try {
-    //         const result = await this.employeeStore.softDeleteEmployee(employeeId)
-    //         if (result?.success) {
-    //           this.$q.notify({
-    //             type: 'positive',
-    //             message: 'Employee moved to trash',
-    //           })
 
-    //           this.employeeStore.employees = [...this.employeeStore.employees]
-    //           this.employeeStore.assignedEmployees = [...this.employeeStore.assignedEmployees]
-
-    //           this.updateTreeCounts()
-
-    //           this.$nextTick(() => {
-    //             this.$forceUpdate()
-    //           })
-    //         } else {
-    //           throw new Error('Failed to delete employee')
-    //         }
-    //       } catch (error) {
-    //         this.$q.notify({
-    //           type: 'negative',
-    //           message: error.message || 'Failed to delete employee',
-    //         })
-    //       }
-    //     })
-    // },
     async confirmDeleteEmployee(employee) {
       const confirmed = await this.confirm({
         title: 'Delete Employee',
@@ -386,7 +376,6 @@ export default {
       if (!confirmed) return
 
       try {
-        // Use the correct method from your store
         const result = await this.employeeStore.deleteEmployee(employee.id)
 
         if (result?.success) {
@@ -408,19 +397,18 @@ export default {
       try {
         const structureResponse = await api.get('/office/structure')
 
-        console.log('API Response:', structureResponse.data) // DEBUG
+        console.log('API Response:', structureResponse.data)
 
-        // FIX: Get the correct office name from userStore
         const userStore = useUserStore()
         const currentOfficeName = userStore.user?.office?.name
 
-        console.log('Looking for office:', currentOfficeName) // DEBUG
+        console.log('Looking for office:', currentOfficeName)
 
         const officeData = structureResponse.data.find(
           (office) => office.office === currentOfficeName,
         )
 
-        console.log('Office Data Found:', officeData) // DEBUG
+        console.log('Office Data Found:', officeData)
 
         if (officeData) {
           await this.employeeStore.loadAllEmployees()
@@ -469,24 +457,20 @@ export default {
         children: [],
       }
 
-      // FIX: Handle office2 array properly
       if (Array.isArray(officeData.office2) && officeData.office2.length > 0) {
         const office2WithValues = []
         const groupsWithoutOffice2 = []
 
         officeData.office2.forEach((office2Data) => {
           if (office2Data.office2) {
-            // This office2 has a name, process it
             office2WithValues.push(office2Data)
           } else {
-            // This is actually groups without office2 wrapper
             if (Array.isArray(office2Data.group)) {
               groupsWithoutOffice2.push(...office2Data.group)
             }
           }
         })
 
-        // Process office2 nodes with values
         office2WithValues.forEach((office2Data) => {
           const office2Node = {
             id: generateId('office2'),
@@ -502,7 +486,6 @@ export default {
           officeNode.children.push(office2Node)
         })
 
-        // Process groups without office2
         this.processGroups(groupsWithoutOffice2, officeNode, counts, generateId)
       }
 
@@ -518,7 +501,6 @@ export default {
         if (!groupData) return
 
         if (groupData.group === null || groupData.group === undefined) {
-          // Skip null groups but process their children at parent level
           if (Array.isArray(groupData.divisions)) {
             this.processDivisions(groupData.divisions, parentNode, counts, generateId)
           }
@@ -732,6 +714,7 @@ export default {
       }
       this.treeNodes.forEach((node) => updateNodeCounts(node))
     },
+
     async handleAddEmployees(selectedEmployees) {
       const confirmed = await this.confirm({
         title: 'Confirm Add Employee',
@@ -787,56 +770,6 @@ export default {
         this.showAddModal = false
       }
     },
-
-    // async handleAddEmployees(selectedEmployees) {
-    //   try {
-    //     const userStore = useUserStore()
-    //     const officeId = userStore.user?.office_id
-    //     const officeName = userStore.user?.office?.name
-
-    //     if (!officeId || !this.selectedNode) {
-    //       throw new Error(
-    //         !officeId
-    //           ? 'Unable to determine office.   Please make sure you are properly authenticated.'
-    //           : 'Please select an office, division, or section before adding employees.',
-    //       )
-    //     }
-
-    //     const employeesToAdd = selectedEmployees.map((emp) => ({
-    //       ControlNo: emp.ControlNo,
-    //       name: emp.name,
-    //       position: emp.position,
-    //       position_id: emp.position_id || emp.positionID,
-    //       positionID: emp.positionID || emp.position_id,
-    //       office_id: officeId,
-    //       office: officeName,
-    //       office2: this.getOffice2ForSelectedNode(),
-    //       group: this.getGroupForSelectedNode(),
-    //       division: this.getDivisionForSelectedNode(),
-    //       section: this.getSectionForSelectedNode(),
-    //       unit: this.getUnitForSelectedNode(),
-    //       tblStructureID: emp.tblStructureID,
-    //       sg: emp.sg,
-    //       level: emp.level,
-    //       itemNo: emp.itemNo,
-    //       pageNo: emp.pageNo,
-    //     }))
-
-    //     await this.employeeStore.addEmployees({ employees: employeesToAdd })
-
-    //     if (this.selectedNode) {
-    //       await this.employeeStore.fetchEmployeesByNode(this.selectedNode)
-    //       this.updateTreeCounts()
-    //     }
-
-    //     this.$q.notify({ type: 'positive', message: 'Employees added successfully' })
-    //   } catch (error) {
-    //     console.error('Error adding employees:', error)
-    //     this.$q.notify({ type: 'negative', message: error.message || 'Failed to add employees' })
-    //   } finally {
-    //     this.showAddModal = false
-    //   }
-    // },
 
     getOffice2ForSelectedNode() {
       if (this.selectedNode.type === 'office2') return this.selectedNode.name
@@ -922,7 +855,7 @@ export default {
                 this.$q
                   .dialog({
                     title: 'Current Head Exists',
-                    message: `There is already a ${newRank} (${currentHead.name}) in this unit.  Do you want to demote them to Employee?`,
+                    message: `There is already a ${newRank} (${currentHead.name}) in this unit. Do you want to demote them to Employee?`,
                     cancel: true,
                     persistent: true,
                   })
@@ -970,6 +903,38 @@ export default {
         type: 'positive',
         message: `${employee.name}'s rank updated to ${newRank}`,
       })
+    },
+
+    async updateEmployeeTitle(employee, newTitle) {
+      const originalTitle = employee.job_title
+
+      this.$q
+        .dialog({
+          title: 'Confirm Title Change',
+          message: `Are you sure you want to change ${employee.name}'s position rank to "${newTitle}"?`,
+          cancel: true,
+          persistent: true,
+        })
+        .onOk(async () => {
+          try {
+            await this.employeeStore.updateEmployeeTitle(employee.id, newTitle)
+            employee.job_title = newTitle
+            this.$q.notify({
+              type: 'positive',
+              message: `${employee.name}'s position rank updated to ${newTitle}`,
+            })
+          } catch (error) {
+            console.error('Failed to update title:', error)
+            employee.job_title = originalTitle
+            this.$q.notify({
+              type: 'negative',
+              message: `Failed to update position rank: ${error.message}`,
+            })
+          }
+        })
+        .onCancel(() => {
+          employee.job_title = originalTitle
+        })
     },
 
     isSameOrganizationalUnit(emp1, emp2) {

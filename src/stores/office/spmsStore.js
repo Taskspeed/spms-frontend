@@ -13,6 +13,15 @@ export const useOrganizationStore = defineStore('organization', {
     selectedSemester: ref(null),
     selectedYear: ref(null),
     completionMap: ref({}),
+    // Head position titles for auto-detection
+    headPositionTitles: [
+      'office head',
+      'sub-office head',
+      'group head',
+      'division head',
+      'section head',
+      'unit head',
+    ],
   }),
 
   getters: {
@@ -65,9 +74,110 @@ export const useOrganizationStore = defineStore('organization', {
         isLeafNode: completion.isLeafNode || false,
       }
     },
+
+    // Get all employees with head positions in the organization
+    getHeadEmployees: (state) => {
+      const headEmployees = []
+
+      const traverseForHeads = (nodes) => {
+        if (!nodes) return
+        for (const node of nodes) {
+          if (node.type === 'employee') {
+            const jobTitle = node.employeeData?.job_title || node.jobTitle || ''
+            const lowerTitle = jobTitle.toLowerCase()
+            if (state.headPositionTitles.some((title) => lowerTitle.includes(title))) {
+              headEmployees.push(node)
+            }
+          }
+          if (node.children) {
+            traverseForHeads(node.children)
+          }
+        }
+      }
+
+      traverseForHeads(state.structure)
+      return headEmployees
+    },
   },
 
   actions: {
+    // =========================================================================
+    // HEAD POSITION DETECTION
+    // =========================================================================
+
+    /**
+     * Check if an employee has a head position
+     */
+    isHeadPosition(employee) {
+      if (!employee) return false
+      const jobTitle = employee.employeeData?.job_title || employee.jobTitle || ''
+      const lowerTitle = jobTitle.toLowerCase()
+      return this.headPositionTitles.some((title) => lowerTitle.includes(title))
+    },
+
+    // =========================================================================
+    // OFFICE HEAD VALIDATION
+    // =========================================================================
+
+    /**
+     * Find the Office Head employee at the office (root) level.
+     * Identified by job_title === 'Office Head' (case-insensitive).
+     * Returns the employee node or null if not found.
+     */
+    getOfficeHeadEmployee() {
+      const officeNode = this.structure?.[0]
+      if (!officeNode) return null
+
+      // Only look at direct children of the office node
+      const directEmployees = (officeNode.children || []).filter(
+        (child) => child.type === 'employee',
+      )
+
+      return (
+        directEmployees.find((emp) => {
+          const jobTitle =
+            emp.employeeData?.job_title?.toLowerCase() || emp.jobTitle?.toLowerCase() || ''
+          return jobTitle === 'office head'
+        }) || null
+      )
+    },
+
+    /**
+     * Returns true if the Office Head employee has has_target_period = true.
+     * Returns false if no Office Head exists or their target period is not set.
+     */
+    isOfficeHeadReady() {
+      const officeHead = this.getOfficeHeadEmployee()
+      if (!officeHead) return false
+      return officeHead.hasTargetPeriod === true
+    },
+
+    /**
+     * Get all employees with head positions for auto-selection in UWP
+     */
+    getHeadEmployeesForAutoSelection() {
+      const headEmployees = []
+
+      const traverse = (nodes) => {
+        if (!nodes) return
+        for (const node of nodes) {
+          if (node.type === 'employee') {
+            const jobTitle = node.employeeData?.job_title || node.jobTitle || ''
+            const lowerTitle = jobTitle.toLowerCase()
+            if (this.headPositionTitles.some((title) => lowerTitle.includes(title))) {
+              headEmployees.push(node.employeeData || node)
+            }
+          }
+          if (node.children) {
+            traverse(node.children)
+          }
+        }
+      }
+
+      traverse(this.structure)
+      return headEmployees
+    },
+
     // =========================================================================
     // TARGET PERIOD
     // =========================================================================
@@ -112,42 +222,6 @@ export const useOrganizationStore = defineStore('organization', {
       if (!employee) return false
       const status = employee.status || employee.employeeData?.status
       return !this.isExcludedStatus(status)
-    },
-
-    // =========================================================================
-    // MANAGERIAL VALIDATION
-    // Checks if the office-level managerial employee has has_target_period = true
-    // =========================================================================
-
-    /**
-     * Find the managerial employee at the office (root) level.
-     * Returns the employee node or null if not found.
-     */
-    getOfficeManagerialEmployee() {
-      const officeNode = this.structure?.[0]
-      if (!officeNode) return null
-
-      // Only look at direct children of the office node
-      const directEmployees = (officeNode.children || []).filter(
-        (child) => child.type === 'employee',
-      )
-
-      return (
-        directEmployees.find((emp) => {
-          const rank = emp.rank?.toLowerCase() || ''
-          return rank === 'managerial' || rank.includes('managerial')
-        }) || null
-      )
-    },
-
-    /**
-     * Returns true if the office-level managerial employee has has_target_period = true.
-     * Returns false if no managerial employee exists or their target period is not set.
-     */
-    isOfficeManagerialReady() {
-      const managerial = this.getOfficeManagerialEmployee()
-      if (!managerial) return false
-      return managerial.hasTargetPeriod === true
     },
 
     // =========================================================================
@@ -296,9 +370,11 @@ export const useOrganizationStore = defineStore('organization', {
           position:
             typeof emp.position === 'object' ? emp.position?.name || 'N/A' : emp.position || 'N/A',
           rank: emp.rank,
+          // Store job_title directly on the node for easy access
+          jobTitle: emp.job_title || '',
           ipcrStatus,
           type: 'employee',
-          isHead: isHeadByRank(emp.rank),
+          isHead: isHeadByRank(emp.rank) || this.isHeadPosition(emp),
           hasTargetPeriod: emp.has_target_period === true,
           employeeData: emp,
           children: [],
