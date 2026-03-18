@@ -84,12 +84,12 @@
                 <div class="text-subtitle2">
                   Target Period: {{ targetPeriod?.semester || '' }} {{ targetPeriod?.year || '' }}
                 </div>
-                <div v-if="currentDivisionPath" class="text-caption text-grey-7">
+                <!-- <div v-if="currentDivisionPath" class="text-caption text-grey-7">
                   Path: {{ currentDivisionPath }}
-                </div>
+                </div> -->
               </div>
               <div class="flex justify-end q-gutter-sm">
-                <q-btn color="orange-9" icon="edit" label="Update Status" @click="openStatusModal">
+                <q-btn color="orange-9" icon="edit" label="Update" @click="openStatusModal">
                   <q-tooltip>Change Status</q-tooltip>
                 </q-btn>
                 <q-btn color="green-9" icon="print" label="Print" @click="handlePrint" />
@@ -380,100 +380,119 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       STATUS CONFIRMATION MODAL
-  ═══════════════════════════════════════════════════════════════════ -->
+     STATUS CONFIRMATION MODAL
+═══════════════════════════════════════════════════════════════════ -->
+
   <q-dialog v-model="showStatusModal" persistent>
-    <q-card style="min-width: 380px; border-radius: 12px; overflow: hidden">
-      <!-- Modal Header -->
-      <div
-        style="
-          background: linear-gradient(135deg, #e65100, #f57c00);
-          padding: 20px 24px 16px;
-          position: relative;
-        "
-      >
+    <q-card style="min-width: 450px; max-width: 550px; border-radius: 16px; overflow: hidden">
+      <!-- Modal Header with Orange Background -->
+      <div style="background: #f57c00; padding: 24px 28px 20px; position: relative">
         <div class="row items-center no-wrap">
-          <q-icon name="edit_notifications" color="white" size="28px" class="q-mr-sm" />
+          <q-icon name="assignment_turned_in" color="white" size="28px" class="q-mr-sm" />
           <div>
-            <div class="text-white text-weight-bold" style="font-size: 16px">Change Status</div>
-            <div class="text-orange-2 text-caption">Target Period Update</div>
+            <div class="text-white text-weight-bold" style="font-size: 18px">Update Status</div>
+            <div class="text-orange-2 text-caption">Change target period status</div>
           </div>
         </div>
+        <q-btn
+          flat
+          round
+          dense
+          icon="close"
+          class="absolute-top-right q-mt-sm q-mr-sm"
+          text-color="white"
+          @click="closeStatusModal"
+          :disable="statusLoading"
+        />
       </div>
 
       <!-- Modal Body -->
-      <q-card-section class="q-pt-lg q-pb-md q-px-lg">
-        <div class="text-body1 text-grey-8 q-mb-md">
-          Are you sure you want to change the status of this target period?
-        </div>
-
-        <!-- Period Summary -->
+      <q-card-section class="q-pt-lg q-pb-md q-px-xl">
+        <!-- Period Summary Card - Changed border to match orange theme -->
         <div
-          class="q-pa-sm rounded-borders q-mb-md"
-          style="background: #f5f5f5; border-left: 4px solid #f57c00; border-radius: 6px"
+          class="q-pa-md rounded-borders q-mb-lg"
+          style="background: #f8f9fa; border-left: 4px solid #f57c00; border-radius: 8px"
         >
-          <div class="row items-center q-gutter-xs">
-            <q-icon name="calendar_today" size="16px" color="orange-9" />
-            <span class="text-caption text-weight-medium text-grey-7">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="calendar_month" size="20px" color="orange-8" />
+            <span class="text-subtitle2 text-weight-medium text-grey-8">
               {{ targetPeriod?.semester || 'N/A' }} {{ targetPeriod?.year || '' }}
             </span>
           </div>
-          <div class="row items-center q-gutter-xs q-mt-xs">
-            <q-icon name="badge" size="16px" color="orange-9" />
-            <span class="text-caption text-grey-7">
-              Current:
+          <div class="row items-center q-gutter-sm q-mt-sm">
+            <q-icon name="badge" size="20px" color="orange-8" />
+            <span class="text-body2 text-grey-7">
+              Current Status:
               <q-badge
                 :color="
                   getStatusBadgeColor(officeData?.unitworkplan_status || targetPeriod?.status)
                 "
                 :label="officeData?.unitworkplan_status || targetPeriod?.status || 'N/A'"
-                class="q-ml-xs"
+                class="q-ml-sm q-pa-sm"
+                style="font-size: 0.8rem"
               />
-            </span>
-          </div>
-          <div class="row items-center q-gutter-xs q-mt-xs">
-            <q-icon name="arrow_forward" size="16px" color="green-8" />
-            <span class="text-caption text-grey-7">
-              New:
-              <q-badge color="green-8" label="monitored" class="q-ml-xs" />
             </span>
           </div>
         </div>
 
+        <!-- Remarks Field (Optional) -->
+        <div class="q-mb-md">
+          <div class="row items-center q-mb-xs">
+            <div class="text-subtitle2 text-weight-medium text-grey-8">Remarks</div>
+            <div class="text-caption text-grey-6 q-ml-sm">(Optional)</div>
+          </div>
+          <q-input
+            v-model="statusRemarks"
+            type="textarea"
+            outlined
+            dense
+            placeholder="Add any comments or notes about this status change..."
+            :maxlength="500"
+            :rows="3"
+            class="remarks-input"
+            :disable="statusLoading"
+          >
+            <template v-slot:counter>
+              <span class="text-caption text-grey-6">{{ statusRemarks.length }}/500</span>
+            </template>
+          </q-input>
+        </div>
+
         <!-- Error Alert -->
-        <q-banner
-          v-if="monitorStore.error"
-          dense
-          rounded
-          class="text-white q-mb-md"
-          style="background: #c62828"
-        >
-          <template v-slot:avatar>
-            <q-icon name="error" />
-          </template>
-          {{ monitorStore.error }}
-        </q-banner>
+        <q-slide-transition>
+          <div v-if="monitorStore.error">
+            <q-banner dense rounded class="text-white q-mb-md" style="background: #c62828">
+              <template v-slot:avatar>
+                <q-icon name="error" />
+              </template>
+              {{ monitorStore.error }}
+            </q-banner>
+          </div>
+        </q-slide-transition>
       </q-card-section>
 
       <!-- Modal Actions -->
-      <q-card-actions align="right" class="q-px-lg q-pb-lg q-pt-none">
+      <q-card-actions align="right" class="q-px-xl q-pb-lg q-pt-md bg-grey-1">
         <q-btn
           flat
-          label="Cancel"
-          color="grey-7"
-          :disable="monitorStore.loading"
-          @click="closeStatusModal"
-          style="border-radius: 8px; padding: 8px 20px"
+          label="Returned"
+          text-color="grey-7"
+          icon="undo"
+          :disable="statusLoading"
+          @click="updateStatus('Returned')"
+          style="border-radius: 8px; padding: 8px 24px; border: 1px solid #e0e0e0"
+          class="q-mr-sm"
         />
         <q-btn
-          label="Monitored"
+          label="Reviewed"
           icon="check_circle"
-          color="green-8"
+          color="purple"
+          text-color="white"
           unelevated
-          :loading="monitorStore.loading"
-          :disable="monitorStore.loading"
-          @click="confirmSetMonitored"
-          style="border-radius: 8px; padding: 8px 20px"
+          :loading="statusLoading"
+          :disable="statusLoading"
+          @click="updateStatus('Reviewed')"
+          style="border-radius: 8px; padding: 8px 24px; min-width: 120px"
         />
       </q-card-actions>
     </q-card>
@@ -536,6 +555,9 @@ export default {
     const currentDivisionPath = ref('')
     const showStatusModal = ref(false)
 
+    const statusRemarks = ref('')
+    const statusLoading = ref(false)
+
     const staticUserData = ref({
       officeName: 'City Human Resource Management Office',
     })
@@ -557,53 +579,79 @@ export default {
     // ── Status Modal ────────────────────────────────────────────────────────
     const openStatusModal = () => {
       monitorStore.error = ''
+      statusRemarks.value = ''
       showStatusModal.value = true
     }
 
     const closeStatusModal = () => {
       showStatusModal.value = false
+      statusRemarks.value = ''
+      monitorStore.error = ''
     }
 
-    const confirmSetMonitored = async () => {
-      const officeId =
-        props.officeId || store.data?.office?.id || store.data?.organization?.id || null
+    const updateStatus = async (status) => {
+      statusLoading.value = true
 
-      if (!officeId) {
+      // Get the unitworkplan ID from the store data
+      const unitworkplanId = store.data?.office?.unitworkplan?.id || null
+
+      if (!unitworkplanId) {
         $q.notify({
-          message: 'Office ID not found. Cannot update status.',
+          message: 'Unit Work Plan ID not found. Cannot update status.',
           color: 'negative',
           position: 'top',
           icon: 'error',
         })
+        statusLoading.value = false
         return
       }
 
       const today = new Date().toISOString().split('T')[0]
 
-      const success = await monitorStore.storeStatus({
-        office_id: officeId,
-        year: props.targetPeriod?.year || '',
-        semester: props.targetPeriod?.semester || '',
-        date: today,
-        status: 'monitored',
-      })
-
-      if (success) {
-        showStatusModal.value = false
-
-        // ✅ Also update officeData locally so the badge reflects immediately
-        if (officeData.value) {
-          officeData.value = { ...officeData.value, unitworkplan_status: 'monitored' }
-        }
-
-        $q.notify({
-          message: 'Status updated to Monitored successfully.',
-          color: 'positive',
-          position: 'top',
-          icon: 'check_circle',
+      try {
+        const success = await monitorStore.storeStatus({
+          unitworkplan_id: unitworkplanId, // Changed from office_id to unitworkplan_id
+          year: props.targetPeriod?.year || '',
+          semester: props.targetPeriod?.semester || '',
+          date: today,
+          status: status,
+          remarks: statusRemarks.value.trim() || null,
         })
 
-        emit('status-updated', { status: 'monitored' })
+        if (success) {
+          showStatusModal.value = false
+
+          // Update local officeData to reflect new status
+          if (officeData.value) {
+            officeData.value = {
+              ...officeData.value,
+              unitworkplan_status: status,
+            }
+          }
+
+          $q.notify({
+            message: `Status updated to ${status} successfully.`,
+            color: 'positive',
+            position: 'top',
+            icon: 'check_circle',
+            timeout: 3000,
+          })
+
+          emit('status-updated', {
+            status: status,
+            remarks: statusRemarks.value,
+          })
+        }
+      } catch (error) {
+        console.error('Error updating status:', error)
+        $q.notify({
+          message: error?.response?.data?.message || 'Failed to update status',
+          color: 'negative',
+          position: 'top',
+          icon: 'error',
+        })
+      } finally {
+        statusLoading.value = false
       }
     }
 
@@ -1290,10 +1338,13 @@ export default {
       staticUserData,
       officeData,
       showStatusModal,
+      statusRemarks, // Add this if you want to expose it
+      statusLoading, // Add this if you want to expose it
       getStatusBadgeColor,
+
       openStatusModal,
       closeStatusModal,
-      confirmSetMonitored,
+      updateStatus, // Replace confirmStatusUpdate with updateStatus
       getOrganizedData,
       getEmployeesByRank,
       selectDivision,

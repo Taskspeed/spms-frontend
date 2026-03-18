@@ -610,24 +610,6 @@ const findNodeHeadEmployee = (node) => {
 }
 
 /**
- * Finds the ancestor node of a given type in the org tree.
- * Walks up from the selected node toward the root.
- *
- * Returns the ancestor node or null if not found.
- */
-// const findAncestorOfType = (nodeId, targetType, nodes = orgStore.structure, parent = null) => {
-//   if (!nodes) return null
-//   for (const node of nodes) {
-//     if (node.id === nodeId) return parent?.type === targetType ? parent : null
-//     if (node.children) {
-//       const found = findAncestorOfType(nodeId, targetType, node.children, node)
-//       if (found !== null) return found
-//     }
-//   }
-//   return null
-// }
-
-/**
  * Walks up the full ancestor chain of a node and returns all ancestor nodes
  * in order from root (office) down to direct parent.
  *
@@ -992,6 +974,13 @@ const getNodeEmployees = (nodeId) => {
         isHead: child.isHead,
         hasTargetPeriod: child.hasTargetPeriod,
         employeeData: child.employeeData,
+        // ADD THESE - map sg and level from employeeData to top level
+        sg: child.employeeData?.sg || child.sg || '',
+        level: child.employeeData?.level || child.level || '',
+        salary_grade: child.sg || '',
+        employeeStatus: child.employeeData?.employeeStatus || child.employeeData?.level || '',
+        designation: child.employeeData?.designation || child.position || '',
+        employment_type: child.employeeData?.employment_type || child.rank || '',
       })
     }
   })
@@ -1014,6 +1003,9 @@ const getAllEmployeesUnderNode = (nodeId) => {
           isHead: node.isHead,
           hasTargetPeriod: node.hasTargetPeriod,
           employeeData: node.employeeData,
+          // ADD THESE
+          sg: node.employeeData?.sg || node.sg || '',
+          level: node.employeeData?.level || node.level || '',
         })
     } else {
       ;(node.children || []).forEach(collect)
@@ -1076,29 +1068,46 @@ const getSupervisorySignatory = (employee) => {
     return candidates[0] || null
   }
 
+  // Start with the immediate parent node
   const immediateParentId = getImmediateParentNodeId(employee)
   if (!immediateParentId) return null
 
-  const supervisorInParent = findSupervisorInNode(immediateParentId)
-  if (supervisorInParent) return supervisorInParent
+  // Check if there's a supervisor in the immediate parent
+  let supervisor = findSupervisorInNode(immediateParentId)
+  if (supervisor) return supervisor
 
+  // If no supervisor found in immediate parent, walk up the hierarchy
   let currentNodeId = immediateParentId
-  while (currentNodeId) {
+  let currentNode = orgStore._findNode(currentNodeId)
+
+  while (currentNode) {
+    // Get the parent of the current node
     const parentId = getParentNodeId(currentNodeId)
     if (!parentId) break
 
     const parentNode = orgStore._findNode(parentId)
     if (!parentNode) break
 
-    if (parentNode.type === 'office') break
+    // Check for supervisor in the parent node
+    supervisor = findSupervisorInNode(parentId)
+    if (supervisor) return supervisor
 
-    const found = findSupervisorInNode(parentId)
-    if (found) return found
-
+    // Move up to the next level
     currentNodeId = parentId
+    currentNode = parentNode
   }
 
-  return null
+  // If we've reached the top and still no supervisor, return the Office Head
+  // Find the Office Head by looking for the office node and its head
+  const officeNode = orgStore.structure?.find((node) => node.type === 'office')
+  if (officeNode) {
+    const officeHead = findNodeHeadEmployee(officeNode)
+    if (officeHead) return officeHead
+  }
+
+  // Last resort: try to find any employee with Office Head job title
+  const allEmployees = getAllEmployeesUnderNode(orgStore.structure?.[0]?.id)
+  return allEmployees.find((emp) => isOfficeHead(emp)) || null
 }
 
 /**
@@ -1128,6 +1137,11 @@ const buildSignatories = (employee) => {
           position: supervisory.position,
           rank: supervisory.rank,
           jobTitle: getJobTitle(supervisory),
+          controlNo:
+            supervisory.employeeData?.ControlNo ||
+            supervisory.ControlNo ||
+            supervisory.control_no ||
+            null,
         }
       : null,
     managerialSignatory: managerial
@@ -1136,6 +1150,11 @@ const buildSignatories = (employee) => {
           position: managerial.position,
           rank: managerial.rank,
           jobTitle: getJobTitle(managerial),
+          controlNo:
+            managerial.employeeData?.ControlNo ||
+            managerial.ControlNo ||
+            managerial.control_no ||
+            null,
         }
       : null,
   }
@@ -1288,19 +1307,44 @@ const createUnitWorkPlan = () => {
   if (!hierarchyPath)
     return $q.notify({ message: 'Failed to build organizational hierarchy', color: 'negative' })
 
+  // ── Resolve managerial signatory once — it's the same Office Head for everyone ──
+  const allOfficeEmployees = getAllEmployeesUnderNode(orgStore.structure?.[0]?.id)
+  const managerialNode = getManagerialSignatory(allOfficeEmployees)
+  const managerialSignatory = managerialNode
+    ? {
+        name: managerialNode.label || managerialNode.name,
+        position: managerialNode.position,
+        rank: managerialNode.rank,
+        jobTitle: getJobTitle(managerialNode),
+        controlNo:
+          managerialNode.employeeData?.ControlNo ||
+          managerialNode.ControlNo ||
+          managerialNode.control_no ||
+          null,
+      }
+    : null
+
   const rawEmployees = getNodeEmployees(selectedNode.value.id)
   const allEmployees = rawEmployees.map((emp) => {
     const supervisorNode = getSupervisorySignatory(emp)
     return {
       ...emp,
+      // ── Supervisory signatory (per-employee, resolved from org hierarchy) ──
       supervisorySignatory: supervisorNode
         ? {
             name: supervisorNode.label || supervisorNode.name,
             position: supervisorNode.position,
             rank: supervisorNode.rank,
             jobTitle: getJobTitle(supervisorNode),
+            controlNo:
+              supervisorNode.employeeData?.ControlNo ||
+              supervisorNode.ControlNo ||
+              supervisorNode.control_no ||
+              null,
           }
         : null,
+      // ── Managerial signatory (same Office Head for all employees) ──
+      managerialSignatory,
     }
   })
   const availableEmployees = allEmployees.filter(shouldIncludeInUWP)

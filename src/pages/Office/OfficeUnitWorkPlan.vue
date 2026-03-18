@@ -7,11 +7,13 @@
         <h1 class="text-h6 q-mb-none">UNIT WORK PLAN - {{ selectedNodeLabel }}</h1>
         <p class="text-grey-7 q-mt-xs">{{ breadcrumbDisplay }}</p>
         <p class="text-caption text-grey-6 q-mt-xs">
-          <!-- Show available employees to select -->
           Available Employees:
           <strong>{{ uwpData.employeesWithoutTargetPeriod?.length || 0 }}</strong>
           <span v-if="employeeTabs.length > 0" class="q-ml-md">
             Selected: <strong>{{ getSelectedEmployeeIds().length }}</strong>
+          </span>
+          <span v-if="cascadeDomino.headEmployee" class="q-ml-md text-positive">
+            Head: <strong>{{ cascadeDomino.headEmployee.name }}</strong>
           </span>
         </p>
       </div>
@@ -26,12 +28,10 @@
         <q-card-section class="q-pa-sm">
           <div class="text-subtitle2">Target Period Details</div>
         </q-card-section>
-
         <q-separator />
-
         <q-card-section class="q-pa-sm">
           <div class="row q-col-gutter-md">
-            <!-- Left Side: Division, Section, Unit -->
+            <!-- Left Side -->
             <div class="col-12 col-md-6">
               <div class="column q-gutter-sm">
                 <q-input
@@ -40,24 +40,15 @@
                   label="Semester"
                   outlined
                   dense
-                  emit-value
-                  map-options
                 >
                   <template v-slot:prepend>
                     <q-icon name="calendar_view_month" size="xs" />
                   </template>
                 </q-input>
-
                 <q-separator />
-
-                <!-- Office -->
                 <q-input v-model="hierarchyLabels.office" label="Office" outlined dense readonly>
-                  <template v-slot:prepend>
-                    <q-icon name="account_balance" size="xs" />
-                  </template>
+                  <template v-slot:prepend><q-icon name="account_balance" size="xs" /></template>
                 </q-input>
-
-                <!-- Office2 -->
                 <q-input
                   v-model="hierarchyLabels.office2"
                   label="Sub-Office"
@@ -65,40 +56,20 @@
                   dense
                   readonly
                 >
-                  <template v-slot:prepend>
-                    <q-icon name="business" size="xs" />
-                  </template>
+                  <template v-slot:prepend><q-icon name="business" size="xs" /></template>
                 </q-input>
-
-                <!-- Group -->
                 <q-input v-model="hierarchyLabels.group" label="Group" outlined dense readonly>
-                  <template v-slot:prepend>
-                    <q-icon name="group_work" size="xs" />
-                  </template>
+                  <template v-slot:prepend><q-icon name="group_work" size="xs" /></template>
                 </q-input>
               </div>
             </div>
-
-            <!-- Right Side: Semester, Year -->
+            <!-- Right Side -->
             <div class="col-12 col-md-6">
               <div class="column q-gutter-sm">
-                <q-input
-                  v-model="uwpData.targetPeriod.year"
-                  readonly
-                  label="Year"
-                  outlined
-                  dense
-                  emit-value
-                  map-options
-                >
-                  <template v-slot:prepend>
-                    <q-icon name="event" size="xs" />
-                  </template>
+                <q-input v-model="uwpData.targetPeriod.year" readonly label="Year" outlined dense>
+                  <template v-slot:prepend><q-icon name="event" size="xs" /></template>
                 </q-input>
-
                 <q-separator />
-
-                <!-- Division -->
                 <q-input
                   v-model="hierarchyLabels.division"
                   label="Division"
@@ -106,35 +77,39 @@
                   dense
                   readonly
                 >
-                  <template v-slot:prepend>
-                    <q-icon name="business" size="xs" />
-                  </template>
+                  <template v-slot:prepend><q-icon name="business" size="xs" /></template>
                 </q-input>
-
-                <!-- Section -->
                 <q-input v-model="hierarchyLabels.section" label="Section" outlined dense readonly>
-                  <template v-slot:prepend>
-                    <q-icon name="account_tree" size="xs" />
-                  </template>
+                  <template v-slot:prepend><q-icon name="account_tree" size="xs" /></template>
                 </q-input>
-
-                <!-- Unit -->
                 <q-input v-model="hierarchyLabels.unit" label="Unit" outlined dense readonly>
-                  <template v-slot:prepend>
-                    <q-icon name="layers" size="xs" />
-                  </template>
+                  <template v-slot:prepend><q-icon name="layers" size="xs" /></template>
                 </q-input>
               </div>
             </div>
           </div>
         </q-card-section>
       </q-card>
+
+      <!-- Head employee notice banner -->
+      <q-banner
+        v-if="showHeadBanner"
+        class="q-mt-sm text-white"
+        style="background-color: #1565c0; border-radius: 6px"
+        dense
+      >
+        <template v-slot:avatar><q-icon name="info" color="white" /></template>
+        <span class="text-caption">
+          <strong>Notice:</strong> The supervisor/head employee must complete and save their
+          performance targets first before adding other employees to this work plan.
+        </span>
+      </q-banner>
     </div>
 
-    <!-- Employee Information -->
+    <!-- Employee Information Card -->
     <div class="col-12">
       <q-card flat bordered>
-        <!-- Employee Tabs -->
+        <!-- Employee Tabs Row -->
         <div class="employee-tabs-container">
           <q-tabs
             v-model="activeEmployeeTab"
@@ -145,16 +120,19 @@
             align="left"
             narrow-indicator
           >
-            <!-- Show only the first maxVisibleTabs -->
             <q-tab
               v-for="(employee, index) in visibleEmployeeTabs"
               :key="employee.id"
               :name="employee.id"
               :label="`Employee ${index + 1}${employee.name ? ':  ' + employee.name : ''}`"
               @click="switchToEmployee(employee.id)"
-            />
+            >
+              <q-badge v-if="cascadeDomino.isHead(employee.id)" color="green" floating>
+                HEAD
+              </q-badge>
+            </q-tab>
 
-            <!-- More menu for overflow tabs -->
+            <!-- Overflow menu -->
             <q-btn
               v-if="hasOverflowTabs"
               flat
@@ -177,9 +155,10 @@
                     :active="activeEmployeeTab === emp.id"
                   >
                     <q-item-section>
-                      <q-item-label>{{
-                        emp.name || `Employee ${getEmployeeIndex(emp.id) + 1}`
-                      }}</q-item-label>
+                      <q-item-label>
+                        {{ emp.name || `Employee ${getEmployeeIndex(emp.id) + 1}` }}
+                        <q-badge v-if="cascadeDomino.isHead(emp.id)" color="green">HEAD</q-badge>
+                      </q-item-label>
                     </q-item-section>
                     <q-item-section side v-if="activeEmployeeTab === emp.id">
                       <q-icon name="check" color="green-7" />
@@ -199,18 +178,19 @@
             color="green-7"
             class="q-ml-auto"
             @click="addEmployeeTab"
-            :disable="allEmployeesSelected"
+            :disable="allEmployeesSelected || isAddEmployeeDisabled"
             aria-label="Add Employee"
           >
             <q-tooltip v-if="allEmployeesSelected">All employees already selected</q-tooltip>
+            <q-tooltip v-else-if="isAddEmployeeDisabled">
+              The head employee must set their performance targets before adding other employees
+            </q-tooltip>
           </q-btn>
         </div>
 
         <q-card-section class="q-pa-sm">
           <div class="row items-center justify-between q-mb-md">
             <div class="text-subtitle2">Employee Information</div>
-
-            <!-- Remove Employee Button -->
             <q-btn
               flat
               round
@@ -218,10 +198,13 @@
               icon="delete"
               color="negative"
               @click="removeEmployeeTab(activeEmployeeTab)"
-              :disable="employeeTabs.length <= 1"
+              :disable="employeeTabs.length <= 1 || cascadeDomino.isHead(activeEmployeeTab)"
               aria-label="Remove Employee"
             >
-              <q-tooltip>Remove this employee</q-tooltip>
+              <q-tooltip v-if="cascadeDomino.isHead(activeEmployeeTab)">
+                Cannot remove head employee
+              </q-tooltip>
+              <q-tooltip v-else>Remove this employee</q-tooltip>
             </q-btn>
           </div>
 
@@ -242,10 +225,9 @@
                 map-options
                 clearable
                 @update:model-value="onEmployeeSelected"
+                :disable="cascadeDomino.isHead(currentEmployee.id) && employeeTabs.length > 1"
               >
-                <template v-slot:prepend>
-                  <q-icon name="person" size="xs" />
-                </template>
+                <template v-slot:prepend><q-icon name="person" size="xs" /></template>
                 <template v-slot:option="scope">
                   <q-item v-bind="scope.itemProps" dense>
                     <q-item-section avatar>
@@ -261,7 +243,7 @@
                       <q-item-label>
                         {{ scope.opt.label || 'Unnamed Employee' }}
                         <q-badge
-                          v-if="isHeadPosition(scope.opt.job_title || scope.opt.position)"
+                          v-if="isHeadPosition(scope.opt)"
                           color="green"
                           class="q-ml-xs"
                           label="Head"
@@ -285,9 +267,7 @@
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-md-6">
                   <q-input v-model="selectedEmployee.rank" label="Function" outlined dense readonly>
-                    <template v-slot:prepend>
-                      <q-icon name="military_tech" size="xs" />
-                    </template>
+                    <template v-slot:prepend><q-icon name="military_tech" size="xs" /></template>
                   </q-input>
                 </div>
                 <div class="col-12 col-md-6">
@@ -298,23 +278,17 @@
                     dense
                     readonly
                   >
-                    <template v-slot:prepend>
-                      <q-icon name="work" size="xs" />
-                    </template>
+                    <template v-slot:prepend><q-icon name="work" size="xs" /></template>
                   </q-input>
                 </div>
                 <div class="col-12 col-md-6">
                   <q-input v-model="selectedEmployee.sg" label="SG" outlined dense readonly>
-                    <template v-slot:prepend>
-                      <q-icon name="work" size="xs" />
-                    </template>
+                    <template v-slot:prepend><q-icon name="work" size="xs" /></template>
                   </q-input>
                 </div>
                 <div class="col-12 col-md-6">
                   <q-input v-model="selectedEmployee.level" label="Level" outlined dense readonly>
-                    <template v-slot:prepend>
-                      <q-icon name="work" size="xs" />
-                    </template>
+                    <template v-slot:prepend><q-icon name="work" size="xs" /></template>
                   </q-input>
                 </div>
               </div>
@@ -325,7 +299,6 @@
           <div v-if="currentEmployee.employeeId" class="q-mt-md">
             <q-separator class="q-mb-md" />
 
-            <!-- Performance Standards Collection -->
             <div class="q-mt-md">
               <div
                 v-for="(standard, index) in currentEmployee.performanceStandards"
@@ -337,13 +310,22 @@
                     <div class="row items-center justify-between">
                       <div class="text-subtitle2">Performance Standard {{ index + 1 }}</div>
                       <div>
+                        <q-badge
+                          v-if="
+                            !cascadeDomino.isHead(currentEmployee.id) &&
+                            standard.quantityRestriction
+                          "
+                          color="info"
+                          class="q-mr-sm"
+                        >
+                          Restricted
+                        </q-badge>
                         <q-btn
                           flat
                           round
                           dense
                           :icon="standard.expanded ? 'expand_less' : 'expand_more'"
                           @click="standard.expanded = !standard.expanded"
-                          :aria-label="standard.expanded ? 'Collapse' : 'Expand'"
                         />
                         <q-btn
                           flat
@@ -362,7 +344,7 @@
                     <div v-show="standard.expanded">
                       <q-separator />
                       <q-card-section class="q-pa-sm">
-                        <!-- Horizontal layout for MFO Details and Competencies -->
+                        <!-- MFO Details + Competencies row -->
                         <div class="row q-col-gutter-md">
                           <!-- MFO Details Card -->
                           <div class="col-md-6">
@@ -370,9 +352,7 @@
                               <q-card-section class="q-pa-sm">
                                 <div class="text-subtitle2">MFO Details</div>
                               </q-card-section>
-
                               <q-separator />
-
                               <q-card-section class="q-pa-sm">
                                 <div class="column q-gutter-sm">
                                   <!-- Category Select -->
@@ -393,13 +373,20 @@
                                     </template>
                                   </q-select>
 
-                                  <!-- MFO Select with search -->
+                                  <!-- MFO Select -->
+                                  <!-- Non-Office-Head employees only see MFOs the Office Head
+                                       has already included in their plan (headMfoNames). -->
                                   <q-select
                                     v-if="!isSupportCategory(standard.rows.category)"
                                     outlined
                                     dense
                                     v-model="standard.rows.mfo"
-                                    label="Select MFO"
+                                    :label="
+                                      isFetchingHeadMfos && !isCurrentEmployeeOfficeHead
+                                        ? 'Loading MFOs…'
+                                        : 'Select MFO'
+                                    "
+                                    :loading="isFetchingHeadMfos && !isCurrentEmployeeOfficeHead"
                                     :options="getFilteredMfoOptions(index)"
                                     option-value="value"
                                     option-label="label"
@@ -431,18 +418,32 @@
                                     <template v-slot:no-option>
                                       <q-item>
                                         <q-item-section class="text-grey">
-                                          No MFOs found matching your search
+                                          {{
+                                            isFetchingHeadMfos && !isCurrentEmployeeOfficeHead
+                                              ? 'Loading MFOs from Office Head plan…'
+                                              : getMfoNoOptionMessage(index)
+                                          }}
                                         </q-item-section>
                                       </q-item>
                                     </template>
                                   </q-select>
 
+                                  <!-- ============================================================
+                                       OUTPUT SELECT
+                                       - Office Head + non-support category (A or B) → HIDDEN
+                                         (Office Head owns the MFO-level target; output granularity
+                                          is not required at this level)
+                                       - Office Head + support category (C)           → SHOWN,
+                                         filtered unique per standard
+                                       - All other employees                           → ALWAYS SHOWN
+                                       ============================================================ -->
                                   <q-select
+                                    v-if="shouldShowOutput(standard)"
                                     outlined
                                     dense
                                     v-model="standard.rows.output"
                                     label="Select Output"
-                                    :options="getFilteredOutputOptions(index)"
+                                    :options="getAvailableOutputOptions(index)"
                                     option-value="value"
                                     option-label="label"
                                     emit-value
@@ -475,7 +476,7 @@
                                     <template v-slot:no-option>
                                       <q-item>
                                         <q-item-section class="text-grey">
-                                          No outputs found matching your search
+                                          {{ getOutputNoOptionMessage(index) }}
                                         </q-item-section>
                                       </q-item>
                                     </template>
@@ -492,8 +493,6 @@
                                 <div class="text-subtitle2">
                                   Competencies (for IPCR each MFO should have competency)
                                 </div>
-
-                                <!-- Competency Error Message -->
                                 <div
                                   v-if="showCompetencyError[index]"
                                   class="text-negative q-mt-xs q-mb-sm text-caption"
@@ -502,19 +501,15 @@
                                   Leadership)
                                 </div>
                               </q-card-section>
-
                               <q-separator />
-
                               <q-card-section class="q-pa-sm">
                                 <div class="row q-col-gutter-sm">
                                   <!-- Core Competencies -->
                                   <div class="col-md-4">
                                     <q-card flat bordered class="full-height">
                                       <q-card-section class="q-pa-sm">
-                                        <div class="row items-center justify-between">
-                                          <div class="text-caption text-weight-medium">
-                                            Core (Auto-populated)
-                                          </div>
+                                        <div class="text-caption text-weight-medium">
+                                          Core (Auto-populated)
                                         </div>
                                       </q-card-section>
                                       <q-separator />
@@ -535,12 +530,8 @@
                                             :key="'core-' + index + '-' + compIndex"
                                             class="competency-item q-pb-xs"
                                           >
-                                            <div class="row items-center justify-between">
-                                              <div class="text-caption">
-                                                {{ comp.code }} - {{ comp.value }} ({{
-                                                  comp.level
-                                                }})
-                                              </div>
+                                            <div class="text-caption">
+                                              {{ comp.code }} - {{ comp.value }} ({{ comp.level }})
                                             </div>
                                           </div>
                                         </div>
@@ -685,7 +676,6 @@
                           <q-separator />
                           <q-card-section class="q-pa-sm">
                             <div class="row q-col-gutter-sm">
-                              <!-- Output & Indicator Names -->
                               <div class="col-md-5">
                                 <div class="column q-gutter-mt-sm">
                                   <q-input
@@ -695,10 +685,7 @@
                                     dense
                                     class="full-width"
                                     @update:model-value="generateSuccessIndicator(index)"
-                                  >
-                                  </q-input>
-
-                                  <!-- Performance Indicator - Searchable Dropdown -->
+                                  />
                                   <q-select
                                     outlined
                                     v-model="standard.indicatorName"
@@ -717,11 +704,15 @@
                                     use-chips
                                     clearable
                                     @update:model-value="
-                                      (value) => {
+                                      async (value) => {
                                         generateSuccessIndicator(index)
-                                        // Cascade logic still runs but modal is hidden
-                                        if (value && value.length > 0) {
-                                          checkAndShowCascadeModal(index)
+                                        const std = currentEmployee.performanceStandards[index]
+                                        if (std?.rows?.mfo && !isCurrentEmployeeOfficeHead) {
+                                          if (value && value.length > 0) {
+                                            await checkAndShowCascadeModal(index)
+                                          } else {
+                                            std.quantityRestriction = null
+                                          }
                                         }
                                       }
                                     "
@@ -752,7 +743,6 @@
                                   </q-select>
                                 </div>
                               </div>
-
                               <div class="col-md-3">
                                 <q-input
                                   outlined
@@ -791,7 +781,6 @@
                               <q-btn flat round dense icon="more_vert">
                                 <q-menu>
                                   <q-list style="min-width: 250px">
-                                    <!-- Quantity Options Section -->
                                     <q-item-label header>Quantity Options</q-item-label>
                                     <q-separator />
                                     <q-item
@@ -812,12 +801,11 @@
                                       </q-item-section>
                                     </q-item>
 
-                                    <!-- Timeliness Options -->
                                     <q-separator spaced />
                                     <q-item-label header>Timeliness Options</q-item-label>
                                     <q-separator />
 
-                                    <!-- Before Deadline Option -->
+                                    <!-- Before Deadline -->
                                     <q-item>
                                       <q-item-section>
                                         <div class="row items-center">
@@ -832,8 +820,6 @@
                                         </div>
                                       </q-item-section>
                                     </q-item>
-
-                                    <!-- Before Deadline Sub-options -->
                                     <q-item
                                       v-if="standard.timelinessIndicatorType === 'beforeDeadline'"
                                       dense
@@ -863,7 +849,7 @@
                                       </q-item-section>
                                     </q-item>
 
-                                    <!-- On Deadline Option -->
+                                    <!-- On Deadline -->
                                     <q-item>
                                       <q-item-section>
                                         <div class="row items-center">
@@ -878,8 +864,6 @@
                                         </div>
                                       </q-item-section>
                                     </q-item>
-
-                                    <!-- On Deadline Sub-options -->
                                     <q-item
                                       v-if="standard.timelinessIndicatorType === 'onDeadline'"
                                       dense
@@ -925,7 +909,6 @@
                               dense
                               class="standard-outcome-table"
                             >
-                              <!-- Header cells -->
                               <template v-slot:header-cell="props">
                                 <q-th :props="props" :style="`width: ${props.col.width}`">
                                   {{ props.col.label }}
@@ -941,14 +924,13 @@
                                       shouldValidate
                                     "
                                   >
-                                    <q-tooltip
-                                      >At least 2 effectiveness values are required</q-tooltip
-                                    >
+                                    <q-tooltip>
+                                      At least 2 effectiveness values are required
+                                    </q-tooltip>
                                   </q-icon>
                                 </q-th>
                               </template>
 
-                              <!-- Body cells with inputs -->
                               <template v-slot:body-cell-quantity="props">
                                 <q-td
                                   :props="props"
@@ -984,7 +966,6 @@
                                   :style="`width: ${props.col.width}`"
                                 >
                                   <div class="row q-col-gutter-sm">
-                                    <!-- Range Input Type -->
                                     <div
                                       v-if="standard.activeTimelinessInputs.range"
                                       :class="{
@@ -1013,8 +994,6 @@
                                         "
                                       />
                                     </div>
-
-                                    <!-- Date Input Type -->
                                     <div
                                       v-if="standard.activeTimelinessInputs.date"
                                       :class="{
@@ -1064,8 +1043,6 @@
                                         </template>
                                       </q-input>
                                     </div>
-
-                                    <!-- Description Input Type -->
                                     <div
                                       v-if="standard.activeTimelinessInputs.description"
                                       :class="{
@@ -1090,8 +1067,6 @@
                                         @update:model-value="generateSuccessIndicator(index)"
                                       />
                                     </div>
-
-                                    <!-- No inputs selected -->
                                     <div
                                       v-if="
                                         !standard.activeTimelinessInputs.range &&
@@ -1142,7 +1117,6 @@
                               </template>
                             </q-table>
 
-                            <!-- Error message for effectiveness validation -->
                             <div
                               v-if="
                                 !hasMinimumEffectivenessValues(index) &&
@@ -1166,7 +1140,9 @@
                                 :class="
                                   standard.quantityRestriction.restrictionType === 'error'
                                     ? 'bg-negative'
-                                    : 'bg-info'
+                                    : standard.quantityRestriction.restrictionType === 'warning'
+                                      ? 'bg-warning'
+                                      : 'bg-info'
                                 "
                                 class="text-white q-pa-sm"
                                 dense
@@ -1215,7 +1191,6 @@
             Max allowed: {{ currentQuantityRestriction.maxQuantity || 'Unlimited' }}
           </div>
         </q-card-section>
-
         <q-card-section class="modal-body">
           <q-input
             v-model.number="quantityValue"
@@ -1239,7 +1214,6 @@
             "
           />
         </q-card-section>
-
         <q-card-actions align="right" class="modal-actions">
           <q-btn flat label="Cancel" color="grey-7" v-close-popup @click="cancelQuantityInput" />
           <q-btn
@@ -1253,82 +1227,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- Cascade Data Modal - Commented Out (Hidden but functionality remains) -->
-    <!--
-    <q-dialog v-model="showCascadeModal" persistent>
-      <q-card style="min-width: 500px; max-width: 600px; border-radius: 8px">
-        <q-card-section class="modal-header">
-          <div class="row items-center justify-between">
-            <div>
-              <div class="text-h6">Guide Instruction</div>
-              <div class="text-caption3 text-red-9">
-                Base your target on whats available in this MFO
-              </div>
-            </div>
-
-            <q-btn flat round dense icon="close" v-close-popup />
-          </div>
-        </q-card-section>
-
-        <q-card-section class="modal-body">
-          <div v-if="cascadeData" class="q-gutter-md">
-            <div class="text-subtitle1 text-weight-bold">MFO: {{ cascadeData.mfo }}</div>
-
-            <div v-if="cascadeData.output" class="text-subtitle2 text-grey-8">
-              Output: {{ cascadeData.output }}
-            </div>
-
-            <div class="row q-col-gutter-md">
-              <div class="col-4">
-                <q-card flat bordered class="text-center">
-                  <q-card-section>
-                    <div class="text-caption text-grey-7">Total Target</div>
-                    <div class="text-h5 text-primary">{{ cascadeData.total_target }}</div>
-                  </q-card-section>
-                </q-card>
-              </div>
-              <div class="col-4">
-                <q-card flat bordered class="text-center">
-                  <q-card-section>
-                    <div class="text-caption text-grey-7">Claimed</div>
-                    <div class="text-h5 text-secondary">{{ cascadeData.claimed }}</div>
-                  </q-card-section>
-                </q-card>
-              </div>
-              <div class="col-4">
-                <q-card flat bordered class="text-center">
-                  <q-card-section>
-                    <div class="text-caption text-grey-7">Available</div>
-                    <div
-                      class="text-h5"
-                      :class="cascadeData.available > 0 ? 'text-positive' : 'text-negative'"
-                    >
-                      {{ cascadeData.available }}
-                    </div>
-                  </q-card-section>
-                </q-card>
-              </div>
-            </div>
-
-            <div v-if="cascadeData.quantityRestriction" class="q-mt-md">
-              <q-banner class="bg-info text-white" dense>
-                <template v-slot:avatar>
-                  <q-icon name="info" />
-                </template>
-                {{ cascadeData.quantityRestriction.message }}
-              </q-banner>
-            </div>
-          </div>
-          <div v-else class="text-center text-grey-7">No cascade data available</div>
-        </q-card-section>
-
-        <q-card-actions align="right" class="modal-actions q-pa-md">
-          <q-btn label="Close" color="primary" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-    -->
-
     <!-- Competency Selection Modal -->
     <q-dialog v-model="showCompetencyModal" persistent>
       <q-card style="min-width: 700px; max-width: 900px; border-radius: 8px">
@@ -1340,17 +1238,14 @@
             Based on SG: {{ currentEmployee.sg }} | Level: {{ currentEmployee.level }}
           </div>
         </q-card-section>
-
         <q-card-section class="modal-body">
           <div class="q-gutter-md">
-            <!-- Competency Rows -->
             <div
               v-for="(competency, index) in competencySelections"
               :key="index"
               class="competency-row"
             >
               <div class="row q-col-gutter-md items-start">
-                <!-- Competency Selection -->
                 <div class="col-8">
                   <q-select
                     v-model="competency.selectedCompetency"
@@ -1378,8 +1273,6 @@
                     </template>
                   </q-select>
                 </div>
-
-                <!-- Level Selection (Read-only since it's auto-populated) -->
                 <div class="col-3">
                   <q-select
                     v-model="competency.selectedLevel"
@@ -1391,18 +1284,8 @@
                     option-value="value"
                     option-label="label"
                     :rules="[(val) => !!val || 'Level is required']"
-                  >
-                    <template v-slot:option="scope">
-                      <q-item v-bind="scope.itemProps" dense>
-                        <q-item-section>
-                          <q-item-label>{{ scope.opt.label }}</q-item-label>
-                        </q-item-section>
-                      </q-item>
-                    </template>
-                  </q-select>
+                  />
                 </div>
-
-                <!-- Remove Button -->
                 <div class="col-1 flex items-center">
                   <q-btn
                     v-if="competencySelections.length > 1"
@@ -1419,8 +1302,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Add Another Button -->
             <div class="row q-mt-md">
               <q-btn
                 flat
@@ -1435,7 +1316,6 @@
             </div>
           </div>
         </q-card-section>
-
         <q-card-actions align="right" class="modal-actions q-pa-md">
           <q-btn
             flat
@@ -1462,8 +1342,8 @@
         color="green-7"
         icon="save"
         @click="onSubmit"
-        :disable="!isFormValid || uwpStore.loading"
-        :loading="uwpStore.loading"
+        :disable="!isFormValid || uwpStore.loading || uwpStore.saving"
+        :loading="uwpStore.saving"
       />
     </div>
   </q-page>
@@ -1480,10 +1360,16 @@ import { useUnitWorkPlanStore } from 'src/stores/office/unitWorkPlanStore'
 import { useCompetencyStore } from 'src/stores/competencyStore'
 import { useCascadeStore } from 'src/stores/cascadeStore'
 import { useQuantityRestriction } from 'src/composables/useQuantityRestriction'
+import { useCascadeDomino } from 'src/composables/useCascadeDomino'
+import { useMFOHeadStore } from 'src/stores/mfoHeadStore'
 
 export default {
   name: 'UnitWorkPlan',
+
   setup() {
+    // ===========================================================================
+    // 1. PLUGIN & STORE INSTANCES
+    // ===========================================================================
     const $q = useQuasar()
     const router = useRouter()
     const officeLibraryStore = useMfoStore()
@@ -1491,85 +1377,14 @@ export default {
     const uwpStore = useUnitWorkPlanStore()
     const competencyStore = useCompetencyStore()
     const cascadeStore = useCascadeStore()
+    const quantityRestriction = useQuantityRestriction()
+    const mfoHeadStore = useMFOHeadStore()
 
-    // Initialize the quantity restriction composable
-    const { determineRestriction } = useQuantityRestriction()
+    // ===========================================================================
+    // 2. CONSTANTS
+    // ===========================================================================
 
-    // Refs
-    const filteredMfoOptions = ref({})
-    const filteredOutputOptions = ref({})
-    const uwpData = ref({
-      type: null,
-      selectedNodeId: null,
-      selectedNodeLabel: null,
-      breadcrumb: [],
-      targetPeriod: { semester: null, year: null },
-      hierarchy: {
-        office: null,
-        office2: null,
-        group: null,
-        division: null,
-        section: null,
-        unit: null,
-      },
-      availableEmployees: [],
-      filteredAvailableEmployees: [],
-      employeesWithoutTargetPeriod: [],
-      totalAvailableEmployees: 0,
-      filteredAvailableEmployeesCount: 0,
-      employeesWithoutTargetPeriodCount: 0,
-      selectedEmployees: [],
-      timestamp: null,
-    })
-
-    const formInteracted = ref(false)
-    const shouldValidate = ref(false)
-    const maxVisibleTabs = ref(3)
-    const activeEmployeeTab = ref(null)
-    const employeeTabs = ref([])
-    const isLoadingFilteredEmployees = ref(false)
-    const form = ref({
-      unit: null,
-      section: null,
-      division: null,
-      semester: null,
-      year: new Date().getFullYear(),
-    })
-    const filteredVerbs = ref([])
-    const filteredEmployees = ref([])
-    const skipMfo = ref(false)
-    const currentStandardIndex = ref(0)
-    const showQuantityModal = ref(false)
-    const quantityValue = ref(null)
-    const currentQuantityRestriction = ref(null)
-    const quantityExceedsMax = computed(() => {
-      if (!currentQuantityRestriction.value?.maxQuantity) return false
-      return quantityValue.value > currentQuantityRestriction.value.maxQuantity
-    })
-
-    // Cascade Modal Refs (keep but won't show modal)
-    const showCascadeModal = ref(false)
-    const cascadeData = ref(null)
-
-    // Competency Modal Refs
-    const showCompetencyModal = ref(false)
-    const competencyType = ref('core')
-    const currentStandardIndexForCompetency = ref(0)
-    const selectedCompetency = ref(null)
-    const selectedLevel = ref(null)
-    const filteredCompetencyOptions = ref([])
-    const showCompetencyError = ref([])
-
-    // Multiple competency selection refs
-    const competencySelections = ref([{ selectedCompetency: null, selectedLevel: null }])
-    const filteredCompetencyOptionsByRow = ref([])
-
-    // Auto-selection flag to prevent multiple initializations
-    const autoSelectionPerformed = ref(false)
-    const autoSelectionAttempts = ref(0)
-    const MAX_AUTO_SELECTION_ATTEMPTS = 5
-
-    // Head position titles for auto-selection - based on your data showing "SECTION HEAD" in designation field
+    /** Job titles that identify supervisory/head positions */
     const HEAD_POSITION_TITLES = [
       'section head',
       'division head',
@@ -1585,8 +1400,14 @@ export default {
       'sub-office-head',
     ]
 
-    // Competency Data
-    const competencyData = {
+    /** Maximum employee tabs visible before overflow menu */
+    const MAX_VISIBLE_TABS = 3
+
+    /** Maximum retry attempts for auto head-employee selection */
+    const MAX_AUTO_SELECTION_ATTEMPTS = 5
+
+    /** Static competency definitions per type */
+    const COMPETENCY_DEFINITIONS = {
       core: [
         { code: 'DSE', description: 'Delivering Service Excellence' },
         { code: 'EI', description: 'Exemplifying Integrity' },
@@ -1611,34 +1432,18 @@ export default {
       ],
     }
 
-    const levelOptions = computed(() => {
-      if (!selectedCompetency.value) return []
-      const requiredLevel = selectedCompetency.value.requiredLevel
-      const levelMap = {
-        Basic: { label: 'Basic', value: '1' },
-        Intermediate: { label: 'Intermediate', value: '2' },
-        Advanced: { label: 'Advanced', value: '3' },
-        Superior: { label: 'Superior', value: '4' },
-      }
-      return requiredLevel ? [levelMap[requiredLevel]] : []
-    })
+    /** Level label → numeric value map */
+    const LEVEL_MAP = {
+      Basic: { label: 'Basic', value: '1' },
+      Intermediate: { label: 'Intermediate', value: '2' },
+      Advanced: { label: 'Advanced', value: '3' },
+      Superior: { label: 'Superior', value: '4' },
+    }
 
-    // Columns
-    const standardOutcomeColumns = [
-      {
-        name: 'rating',
-        label: 'Rating',
-        field: 'rating',
-        align: 'center',
-        width: '80px',
-      },
-      {
-        name: 'quantity',
-        label: 'Quantity',
-        field: 'quantity',
-        align: 'center',
-        width: '200px',
-      },
+    /** Table column definitions for Standard Outcome */
+    const STANDARD_OUTCOME_COLUMNS = [
+      { name: 'rating', label: 'Rating', field: 'rating', align: 'center', width: '80px' },
+      { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'center', width: '200px' },
       {
         name: 'effectiveness',
         label: 'Effectiveness',
@@ -1655,13 +1460,116 @@ export default {
       },
     ]
 
-    const quantityIndicator = [
+    /** Quantity indicator type options */
+    const QUANTITY_INDICATOR_OPTIONS = [
       { label: 'Quantity (A. Custom Target)', value: 'numeric' },
       { label: 'Quantity (B. Can exceed 100%)', value: 'B' },
       { label: 'Quantity (C. Cannot exceed 100%)', value: 'C' },
     ]
 
-    // Helper functions
+    // ===========================================================================
+    // 3. REACTIVE STATE
+    // ===========================================================================
+
+    const uwpData = ref({
+      type: null,
+      selectedNodeId: null,
+      selectedNodeLabel: null,
+      breadcrumb: [],
+      targetPeriod: { semester: null, year: null },
+      hierarchy: {
+        office: null,
+        office2: null,
+        group: null,
+        division: null,
+        section: null,
+        unit: null,
+      },
+      availableEmployees: [],
+      filteredAvailableEmployees: [],
+      employeesWithoutTargetPeriod: [],
+      totalAvailableEmployees: 0,
+      filteredAvailableEmployeesCount: 0,
+      employeesWithoutTargetPeriodCount: 0,
+      selectedEmployees: [],
+      timestamp: null,
+    })
+
+    const form = ref({
+      unit: null,
+      section: null,
+      division: null,
+      semester: null,
+      year: new Date().getFullYear(),
+    })
+
+    // Employee tab management
+    const employeeTabs = ref([])
+    const activeEmployeeTab = ref(null)
+    const maxVisibleTabs = ref(MAX_VISIBLE_TABS)
+    const isLoadingFilteredEmployees = ref(false)
+
+    // Validation flags
+    const formInteracted = ref(false)
+    const shouldValidate = ref(false)
+
+    // Auto-selection state
+    const autoSelectionPerformed = ref(false)
+    const autoSelectionAttempts = ref(0)
+
+    // Filtered option caches
+    const filteredMfoOptions = ref({})
+    const filteredOutputOptions = ref({})
+    const filteredVerbs = ref([])
+    const filteredEmployees = ref([])
+
+    // Head MFO filter — names of MFOs the Office Head has set in their plan.
+    // Non-Office-Head employees may only pick from this list (per category).
+    // Populated by fetchHeadMfos() after the head employee tab is resolved.
+    const headMfoNames = ref(new Set())
+    const isFetchingHeadMfos = ref(false)
+
+    // Quantity modal state
+    const showQuantityModal = ref(false)
+    const quantityValue = ref(null)
+    const currentStandardIndex = ref(0)
+    const currentQuantityRestriction = ref(null)
+
+    // Cascade modal state (hidden but logic retained)
+    const showCascadeModal = ref(false)
+    const cascadeData = ref(null)
+
+    // Competency modal state
+    const showCompetencyModal = ref(false)
+    const competencyType = ref('core')
+    const currentStandardIndexForCompetency = ref(0)
+    const selectedCompetency = ref(null)
+    const selectedLevel = ref(null)
+    const filteredCompetencyOptions = ref([])
+    const showCompetencyError = ref([])
+    const competencySelections = ref([{ selectedCompetency: null, selectedLevel: null }])
+    const filteredCompetencyOptionsByRow = ref([])
+
+    // ===========================================================================
+    // 4. COMPOSABLE INITIALIZATION
+    // ===========================================================================
+
+    const cascadeDomino = useCascadeDomino({
+      uwpStore,
+      officeLibraryIndicatorStore,
+      quantityRestriction,
+      uwpData,
+      employeeTabs,
+      activeEmployeeTab,
+      cascadeData,
+      autoApply: true,
+      debug: process.env.NODE_ENV === 'development',
+    })
+
+    // ===========================================================================
+    // 5. FACTORY FUNCTIONS
+    // ===========================================================================
+
     const createEmptyStandardRow = () => ({
       rating: '',
       quantity: '',
@@ -1673,13 +1581,8 @@ export default {
       timelinessDate: '',
     })
 
-    const createDefaultStandardRows = () => [
-      { ...createEmptyStandardRow(), rating: '5' },
-      { ...createEmptyStandardRow(), rating: '4' },
-      { ...createEmptyStandardRow(), rating: '3' },
-      { ...createEmptyStandardRow(), rating: '2' },
-      { ...createEmptyStandardRow(), rating: '1' },
-    ]
+    const createDefaultStandardRows = () =>
+      ['5', '4', '3', '2', '1'].map((rating) => ({ ...createEmptyStandardRow(), rating }))
 
     const createDefaultPerformanceStandard = () => ({
       id: uuidv4(),
@@ -1689,18 +1592,19 @@ export default {
       successIndicator: '',
       requiredOutput: '',
       modeOfVerification: '',
-      rows: { category: null, mfo: null, output: null },
+      rows: { category: null, mfo: null, output: null, supervisory_control_no: null },
       quantityIndicatorType: 'numeric',
       timelinessIndicatorType: 'beforeDeadline',
-      timelinessInputs: { range: true, date: false, description: false },
-      activeTimelinessInputs: { range: true, date: false, description: false },
-      competencies: {
-        core: [],
-        technical: [],
-        leadership: [],
-      },
+      timelinessInputs: { range: false, date: false, description: true },
+      activeTimelinessInputs: { range: false, date: false, description: true },
+      competencies: { core: [], technical: [], leadership: [] },
       standardOutcomeRows: createDefaultStandardRows(),
       quantityRestriction: null,
+      targetOutputValue: null,
+      // Pool metadata — set by checkAndShowCascadeModal for claim tracking
+      _signatoryControlNo: null,
+      _mfoValue: null,
+      _outputName: null,
     })
 
     const createDefaultEmployeeData = () => ({
@@ -1712,280 +1616,223 @@ export default {
       level: null,
       rank: '',
       position: '',
+      supervisorySignatory: null,
       performanceStandards: [createDefaultPerformanceStandard()],
     })
 
-    // Helper to get employee name
-    const getEmployeeName = (employee) => {
-      if (!employee) return 'Unnamed Employee'
-      return employee.label || employee.name || employee.employeeData?.name || 'Unnamed Employee'
-    }
+    // ===========================================================================
+    // 6. HELPER / UTILITY FUNCTIONS
+    // ===========================================================================
 
-    // Helper to get employee position
-    const getEmployeePosition = (employee) => {
-      if (!employee) return 'No position'
-      return employee.position || employee.rank || employee.employeeData?.position || 'No position'
-    }
-
-    // Helper to get employee initial
-    const getEmployeeInitial = (employee) => {
-      const name = getEmployeeName(employee)
-      return name.charAt(0).toUpperCase()
-    }
-
-    // Helper to check if position is a head position - UPDATED to check designation field first
     const isHeadPosition = (employee) => {
       if (!employee) return false
-
-      // Based on your console logs, the job title is in 'designation' field
-      const designation = (employee.designation || employee.employeeData?.designation || '')
-        .toLowerCase()
-        .trim()
-
-      // Check designation first (primary source)
-      if (designation && HEAD_POSITION_TITLES.some((title) => designation.includes(title))) {
-        return true
-      }
-
-      // Fallback to other fields
-      const otherFields = (
+      const jobTitle = (
         employee.job_title ||
         employee.jobTitle ||
-        employee.position ||
-        employee.rank ||
         employee.employeeData?.job_title ||
-        employee.employeeData?.position ||
+        ''
+      )
+        .toLowerCase()
+        .trim()
+      return HEAD_POSITION_TITLES.some((title) => jobTitle.includes(title))
+    }
+
+    const getEmployeeBadgeColor = (employee) => (isHeadPosition(employee) ? 'green' : 'primary')
+    const getEmployeeName = (e) =>
+      e?.label || e?.name || e?.employeeData?.name || 'Unnamed Employee'
+    const getEmployeePosition = (e) =>
+      e?.position || e?.rank || e?.employeeData?.position || 'No position'
+    const getEmployeeInitial = (e) => getEmployeeName(e).charAt(0).toUpperCase()
+    const getEmployeeIndex = (id) => employeeTabs.value.findIndex((e) => e.id === id)
+    const getSelectedEmployeeIds = () =>
+      employeeTabs.value.filter((e) => e.employeeId !== null).map((e) => e.employeeId)
+
+    const isSupportCategory = (category) => {
+      if (!category) return false
+      const nameFromObject = category.name || category.label
+      if (nameFromObject) {
+        return (
+          nameFromObject.toLowerCase().includes('support') ||
+          nameFromObject.trim().toUpperCase().startsWith('C')
+        )
+      }
+      const cat = officeLibraryStore.categories.find((c) => c.id === category)
+      if (!cat) return false
+      return (
+        cat.name?.toLowerCase().includes('support') ||
+        cat.label?.toLowerCase().includes('support') ||
+        cat.name?.trim().toUpperCase().startsWith('C') ||
+        cat.label?.trim().toUpperCase().startsWith('C')
+      )
+    }
+
+    // ===========================================================================
+    // 7. OFFICE HEAD DETECTION — per active employee tab
+    // ===========================================================================
+
+    /**
+     * True ONLY when the currently active employee tab has job_title === 'office head'
+     * (exact, case-insensitive match).
+     *
+     * Section heads, division heads, unit heads, etc. are intentionally excluded —
+     * only the Office Head sits at the cascade root and targets at the MFO level
+     * without needing an output selection.
+     */
+    const isCurrentEmployeeOfficeHead = computed(() => {
+      const tab = employeeTabs.value.find((e) => e.id === activeEmployeeTab.value)
+      if (!tab) return false
+
+      const jobTitle = (
+        tab.employeeData?.job_title ||
+        tab.employeeData?.jobTitle ||
+        tab.job_title ||
+        tab.jobTitle ||
         ''
       )
         .toLowerCase()
         .trim()
 
-      return HEAD_POSITION_TITLES.some((title) => otherFields.includes(title))
+      return jobTitle === 'office head'
+    })
+
+    /**
+     * Whether the Output select should be rendered for a given standard.
+     *
+     * Rules (mirrors Edit modal's shouldShowOutput):
+     *   - Office Head + non-support category (A or B) → HIDDEN
+     *     Office Heads target at the MFO level; output is not required.
+     *   - Office Head + support category (C)          → SHOWN
+     *     Support outputs are still relevant even for heads.
+     *   - All other employees                         → ALWAYS SHOWN
+     */
+    const shouldShowOutput = (standard) => {
+      if (!isCurrentEmployeeOfficeHead.value) return true
+      return isSupportCategory(standard.rows.category)
     }
 
-    // Helper to get badge color based on position
-    const getEmployeeBadgeColor = (employee) => {
-      return isHeadPosition(employee) ? 'green' : 'primary'
-    }
+    // ===========================================================================
+    // 8. HEAD EMPLOYEE COMPUTED
+    // ===========================================================================
 
-    const initializeUWPData = () => {
-      try {
-        const stored = sessionStorage.getItem('uwpData')
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          uwpData.value = parsed
-          console.log('UWP Data initialized:', parsed)
-        }
-      } catch (error) {
-        console.error('❌ Failed to parse UWP data:', error)
+    /**
+     * True when the current employee tab is the root/head employee
+     * (i.e. cascadeDomino marks them as head).
+     */
+    const isCurrentEmployeeHead = computed(() => {
+      return cascadeDomino.isHead(activeEmployeeTab.value)
+    })
+
+    // ===========================================================================
+    // 9. SUPERVISOR RESOLUTION
+    // ===========================================================================
+
+    /**
+     * Resolve the supervisory signatory for an employee from cascade data.
+     *
+     * LOGIC:
+     *   WITH mfoValue + outputName:
+     *     1. Find controlNo in supervisories[].
+     *        - Does that supervisory have matching MFO+output? YES → use them.
+     *        - NO or not found → fall back to Office Head (root).
+     *
+     *   WITH mfoValue only (no output):
+     *     → Use Office Head (root).
+     *
+     *   NO mfoValue:
+     *     → Use the employee's stored supervisorySignatory directly.
+     */
+    const calculateSupervisorySignatory = (
+      employee,
+      cascadeDataSource = null,
+      mfoValue = null,
+      outputName = null,
+    ) => {
+      const source = cascadeDataSource || cascadeStore.cascadeData
+      const normalise = (s) => (s || '').toLowerCase().trim()
+
+      if (!source) {
+        return employee?.supervisorySignatory
+          ? {
+              controlNo: employee.supervisorySignatory.controlNo,
+              name: employee.supervisorySignatory.name,
+              rank: employee.supervisorySignatory.rank,
+              job_title:
+                employee.supervisorySignatory.job_title || employee.supervisorySignatory.jobTitle,
+            }
+          : null
       }
-    }
 
-    const initializeEmployeeTabs = () => {
-      console.log('Initializing employee tabs...')
-      const defaultEmp = createDefaultEmployeeData()
-      employeeTabs.value = [defaultEmp]
-      activeEmployeeTab.value = defaultEmp.id
-      console.log('Default tab created')
-    }
+      const knownControlNo =
+        employee?.supervisorySignatory?.controlNo ||
+        employee?.employeeData?.existing_target_period?.supervisory_control_no ||
+        null
 
-    // Auto-select head employees from the available employees - UPDATED to check designation field
-    const autoSelectHeadEmployees = () => {
-      console.log('🔄 Auto-selection triggered - Attempt:', autoSelectionAttempts.value + 1)
-
-      if (autoSelectionPerformed.value) {
-        console.log('✅ Auto-selection already performed, skipping')
-        return
-      }
-
-      if (
-        !uwpData.value.employeesWithoutTargetPeriod ||
-        uwpData.value.employeesWithoutTargetPeriod.length === 0
-      ) {
-        console.log('❌ No employees available for auto-selection')
-
-        if (autoSelectionAttempts.value < MAX_AUTO_SELECTION_ATTEMPTS) {
-          autoSelectionAttempts.value++
-          setTimeout(() => {
-            console.log(
-              `⏳ Retrying auto-selection (Attempt ${autoSelectionAttempts.value + 1})...`,
-            )
-            autoSelectHeadEmployees()
-          }, 500)
-        }
-        return
-      }
-
-      console.log('📊 Available employees:', uwpData.value.employeesWithoutTargetPeriod.length)
-
-      // Debug: Log all employees and their designation fields
-      uwpData.value.employeesWithoutTargetPeriod.forEach((emp, idx) => {
-        console.log(`Employee ${idx + 1}:`, {
-          name: emp.label || emp.name,
-          designation: emp.designation, // This is the key field!
-          employeeData_designation: emp.employeeData?.designation,
-          job_title: emp.job_title,
-          position: emp.position,
-          rank: emp.rank,
-        })
+      console.log('[UWP] Resolving signatory for:', employee?.label || employee?.name, {
+        knownControlNo,
+        rootControlNo: source.controlNo,
+        mfoValue,
+        outputName,
       })
 
-      // Find head employees among available employees - check designation FIRST
-      const headEmployees = uwpData.value.employeesWithoutTargetPeriod.filter((emp) => {
-        // Check designation field (primary - from your logs)
-        const designation = (emp.designation || emp.employeeData?.designation || '')
-          .toLowerCase()
-          .trim()
+      const fromSup = (sup) => ({
+        controlNo: sup.controlNo,
+        name: sup.name,
+        rank: sup.rank,
+        job_title: sup.job_title,
+      })
 
-        // Check other fields as fallback
-        const otherFields = (
-          emp.job_title ||
-          emp.jobTitle ||
-          emp.position ||
-          emp.rank ||
-          emp.employeeData?.job_title ||
-          emp.employeeData?.position ||
-          ''
-        )
-          .toLowerCase()
-          .trim()
+      const fromRoot = () => ({
+        controlNo: source.controlNo,
+        name: source.name,
+        rank: source.rank,
+        job_title: source.job_title,
+      })
 
-        const isHead = HEAD_POSITION_TITLES.some(
-          (title) => designation.includes(title) || otherFields.includes(title),
-        )
+      if (!mfoValue) return fromRoot()
 
-        if (isHead) {
-          console.log(
-            `✅ Head employee found: ${emp.label || emp.name} - Designation: ${designation}`,
+      const knownSup = knownControlNo
+        ? (source.supervisories || []).find((s) => s.controlNo === knownControlNo)
+        : null
+
+      if (outputName) {
+        if (knownSup) {
+          const supHasMfoOutput = (knownSup.mfos || []).some(
+            (m) =>
+              normalise(m.mfo) === normalise(mfoValue) &&
+              normalise(m.output) === normalise(outputName),
           )
-        }
-
-        return isHead
-      })
-
-      console.log(
-        `🎯 Found ${headEmployees.length} head employees:`,
-        headEmployees.map((e) => ({
-          name: e.label || e.name,
-          designation: e.designation,
-        })),
-      )
-
-      if (headEmployees.length === 0) {
-        console.log('⚠️ No head employees found for auto-selection')
-        autoSelectionPerformed.value = true
-        return
-      }
-
-      // Clear the default empty tab if it exists
-      if (employeeTabs.value.length === 1 && !employeeTabs.value[0].employeeId) {
-        employeeTabs.value = []
-      }
-
-      // Create tabs for each head employee
-      headEmployees.forEach((headEmp, index) => {
-        console.log(`Creating tab for head employee ${index + 1}:`, headEmp.label || headEmp.name)
-
-        const employeeData = createDefaultEmployeeData()
-        employeeData.name = headEmp.label || headEmp.name || ''
-        employeeData.employeeId = headEmp.id
-        employeeData.employeeData = headEmp
-        employeeData.rank = headEmp.rank || headEmp.employment_type || ''
-        employeeData.position = headEmp.designation || headEmp.position || '' // Use designation as position
-        employeeData.sg = headEmp.salary_grade || headEmp.sg || headEmp.SG || ''
-        employeeData.level = headEmp.employeeStatus || headEmp.level || ''
-
-        employeeTabs.value.push(employeeData)
-
-        // Auto-populate core competencies
-        if (employeeData.sg && employeeData.level) {
-          employeeData.performanceStandards.forEach((standard) => {
-            autoPopulateCoreCompetencies(standard, employeeData.sg, employeeData.level)
-          })
-        }
-      })
-
-      // Set active tab to the first head employee
-      if (employeeTabs.value.length > 0) {
-        activeEmployeeTab.value = employeeTabs.value[0].id
-      }
-
-      autoSelectionPerformed.value = true
-
-      $q.notify({
-        message: `Automatically selected ${headEmployees.length} head employee(s)`,
-        color: 'info',
-        position: 'top',
-        timeout: 3000,
-      })
-
-      console.log('✅ Auto-selection completed. Total tabs:', employeeTabs.value.length)
-    }
-
-    // Auto-populate core competencies based on employee's SG and Level
-    const autoPopulateCoreCompetencies = (standard, sg, level) => {
-      if (!sg || !level) {
-        console.log('Cannot auto-populate: missing SG or Level', { sg, level })
-        return
-      }
-
-      console.log('Auto-populating core competencies for SG:', sg, 'Level:', level)
-
-      const competencyRow = competencyStore.getBySG(sg)
-
-      if (!competencyRow) {
-        console.log('No competency row found for SG:', sg)
-        return
-      }
-
-      // Clear existing core competencies first
-      standard.competencies.core = []
-
-      // Get core competencies from competencyData
-      const coreCompetencies = competencyData.core || []
-
-      // For each core competency, check if it's required for this SG
-      coreCompetencies.forEach((comp) => {
-        const requiredLevel = competencyRow[comp.code]
-
-        // Only add if the competency is required (has a level and not '-')
-        if (requiredLevel && requiredLevel !== '-') {
-          // Map the level text to value
-          const levelMap = {
-            Basic: '1',
-            Intermediate: '2',
-            Advanced: '3',
-            Superior: '4',
+          if (supHasMfoOutput) {
+            console.log('[UWP] ✅ Known supervisor has matching MFO+output:', knownSup.name)
+            return fromSup(knownSup)
           }
-
-          standard.competencies.core.push({
-            code: comp.code,
-            description: comp.description,
-            value: levelMap[requiredLevel] || '1',
-            level: requiredLevel,
-          })
-
-          console.log(`Added ${comp.code} with level ${requiredLevel}`)
+          console.log(
+            '[UWP] Known supervisor does NOT have this MFO+output → falling back to Office Head',
+            { supervisor: knownSup.name, mfoValue, outputName },
+          )
+          return fromRoot()
         }
-      })
+        console.log('[UWP] controlNo not in supervisories[] → using Office Head')
+        return fromRoot()
+      }
+
+      console.log('[UWP] No output selected → using Office Head')
+      return fromRoot()
     }
 
-    // Computed properties
+    // ===========================================================================
+    // 10. COMPUTED PROPERTIES
+    // ===========================================================================
+
     const semesterOptions = computed(() => uwpStore.getSemesterOptions)
     const yearOptions = computed(() => uwpStore.getYearOptions)
 
-    const breadcrumbDisplay = computed(() => {
-      return !uwpData.value.breadcrumb || uwpData.value.breadcrumb.length === 0
+    const breadcrumbDisplay = computed(() =>
+      !uwpData.value.breadcrumb?.length
         ? 'Organization Structure'
-        : uwpData.value.breadcrumb.join(' / ')
-    })
+        : uwpData.value.breadcrumb.join(' / '),
+    )
 
     const selectedNodeLabel = computed(() => uwpData.value.selectedNodeLabel || 'Work Plan')
-
-    const currentEmployee = computed(() => {
-      const activeEmployee = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
-      return activeEmployee || employeeTabs.value[0] || createDefaultEmployeeData()
-    })
 
     const hierarchyLabels = computed(() => ({
       office: uwpData.value.hierarchy.office?.label || '',
@@ -1996,68 +1843,53 @@ export default {
       unit: uwpData.value.hierarchy.unit?.label || '',
     }))
 
+    const currentEmployee = computed(() => {
+      const active = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
+      return active || employeeTabs.value[0] || createDefaultEmployeeData()
+    })
+
+    const selectedEmployee = computed(() => {
+      const tab = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
+      if (!tab?.employeeId) return { rank: '', position: '', sg: '', level: '' }
+      return {
+        rank: tab.rank || '',
+        position: tab.position || '',
+        sg: tab.sg || '',
+        level: tab.level || '',
+      }
+    })
+
     const visibleEmployeeTabs = computed(() => employeeTabs.value.slice(0, maxVisibleTabs.value))
     const overflowEmployeeTabs = computed(() => employeeTabs.value.slice(maxVisibleTabs.value))
     const hasOverflowTabs = computed(() => employeeTabs.value.length > maxVisibleTabs.value)
 
-    const getEmployeeIndex = (id) => employeeTabs.value.findIndex((emp) => emp.id === id)
-
-    const getSelectedEmployeeIds = () =>
-      employeeTabs.value.filter((emp) => emp.employeeId !== null).map((emp) => emp.employeeId)
-
     const allEmployeesSelected = computed(() => {
-      if (
-        !uwpData.value.employeesWithoutTargetPeriod ||
-        uwpData.value.employeesWithoutTargetPeriod.length === 0
-      )
-        return false
-      const selectedIds = getSelectedEmployeeIds()
-      const totalEmployees = uwpData.value.employeesWithoutTargetPeriod.length
-      return totalEmployees > 0 && selectedIds.length >= totalEmployees
+      const available = uwpData.value.employeesWithoutTargetPeriod || []
+      if (!available.length) return false
+      return getSelectedEmployeeIds().length >= available.length
     })
+
+    const isAddEmployeeDisabled = computed(() =>
+      (uwpData.value.employeesWithoutTargetPeriod || []).some((emp) => isHeadPosition(emp)),
+    )
+
+    const showHeadBanner = computed(() =>
+      (uwpData.value.employeesWithoutTargetPeriod || []).some((emp) => isHeadPosition(emp)),
+    )
 
     const availableEmployeesForTab = computed(() => {
-      const allAvailableEmployees = [...(uwpData.value.employeesWithoutTargetPeriod || [])]
-      const uniqueEmployees = []
-      const seenIds = new Set()
-
-      allAvailableEmployees.forEach((emp) => {
-        if (emp.id && !seenIds.has(emp.id)) {
-          seenIds.add(emp.id)
-          uniqueEmployees.push(emp)
-        }
+      const all = uwpData.value.employeesWithoutTargetPeriod || []
+      const seen = new Set()
+      const unique = all.filter((emp) => {
+        if (!emp.id || seen.has(emp.id)) return false
+        seen.add(emp.id)
+        return true
       })
-
-      if (uniqueEmployees.length === 0) return []
-
       const selectedIds = getSelectedEmployeeIds()
-      const currentTabId = activeEmployeeTab.value
-      const currentTabEmployeeId = employeeTabs.value.find(
-        (emp) => emp.id === currentTabId,
+      const currentTabEmpId = employeeTabs.value.find(
+        (e) => e.id === activeEmployeeTab.value,
       )?.employeeId
-
-      const filtered = uniqueEmployees.filter((emp) => {
-        if (!selectedIds.includes(emp.id)) return true
-        if (emp.id === currentTabEmployeeId) return true
-        return false
-      })
-
-      return filtered
-    })
-
-    const selectedEmployee = computed(() => {
-      const currentTab = employeeTabs.value.find((emp) => emp.id === activeEmployeeTab.value)
-
-      if (!currentTab || !currentTab.employeeId) {
-        return { rank: '', position: '', sg: '', level: '' }
-      }
-
-      return {
-        rank: currentTab.rank || '',
-        position: currentTab.position || '',
-        sg: currentTab.sg || '',
-        level: currentTab.level || '',
-      }
+      return unique.filter((emp) => !selectedIds.includes(emp.id) || emp.id === currentTabEmpId)
     })
 
     const categoryOptions = computed(() =>
@@ -2080,21 +1912,14 @@ export default {
     )
 
     const competencyOptions = computed(() => {
-      if (!currentEmployee.value?.sg || !currentEmployee.value?.level) {
-        return []
-      }
-
-      const sg = currentEmployee.value.sg
+      const { sg } = currentEmployee.value || {}
+      if (!sg) return []
       const competencyRow = competencyStore.getBySG(sg)
-
       if (!competencyRow) return []
-
-      const typeCompetencies = competencyData[competencyType.value] || []
-
-      return typeCompetencies
+      return (COMPETENCY_DEFINITIONS[competencyType.value] || [])
         .filter((comp) => {
-          const competencyLevel = competencyRow[comp.code]
-          return competencyLevel && competencyLevel !== '-'
+          const level = competencyRow[comp.code]
+          return level && level !== '-'
         })
         .map((comp) => ({
           code: comp.code,
@@ -2104,551 +1929,355 @@ export default {
         }))
     })
 
-    const hasMinimumEffectivenessValues = (index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard) return false
-      const filledValues = standard.standardOutcomeRows.filter(
-        (row) => row.effectiveness && row.effectiveness.trim().length > 0,
-      ).length
-      return filledValues >= 2
-    }
+    const levelOptions = computed(() => {
+      if (!selectedCompetency.value) return []
+      const rl = selectedCompetency.value.requiredLevel
+      return rl && LEVEL_MAP[rl] ? [LEVEL_MAP[rl]] : []
+    })
 
-    const hasMinimumCompetencies = (employee, standardIndex) => {
-      if (
-        !employee ||
-        !employee.performanceStandards ||
-        standardIndex >= employee.performanceStandards.length
-      ) {
-        return false
-      }
-
-      const standard = employee.performanceStandards[standardIndex]
-      if (!standard || !standard.competencies) return false
-
-      const { core, technical, leadership } = standard.competencies
-      const totalCompetencies =
-        (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
-
-      return totalCompetencies >= 1
-    }
+    const isAnyCompetencyValid = computed(() =>
+      competencySelections.value.some((c) => c.selectedCompetency && c.selectedLevel),
+    )
 
     const isFormValid = computed(() => {
-      if (employeeTabs.value.length === 0) return false
-      const hasTargetPeriod =
-        uwpData.value.targetPeriod?.semester && uwpData.value.targetPeriod?.year
-      if (!hasTargetPeriod) return false
-
-      const allEmployeesValid = employeeTabs.value.every((emp) => {
+      if (!employeeTabs.value.length) return false
+      if (!uwpData.value.targetPeriod?.semester || !uwpData.value.targetPeriod?.year) return false
+      return employeeTabs.value.every((emp) => {
         if (!emp.employeeId) return false
+        return emp.performanceStandards.every((std) => {
+          const filledEffectiveness =
+            std.standardOutcomeRows?.filter((r) => r.effectiveness?.trim().length > 0).length || 0
+          if (filledEffectiveness < 2) return false
+          const { core = [], technical = [], leadership = [] } = std.competencies
+          return core.length + technical.length + leadership.length >= 1
+        })
+      })
+    })
 
-        const allStandardsValid = emp.performanceStandards.every((standard) => {
-          if (!standard.standardOutcomeRows) return false
-          const filledEffectivenessValues = standard.standardOutcomeRows.filter(
-            (row) => row.effectiveness && row.effectiveness.trim().length > 0,
-          ).length
-          if (filledEffectivenessValues < 2) return false
+    const quantityExceedsMax = computed(() => {
+      const max = currentQuantityRestriction.value?.maxQuantity
+      if (max == null) return false
+      return quantityValue.value > max
+    })
 
-          const { core, technical, leadership } = standard.competencies
-          const totalCompetencies =
-            (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
+    const hasOrganizationalSelection = computed(
+      () => form.value.division !== null || form.value.section !== null || form.value.unit !== null,
+    )
 
-          return totalCompetencies >= 1
+    // ===========================================================================
+    // 11. OUTPUT UNIQUENESS
+    // ===========================================================================
+
+    /**
+     * Returns the set of output IDs already used by OTHER performance standards
+     * in the SAME MFO for the current employee tab.
+     */
+    const getUsedOutputIdsForMfo = (currentStandardIndex) => {
+      const standards = currentEmployee.value?.performanceStandards
+      if (!standards) return new Set()
+      const currentStd = standards[currentStandardIndex]
+      if (!currentStd?.rows?.mfo) return new Set()
+
+      const used = new Set()
+      standards.forEach((std, idx) => {
+        if (idx === currentStandardIndex) return
+        if (!std?.rows?.mfo || !std?.rows?.output) return
+        if (std.rows.mfo === currentStd.rows.mfo) {
+          used.add(std.rows.output)
+        }
+      })
+      return used
+    }
+
+    /**
+     * Returns output options filtered to exclude outputs already used in other
+     * performance standards with the same MFO.
+     */
+    const getAvailableOutputOptions = (index) => {
+      const allOptions = getFilteredOutputOptions(index)
+      const usedIds = getUsedOutputIdsForMfo(index)
+      if (!usedIds.size) return allOptions
+
+      const currentStd = currentEmployee.value.performanceStandards[index]
+      return allOptions.filter(
+        (opt) => !usedIds.has(opt.value) || opt.value === currentStd?.rows?.output,
+      )
+    }
+
+    /**
+     * Returns an appropriate "no option" message for the output dropdown.
+     */
+    const getOutputNoOptionMessage = (index) => {
+      const std = currentEmployee.value.performanceStandards[index]
+      if (!std?.rows?.category) return 'Select a category first'
+
+      const allOptions = getFilteredOutputOptions(index)
+      const usedIds = getUsedOutputIdsForMfo(index)
+
+      if (allOptions.length === 0) return 'No outputs found matching your search'
+      if (allOptions.every((opt) => usedIds.has(opt.value))) {
+        return 'All outputs for this MFO are already used in other performance standards'
+      }
+      return 'No outputs found matching your search'
+    }
+
+    /**
+     * Returns an appropriate "no option" message for the MFO dropdown.
+     */
+    const getMfoNoOptionMessage = (index) => {
+      const std = currentEmployee.value.performanceStandards[index]
+      if (!std?.rows?.category) return 'Select a category first'
+      return 'No MFOs found matching your search'
+    }
+
+    // ===========================================================================
+    // 11b. HEAD MFO FETCH
+    // ===========================================================================
+
+    /**
+     * Fetches the Office Head's existing performance standards via useMFOHeadStore
+     * and builds headMfoNames — a Set of lowercased MFO name strings.
+     *
+     * Non-Office-Head employees' MFO dropdowns are restricted to this set so they
+     * can only select MFOs that the Office Head has already planned.
+     *
+     * IMPORTANT: The Office Head is often NOT in employeesWithoutTargetPeriod because
+     * they already have a target period. We therefore use a 3-strategy lookup:
+     *   1. A tab if one exists (Office Head is new this period)
+     *   2. uwpData.availableEmployees — full list before the "no target period" filter
+     *   3. uwpData.hierarchy.office — last resort; server scopes by office_id anyway
+     */
+    const fetchHeadMfos = async () => {
+      const semester = uwpData.value.targetPeriod?.semester
+      const year = uwpData.value.targetPeriod?.year
+      if (!semester || !year) return
+
+      // ── Strategy 1: Office Head already in a tab (new this period) ───────────
+      let empData = null
+      const headTab = employeeTabs.value.find((tab) => {
+        const jt = (
+          tab.employeeData?.job_title ||
+          tab.employeeData?.jobTitle ||
+          tab.job_title ||
+          tab.jobTitle ||
+          ''
+        )
+          .toLowerCase()
+          .trim()
+        return jt === 'office head'
+      })
+      if (headTab?.employeeData) {
+        empData = headTab.employeeData
+        console.log('[UWP] fetchHeadMfos: using Office Head from tab:', empData.name)
+      }
+
+      // ── Strategy 2: Find Office Head in the full available-employees list ────
+      // availableEmployees contains ALL employees including those who already have
+      // a target period and therefore don't appear in employeesWithoutTargetPeriod.
+      if (!empData) {
+        const allEmployees = [
+          ...(uwpData.value.availableEmployees || []),
+          ...(uwpData.value.employeesWithoutTargetPeriod || []),
+        ]
+        const headEmp = allEmployees.find(
+          (emp) => (emp.job_title || emp.jobTitle || '').toLowerCase().trim() === 'office head',
+        )
+        if (headEmp) {
+          empData = headEmp
+          console.log('[UWP] fetchHeadMfos: using Office Head from employee list:', empData.name)
+        }
+      }
+
+      // ── Strategy 3: Derive from uwpData hierarchy (office-scoped fallback) ───
+      // Even without a concrete employee record the server can find the head by
+      // office_id + semester + year.
+      if (!empData) {
+        const officeNode = uwpData.value.hierarchy?.office
+        if (officeNode) {
+          empData = {
+            ControlNo: null,
+            name: officeNode.label || '',
+            office: officeNode.label || '',
+            job_title: 'Office Head',
+            office_id: officeNode.id || null,
+          }
+          console.log('[UWP] fetchHeadMfos: using office hierarchy fallback:', empData.office)
+        }
+      }
+
+      if (!empData) {
+        console.warn('[UWP] fetchHeadMfos: cannot resolve Office Head — skipping')
+        return
+      }
+
+      const payload = {
+        employee: {
+          ControlNo: empData.ControlNo || empData.control_no || empData.id || null,
+          name: empData.name || empData.label || '',
+          office: empData.office || empData.office_name || empData.label || '',
+          job_title: empData.job_title || empData.jobTitle || 'Office Head',
+          office_id: empData.office_id || empData.officeId || null,
+        },
+      }
+
+      console.log('[UWP] fetchHeadMfos payload:', payload)
+
+      isFetchingHeadMfos.value = true
+      try {
+        const result = await mfoHeadStore.fetchMFOHead(semester, year, payload)
+        // API returns { target_period: { performance_standards: [{ mfo, ... }] } }
+        const standards =
+          result?.target_period?.performance_standards || result?.performance_standards || []
+        headMfoNames.value = new Set(
+          standards.map((ps) => (ps.mfo || '').trim().toLowerCase()).filter(Boolean),
+        )
+        console.log('[UWP] headMfoNames loaded:', [...headMfoNames.value])
+      } catch (err) {
+        console.error('[UWP] fetchHeadMfos error:', err)
+        // On failure leave headMfoNames empty — MFO list falls back to full library
+        headMfoNames.value = new Set()
+      } finally {
+        isFetchingHeadMfos.value = false
+      }
+    }
+
+    // ===========================================================================
+    // 12. INITIALIZATION METHODS
+    // ===========================================================================
+
+    const initializeUWPData = () => {
+      try {
+        const stored = sessionStorage.getItem('uwpData')
+        if (stored) {
+          uwpData.value = JSON.parse(stored)
+          console.log('[UWP] Data initialized from sessionStorage')
+        }
+      } catch (error) {
+        console.error('[UWP] Failed to parse sessionStorage data:', error)
+      }
+    }
+
+    const initializeEmployeeTabs = () => {
+      const defaultEmp = createDefaultEmployeeData()
+      employeeTabs.value = [defaultEmp]
+      activeEmployeeTab.value = defaultEmp.id
+    }
+
+    // ===========================================================================
+    // 13. AUTO-SELECTION — HEAD EMPLOYEE
+    // ===========================================================================
+
+    const autoSelectHeadEmployees = () => {
+      if (autoSelectionPerformed.value) return
+
+      const available = uwpData.value.employeesWithoutTargetPeriod || []
+      if (!available.length) {
+        if (autoSelectionAttempts.value < MAX_AUTO_SELECTION_ATTEMPTS) {
+          autoSelectionAttempts.value++
+          setTimeout(autoSelectHeadEmployees, 500)
+        }
+        return
+      }
+
+      const headEmployees = available.filter((emp) => isHeadPosition(emp))
+      if (!headEmployees.length) {
+        autoSelectionPerformed.value = true
+        return
+      }
+
+      if (employeeTabs.value.length === 1 && !employeeTabs.value[0].employeeId) {
+        employeeTabs.value = []
+      }
+
+      headEmployees.forEach((headEmp) => {
+        const employeeData = createDefaultEmployeeData()
+        Object.assign(employeeData, {
+          name: headEmp.label || headEmp.name || '',
+          employeeId: headEmp.id,
+          employeeData: headEmp,
+          rank: headEmp.rank || headEmp.employment_type || '',
+          position: headEmp.designation || headEmp.position || '',
+          sg: headEmp.salary_grade || headEmp.sg || headEmp.SG || '',
+          level: headEmp.employeeStatus || headEmp.level || '',
+          supervisorySignatory: calculateSupervisorySignatory(headEmp),
         })
 
-        return allStandardsValid
+        if (employeeData.sg && employeeData.level) {
+          employeeData.performanceStandards.forEach((std) =>
+            autoPopulateCoreCompetencies(std, employeeData.sg, employeeData.level),
+          )
+        }
+
+        employeeTabs.value.push(employeeData)
       })
 
-      return hasTargetPeriod && allEmployeesValid
-    })
+      activeEmployeeTab.value = employeeTabs.value[0]?.id
+      autoSelectionPerformed.value = true
 
-    const isAnyCompetencyValid = computed(() => {
-      return competencySelections.value.some(
-        (comp) => comp.selectedCompetency && comp.selectedLevel,
-      )
-    })
-
-    // Methods
-    const onBack = () => router.back()
-
-    const filterPerformanceIndicators = (val, update) => {
-      if (typeof update === 'function') {
-        update(() => {
-          const needle = (val || '').toLowerCase()
-          filteredVerbs.value = officeLibraryIndicatorStore.verbs
-            .map((verb) => ({
-              id: verb.id,
-              label: verb.indicator_name || verb.name,
-              value: verb.id,
-              name: verb.indicator_name || verb.name,
-              description: verb.description || '',
-            }))
-            .filter(
-              (verb) =>
-                verb.label.toLowerCase().includes(needle) ||
-                (verb.description && verb.description.toLowerCase().includes(needle)),
-            )
-        })
-      } else {
-        filteredVerbs.value = officeLibraryIndicatorStore.verbs.map((verb) => ({
-          id: verb.id,
-          label: verb.indicator_name || verb.name,
-          value: verb.id,
-          name: verb.indicator_name || verb.name,
-          description: verb.description || '',
-        }))
-      }
-    }
-
-    const getQuantityHint = (standard) => {
-      if (standard.quantityRestriction?.maxQuantity) {
-        return `Max: ${standard.quantityRestriction.maxQuantity}`
-      }
-      return ''
-    }
-
-    const isQuantityExceeded = (standard, row) => {
-      if (standard.quantityIndicatorType !== 'numeric') return false
-      if (!standard.quantityRestriction?.maxQuantity) return false
-
-      const value = parseInt(row.quantity)
-      if (isNaN(value)) return false
-
-      return value > standard.quantityRestriction.maxQuantity
-    }
-
-    const getQuantityErrorMessage = (standard) => {
-      if (standard.quantityRestriction?.maxQuantity) {
-        return `Cannot exceed ${standard.quantityRestriction.maxQuantity}`
-      }
-      return ''
-    }
-
-    // Cascade Modal Method - Use Office Head when no supervisories
-    const checkAndShowCascadeModal = async (standardIndex) => {
-      const standard = currentEmployee.value.performanceStandards[standardIndex]
-
-      if (!standard) {
-        console.log('Standard not found')
-        return
-      }
-
-      if (!standard.rows.mfo) {
-        $q.notify({
-          message: 'Please select an MFO first',
-          color: 'warning',
-          position: 'top',
-          timeout: 3000,
-        })
-        return
-      }
-
-      if (!standard.indicatorName || standard.indicatorName.length === 0) {
-        console.log('No performance indicators selected')
-        return
-      }
-
-      const mfoId = standard.rows.mfo
-      const selectedMfo = officeLibraryStore.mfos.find((m) => m.id === mfoId)
-      const mfoValue = selectedMfo?.name || mfoId
-
-      const loadingNotif = $q.notify({
-        message: 'Loading cascade data...',
+      $q.notify({
+        message: `Automatically selected ${headEmployees.length} head employee(s)`,
         color: 'info',
         position: 'top',
-        timeout: 0,
-        spinner: true,
-        group: false,
+        timeout: 3000,
       })
-
-      try {
-        const semester = uwpData.value.targetPeriod?.semester
-        const year = uwpData.value.targetPeriod?.year
-
-        if (!semester || !year) {
-          throw new Error('Semester and year are required')
-        }
-
-        await cascadeStore.fetchCascade(semester, year, mfoValue)
-        const fetchedData = cascadeStore.cascadeData
-
-        if (!fetchedData) {
-          throw new Error('No cascade data found')
-        }
-
-        const indicatorIds = Array.isArray(standard.indicatorName) ? standard.indicatorName : []
-        const matchedMfo = fetchedData.mfos?.find(
-          (mfo) => mfo.mfo === selectedMfo?.name || mfo.mfo === mfoValue,
-        )
-
-        const indicatorNames = indicatorIds.map((id) => {
-          const verb = officeLibraryIndicatorStore.verbs.find((v) => v.id === Number(id))
-          return verb?.indicator_name || verb?.name || id
-        })
-
-        // Determine which supervisor to use for restriction
-        let supervisorToUse = null
-
-        // Priority 1: Check if employee has their own supervisorySignatory
-        if (currentEmployee.value.supervisorySignatory) {
-          supervisorToUse = currentEmployee.value.supervisorySignatory
-          console.log("Using employee's supervisory signatory:", supervisorToUse)
-        }
-        // Priority 2: If no employee supervisor, check if cascade has supervisories array with data
-        else if (fetchedData.supervisories && fetchedData.supervisories.length > 0) {
-          supervisorToUse = fetchedData.supervisories[0]
-          console.log('Using first supervisor from cascade:', supervisorToUse)
-        }
-        // Priority 3: If no supervisors at all, use the Office Head from the main cascade response
-        else {
-          // Use the main cascade person (Office Head) as the supervisor reference
-          // IMPORTANT: Include the mfos array from fetchedData
-          supervisorToUse = {
-            name: fetchedData.name,
-            rank: fetchedData.rank,
-            job_title: fetchedData.job_title,
-            office: fetchedData.office,
-            controlNo: fetchedData.controlNo,
-            mfos: fetchedData.mfos || [], // Include MFOs for category checking
-            // Calculate total available from all MFOs
-            available:
-              fetchedData.mfos?.reduce((total, mfo) => total + (mfo.available || 0), 0) || 0,
-          }
-          console.log('No supervisors found, using Office Head as reference:', supervisorToUse)
-
-          $q.notify({
-            message: `Using Office Head (${fetchedData.name}) as reference for quantity restriction`,
-            color: 'info',
-            position: 'top',
-            timeout: 5000,
-            icon: 'info',
-          })
-        }
-
-        // Create employee object for restriction calculation with the determined supervisor
-        const employeeForRestriction = {
-          ...currentEmployee.value,
-          supervisorySignatory: supervisorToUse,
-        }
-
-        // Calculate restriction using the determined supervisor
-        const restriction = determineRestriction({
-          selectedEmployee: employeeForRestriction,
-          selectedIndicators: standard.indicatorName,
-          quantityType: standard.quantityIndicatorType,
-          verbs: officeLibraryIndicatorStore.verbs,
-          cascadeData: fetchedData,
-        })
-
-        // Assign the restriction to the standard
-        standard.quantityRestriction = restriction
-
-        // Prepare cascade data
-        cascadeData.value = {
-          controlNo: fetchedData.controlNo,
-          name: fetchedData.name,
-          rank: fetchedData.rank,
-          job_title: fetchedData.job_title,
-          office: fetchedData.office,
-          year: fetchedData.year || year,
-          semester: fetchedData.semester || semester,
-          mfo: selectedMfo?.name,
-          output: standard.rows.output
-            ? officeLibraryStore.outputs.find((o) => o.id === standard.rows.output)?.name
-            : null,
-          output_name: standard.outputName || matchedMfo?.output_name || '',
-          performance_indicator: indicatorNames,
-          success_indicator: matchedMfo?.success_indicator || standard.successIndicator || '',
-          total_target: matchedMfo?.total_target || 0,
-          claimed: matchedMfo?.claimed || 0,
-          available: matchedMfo?.available || 0,
-          quantityRestriction: standard.quantityRestriction,
-          supervisorUsed: supervisorToUse,
-        }
-
-        if (loadingNotif) {
-          loadingNotif()
-        }
-
-        // Show appropriate notification
-        if (!currentEmployee.value.supervisorySignatory) {
-          if (fetchedData.supervisories && fetchedData.supervisories.length > 0) {
-            $q.notify({
-              message: `Using ${fetchedData.supervisories[0].name} as reference for quantity restriction`,
-              color: 'info',
-              position: 'top',
-              timeout: 4000,
-            })
-          } else {
-            $q.notify({
-              message: `Using Office Head (${fetchedData.name}) as reference for quantity restriction`,
-              color: 'info',
-              position: 'top',
-              timeout: 4000,
-            })
-          }
-        }
-
-        $q.notify({
-          message: 'Cascade data loaded successfully',
-          color: 'positive',
-          position: 'top',
-          timeout: 2000,
-        })
-
-        console.log('Quantity restriction applied:', restriction)
-      } catch (error) {
-        if (loadingNotif) {
-          loadingNotif()
-        }
-
-        console.error('Error fetching cascade data:', error)
-
-        $q.notify({
-          message: error.message || 'Failed to load cascade data',
-          color: 'negative',
-          position: 'top',
-        })
-      }
     }
 
-    const isSupportCategory = (category) => {
-      if (!category) return false
-      const nameFromObject = category.name || category.label
-      if (nameFromObject) {
-        return (
-          nameFromObject.toLowerCase().includes('support') ||
-          nameFromObject.trim().toUpperCase().startsWith('C')
-        )
-      }
-      const cat = officeLibraryStore.categories.find((c) => c.id === category)
-      if (!cat) return false
-      return (
-        cat.name?.toLowerCase().includes('support') ||
-        cat.label?.toLowerCase().includes('support') ||
-        cat.name?.trim().toUpperCase().startsWith('C') ||
-        cat.label?.trim().toUpperCase().startsWith('C')
-      )
-    }
+    // ===========================================================================
+    // 14. COMPETENCY METHODS
+    // ===========================================================================
 
-    const getFilteredMfoOptions = (index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard || !standard.rows.category) return []
-
-      const categoryId = standard.rows.category
-      const categoryMfos = officeLibraryStore.mfos.filter((mfo) => mfo.f_category_id === categoryId)
-
-      if (filteredMfoOptions.value[index]) {
-        return filteredMfoOptions.value[index]
-      }
-
-      const allMfos = categoryMfos.map((mfo) => ({
-        id: mfo.id,
-        label: mfo.name,
-        value: mfo.id,
-        name: mfo.name,
-        code: mfo.code || '',
-        description: mfo.description || '',
-      }))
-
-      return allMfos
-    }
-
-    const getFilteredOutputOptions = (index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard || !standard.rows.category) return []
-
-      const categoryId = standard.rows.category
-
-      if (isSupportCategory(categoryId)) {
-        const filteredOutputs = officeLibraryStore.category_outputs.filter(
-          (output) => output.f_category_id === categoryId,
-        )
-        return filteredOutputs.map((output) => ({
-          id: output.id,
-          label: output.name,
-          value: output.id,
-          name: output.name,
-          code: output.code || '',
-          description: output.description || '',
+    const autoPopulateCoreCompetencies = (standard, sg, level) => {
+      if (!sg || !level) return
+      const row = competencyStore.getBySG(sg)
+      if (!row) return
+      standard.competencies.core = COMPETENCY_DEFINITIONS.core
+        .filter((comp) => {
+          const rl = row[comp.code]
+          return rl && rl !== '-'
+        })
+        .map((comp) => ({
+          code: comp.code,
+          description: comp.description,
+          value: LEVEL_MAP[row[comp.code]]?.value || '1',
+          level: row[comp.code],
         }))
-      }
-
-      const mfoId = standard.rows.mfo
-      if (!officeLibraryStore.outputs || officeLibraryStore.outputs.length === 0) return []
-
-      const filteredOutputs = officeLibraryStore.outputs.filter((output) => {
-        if (output.f_category_id !== standard.rows.category) return false
-        if (mfoId) return output.mfo_id === mfoId
-        return output.mfo_id === null
-      })
-
-      return filteredOutputs.map((output) => ({
-        id: output.id,
-        label: output.name,
-        value: output.id,
-        name: output.name,
-        code: output.code || '',
-        description: output.description || '',
-      }))
     }
 
-    const clearDependentFields = (standardIndex, fieldIndex) => {
-      const standard = currentEmployee.value.performanceStandards[standardIndex]
-      if (!standard) return
-      if (fieldIndex === 1) {
-        standard.rows.mfo = null
-        standard.rows.output = null
-        filteredMfoOptions.value[standardIndex] = null
-        filteredOutputOptions.value[standardIndex] = null
-      } else if (fieldIndex === 2) {
-        standard.rows.output = null
-        filteredOutputOptions.value[standardIndex] = null
-      }
-    }
-
-    const filterMfos = (val, update, index) => {
-      if (typeof update === 'function') {
-        update(() => {
-          const needle = (val || '').toLowerCase()
-          const standard = currentEmployee.value.performanceStandards[index]
-
-          if (!standard || !standard.rows.category) {
-            filteredMfoOptions.value[index] = []
-            return
-          }
-
-          const categoryId = standard.rows.category
-          const allMfos = officeLibraryStore.mfos
-            .filter((mfo) => mfo.f_category_id === categoryId)
-            .map((mfo) => ({
-              id: mfo.id,
-              label: mfo.name,
-              value: mfo.id,
-              name: mfo.name,
-              code: mfo.code || '',
-              description: mfo.description || '',
-            }))
-
-          filteredMfoOptions.value[index] = allMfos.filter(
-            (mfo) =>
-              mfo.label.toLowerCase().includes(needle) ||
-              (mfo.code && mfo.code.toLowerCase().includes(needle)) ||
-              (mfo.description && mfo.description.toLowerCase().includes(needle)),
-          )
-        })
-      }
-    }
-
-    const filterOutputs = (val, update, index) => {
-      if (typeof update === 'function') {
-        update(() => {
-          const needle = (val || '').toLowerCase()
-          const standard = currentEmployee.value.performanceStandards[index]
-
-          if (!standard || !standard.rows.category) {
-            filteredOutputOptions.value[index] = []
-            return
-          }
-
-          const categoryId = standard.rows.category
-
-          if (isSupportCategory(categoryId)) {
-            const allOutputs = officeLibraryStore.category_outputs.filter(
-              (output) => output.f_category_id === categoryId,
-            )
-            const outputOptions = allOutputs.map((output) => ({
-              id: output.id,
-              label: output.name,
-              value: output.id,
-              name: output.name,
-              code: output.code || '',
-              description: output.description || '',
-            }))
-            filteredOutputOptions.value[index] = outputOptions.filter(
-              (output) =>
-                output.label.toLowerCase().includes(needle) ||
-                (output.code && output.code.toLowerCase().includes(needle)) ||
-                (output.description && output.description.toLowerCase().includes(needle)),
-            )
-          } else {
-            const mfoId = standard.rows.mfo
-            const allOutputs = officeLibraryStore.outputs.filter((output) => {
-              if (output.f_category_id !== categoryId) return false
-              if (mfoId && output.mfo_id !== mfoId) return false
-              if (!mfoId && output.mfo_id !== null) return false
-              return true
-            })
-            const outputOptions = allOutputs.map((output) => ({
-              id: output.id,
-              label: output.name,
-              value: output.id,
-              name: output.name,
-              code: output.code || '',
-              description: output.description || '',
-            }))
-            filteredOutputOptions.value[index] = outputOptions.filter(
-              (output) =>
-                output.label.toLowerCase().includes(needle) ||
-                (output.code && output.code.toLowerCase().includes(needle)) ||
-                (output.description && output.description.toLowerCase().includes(needle)),
-            )
-          }
-        })
-      }
-    }
-
-    // Competency Methods
     const openCompetencyModal = (type, standardIndex) => {
       if (!currentEmployee.value?.sg || !currentEmployee.value?.level) {
         $q.notify({
-          message: 'Employee SG and Level are required to select competencies',
+          message: 'Employee SG and Level are required',
           color: 'warning',
           position: 'top',
         })
         return
       }
-
       competencyType.value = type
       currentStandardIndexForCompetency.value = standardIndex
-
       competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
       filteredCompetencyOptionsByRow.value = [competencyOptions.value]
-
       showCompetencyModal.value = true
     }
 
     const filterCompetencies = (val, update, rowIndex) => {
-      if (typeof update === 'function') {
-        update(() => {
-          const needle = (val || '').toLowerCase()
-          const filtered = competencyOptions.value.filter(
-            (comp) =>
-              comp.code.toLowerCase().includes(needle) ||
-              comp.description.toLowerCase().includes(needle),
-          )
-
-          if (!filteredCompetencyOptionsByRow.value[rowIndex]) {
-            filteredCompetencyOptionsByRow.value[rowIndex] = []
-          }
-          filteredCompetencyOptionsByRow.value[rowIndex] = filtered
-        })
-      } else {
-        if (!filteredCompetencyOptionsByRow.value[rowIndex]) {
-          filteredCompetencyOptionsByRow.value[rowIndex] = []
-        }
-        filteredCompetencyOptionsByRow.value[rowIndex] = competencyOptions.value
-      }
+      if (typeof update !== 'function') return
+      update(() => {
+        const needle = (val || '').toLowerCase()
+        filteredCompetencyOptionsByRow.value[rowIndex] = competencyOptions.value.filter(
+          (c) =>
+            c.code.toLowerCase().includes(needle) || c.description.toLowerCase().includes(needle),
+        )
+      })
     }
 
     const getAvailableCompetencies = (rowIndex) => {
-      const selectedCodes = competencySelections.value
-        .map((sel, idx) =>
-          idx !== rowIndex && sel.selectedCompetency ? sel.selectedCompetency.code : null,
+      const taken = competencySelections.value
+        .map((sel, i) =>
+          i !== rowIndex && sel.selectedCompetency ? sel.selectedCompetency.code : null,
         )
         .filter(Boolean)
-
       const options = filteredCompetencyOptionsByRow.value[rowIndex] || competencyOptions.value
-      return options.filter((comp) => !selectedCodes.includes(comp.code))
+      return options.filter((c) => !taken.includes(c.code))
     }
 
     const addCompetencyRow = () => {
@@ -2668,31 +2297,24 @@ export default {
         currentEmployee.value.performanceStandards[currentStandardIndexForCompetency.value]
       if (!standard) return
 
-      let addedCount = 0
-
-      competencySelections.value.forEach((selection) => {
-        if (selection.selectedCompetency && selection.selectedLevel) {
-          const competency = {
-            code: selection.selectedCompetency.code,
-            description: selection.selectedCompetency.description,
-            value: selection.selectedLevel.value,
-            level: selection.selectedLevel.label,
-          }
-
-          const alreadyExists = standard.competencies[competencyType.value].some(
-            (existing) => existing.code === competency.code,
-          )
-
-          if (!alreadyExists) {
-            standard.competencies[competencyType.value].push(competency)
-            addedCount++
-          }
+      let added = 0
+      competencySelections.value.forEach(({ selectedCompetency: sc, selectedLevel: sl }) => {
+        if (!sc || !sl) return
+        const already = standard.competencies[competencyType.value].some((e) => e.code === sc.code)
+        if (!already) {
+          standard.competencies[competencyType.value].push({
+            code: sc.code,
+            description: sc.description,
+            value: sl.value,
+            level: sl.label,
+          })
+          added++
         }
       })
 
-      if (addedCount > 0) {
+      if (added) {
         $q.notify({
-          message: `${addedCount} competenc${addedCount > 1 ? 'ies' : 'y'} added`,
+          message: `${added} competenc${added > 1 ? 'ies' : 'y'} added`,
           color: 'positive',
           position: 'top',
         })
@@ -2706,8 +2328,7 @@ export default {
 
     const removeCompetency = (type, compIndex, standardIndex) => {
       const standard = currentEmployee.value.performanceStandards[standardIndex]
-      if (!standard || !standard.competencies[type]) return
-
+      if (!standard?.competencies[type]) return
       $q.dialog({
         title: 'Confirm Removal',
         message: `Remove ${standard.competencies[type][compIndex].code} competency?`,
@@ -2715,24 +2336,9 @@ export default {
         persistent: true,
       }).onOk(() => {
         standard.competencies[type].splice(compIndex, 1)
-        $q.notify({
-          message: 'Competency removed',
-          color: 'positive',
-          position: 'top',
-        })
+        $q.notify({ message: 'Competency removed', color: 'positive', position: 'top' })
         validateCompetencies(standardIndex)
       })
-    }
-
-    const validateCompetencies = (standardIndex) => {
-      const standard = currentEmployee.value.performanceStandards[standardIndex]
-      if (!standard) return
-
-      const { core, technical, leadership } = standard.competencies
-      const totalCompetencies =
-        (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
-
-      showCompetencyError.value[standardIndex] = totalCompetencies === 0
     }
 
     const cancelCompetencySelection = () => {
@@ -2740,6 +2346,835 @@ export default {
       competencySelections.value = [{ selectedCompetency: null, selectedLevel: null }]
       filteredCompetencyOptionsByRow.value = [competencyOptions.value]
     }
+
+    const validateCompetencies = (standardIndex) => {
+      const std = currentEmployee.value.performanceStandards[standardIndex]
+      if (!std) return
+      const { core = [], technical = [], leadership = [] } = std.competencies
+      showCompetencyError.value[standardIndex] =
+        core.length + technical.length + leadership.length === 0
+    }
+
+    // ===========================================================================
+    // 15. MFO / OUTPUT FILTER METHODS
+    // ===========================================================================
+
+    /**
+     * Build the MFO option list for a given standard index.
+     *
+     * Office Head     → full list for the selected category (no restriction).
+     * Everyone else   → restricted to MFOs that appear in the Office Head's plan
+     *                   (headMfoNames Set).  Falls back to the full list when
+     *                   headMfoNames is empty (e.g. fetch failed or not yet loaded).
+     */
+    const getFilteredMfoOptions = (index) => {
+      const std = currentEmployee.value.performanceStandards[index]
+      if (!std?.rows.category) return []
+
+      const baseList =
+        filteredMfoOptions.value[index] ||
+        officeLibraryStore.mfos
+          .filter((m) => m.f_category_id === std.rows.category)
+          .map((m) => ({
+            id: m.id,
+            label: m.name,
+            value: m.id,
+            name: m.name,
+            code: m.code || '',
+            description: m.description || '',
+          }))
+
+      // Office Head sees everything; apply head-MFO filter only for other employees
+      if (isCurrentEmployeeOfficeHead.value || headMfoNames.value.size === 0) {
+        return baseList
+      }
+
+      return baseList.filter((m) => headMfoNames.value.has((m.name || '').trim().toLowerCase()))
+    }
+
+    const getFilteredOutputOptions = (index) => {
+      const std = currentEmployee.value.performanceStandards[index]
+      if (!std?.rows.category) return []
+      const categoryId = std.rows.category
+
+      if (isSupportCategory(categoryId)) {
+        return officeLibraryStore.category_outputs
+          .filter((o) => o.f_category_id === categoryId)
+          .map((o) => ({
+            id: o.id,
+            label: o.name,
+            value: o.id,
+            name: o.name,
+            code: o.code || '',
+            description: o.description || '',
+          }))
+      }
+
+      if (!officeLibraryStore.outputs?.length) return []
+      return officeLibraryStore.outputs
+        .filter(
+          (o) =>
+            o.f_category_id === categoryId &&
+            (std.rows.mfo ? o.mfo_id === std.rows.mfo : o.mfo_id === null),
+        )
+        .map((o) => ({
+          id: o.id,
+          label: o.name,
+          value: o.id,
+          name: o.name,
+          code: o.code || '',
+          description: o.description || '',
+        }))
+    }
+
+    const filterMfos = (val, update, index) => {
+      if (typeof update !== 'function') return
+      update(() => {
+        const needle = (val || '').toLowerCase()
+        const std = currentEmployee.value.performanceStandards[index]
+        if (!std?.rows.category) {
+          filteredMfoOptions.value[index] = []
+          return
+        }
+
+        let baseList = officeLibraryStore.mfos
+          .filter((m) => m.f_category_id === std.rows.category)
+          .map((m) => ({
+            id: m.id,
+            label: m.name,
+            value: m.id,
+            name: m.name,
+            code: m.code || '',
+            description: m.description || '',
+          }))
+
+        // Non-Office-Head employees: restrict to head's MFOs when available
+        if (!isCurrentEmployeeOfficeHead.value && headMfoNames.value.size > 0) {
+          baseList = baseList.filter((m) =>
+            headMfoNames.value.has((m.name || '').trim().toLowerCase()),
+          )
+        }
+
+        filteredMfoOptions.value[index] = needle
+          ? baseList.filter(
+              (m) =>
+                m.label.toLowerCase().includes(needle) ||
+                m.code.toLowerCase().includes(needle) ||
+                m.description.toLowerCase().includes(needle),
+            )
+          : baseList
+      })
+    }
+
+    const filterOutputs = (val, update, index) => {
+      if (typeof update !== 'function') return
+      update(() => {
+        const needle = (val || '').toLowerCase()
+        const std = currentEmployee.value.performanceStandards[index]
+        if (!std?.rows.category) {
+          filteredOutputOptions.value[index] = []
+          return
+        }
+
+        const baseOptions = getAvailableOutputOptions(index)
+        filteredOutputOptions.value[index] = baseOptions.filter(
+          (o) =>
+            o.label.toLowerCase().includes(needle) ||
+            o.code.toLowerCase().includes(needle) ||
+            o.description.toLowerCase().includes(needle),
+        )
+      })
+    }
+
+    const clearDependentFields = (standardIndex, fieldIndex) => {
+      const std = currentEmployee.value.performanceStandards[standardIndex]
+      if (!std) return
+      if (fieldIndex === 1) {
+        std.rows.mfo = null
+        std.rows.output = null
+        filteredMfoOptions.value[standardIndex] = null
+        filteredOutputOptions.value[standardIndex] = null
+      } else if (fieldIndex === 2) {
+        std.rows.output = null
+        filteredOutputOptions.value[standardIndex] = null
+      }
+    }
+
+    // ===========================================================================
+    // 16. PERFORMANCE INDICATOR FILTER
+    // ===========================================================================
+
+    const filterPerformanceIndicators = (val, update) => {
+      const mapVerb = (verb) => ({
+        id: verb.id,
+        label: verb.indicator_name || verb.name,
+        value: verb.id,
+        name: verb.indicator_name || verb.name,
+        description: verb.description || '',
+      })
+      if (typeof update === 'function') {
+        update(() => {
+          const needle = (val || '').toLowerCase()
+          filteredVerbs.value = officeLibraryIndicatorStore.verbs
+            .map(mapVerb)
+            .filter(
+              (v) =>
+                v.label.toLowerCase().includes(needle) ||
+                v.description.toLowerCase().includes(needle),
+            )
+        })
+      } else {
+        filteredVerbs.value = officeLibraryIndicatorStore.verbs.map(mapVerb)
+      }
+    }
+
+    // ===========================================================================
+    // 17. SUCCESS INDICATOR GENERATION
+    // ===========================================================================
+
+    const getQuantityComponent = (index) => {
+      const std = currentEmployee.value?.performanceStandards?.[index]
+      if (!std) return ''
+      if (std.quantityIndicatorType === 'numeric')
+        return std.standardOutcomeRows.find((r) => r.rating === '5')?.quantity || ''
+      if (std.quantityIndicatorType === 'B') return std.targetOutputValue?.toString() || ''
+      if (std.quantityIndicatorType === 'C') return '100%'
+      return ''
+    }
+
+    const getTimelinessComponent = (index) => {
+      const std = currentEmployee.value?.performanceStandards?.[index]
+      if (!std) return ''
+      const row =
+        std.timelinessIndicatorType === 'beforeDeadline'
+          ? std.standardOutcomeRows[2]
+          : std.standardOutcomeRows[0]
+
+      const parts = []
+      if (std.activeTimelinessInputs.range && row.timelinessRange) parts.push(row.timelinessRange)
+      if (std.activeTimelinessInputs.date && row.timelinessDate)
+        parts.push(`by ${row.timelinessDate}`)
+      if (std.activeTimelinessInputs.description && row.timelinessText)
+        parts.push(row.timelinessText)
+
+      const joined = parts.join(' ')
+      return joined ? `, ${joined}` : ''
+    }
+
+    const getEffectivenessComponent = (index) => {
+      const std = currentEmployee.value.performanceStandards[index]
+      return std?.standardOutcomeRows.find((r) => r.rating === '5')?.effectiveness || ''
+    }
+
+    const generateSuccessIndicator = (index) => {
+      if (!currentEmployee.value?.performanceStandards) return
+
+      const indices = Number.isInteger(index)
+        ? [index]
+        : currentEmployee.value.performanceStandards.map((_, i) => i)
+
+      indices.forEach((i) => {
+        const std = currentEmployee.value.performanceStandards[i]
+        if (!std) return
+
+        const qtyPart = getQuantityComponent(i)
+        const outputPart = std.outputName?.trim() || ''
+
+        let indicatorPart = ''
+        if (Array.isArray(std.indicatorName) && std.indicatorName.length > 0) {
+          const names = std.indicatorName
+            .map((idOrText) => {
+              if (typeof idOrText === 'number' || !isNaN(idOrText)) {
+                const verb = officeLibraryIndicatorStore.verbs.find(
+                  (v) => v.id === Number(idOrText),
+                )
+                return verb?.indicator_name || verb?.name || ''
+              }
+              return idOrText
+            })
+            .filter(Boolean)
+
+          if (names.length === 1) indicatorPart = names[0]
+          else if (names.length === 2) indicatorPart = names.join(' and ')
+          else indicatorPart = `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+        }
+
+        const effectivenessPart = getEffectivenessComponent(i)
+        const timelinessPart = getTimelinessComponent(i)
+
+        std.successIndicator = [
+          qtyPart,
+          outputPart,
+          indicatorPart,
+          effectivenessPart,
+          timelinessPart,
+        ]
+          .filter((p) => p?.trim())
+          .join(' ')
+      })
+    }
+
+    // ===========================================================================
+    // 18. VALIDATION HELPERS
+    // ===========================================================================
+
+    const hasMinimumEffectivenessValues = (index) => {
+      const std = currentEmployee.value.performanceStandards[index]
+      if (!std) return false
+      return std.standardOutcomeRows.filter((r) => r.effectiveness?.trim().length > 0).length >= 2
+    }
+
+    const hasMinimumCompetencies = (employee, standardIndex) => {
+      const std = employee?.performanceStandards?.[standardIndex]
+      if (!std?.competencies) return false
+      const { core = [], technical = [], leadership = [] } = std.competencies
+      return core.length + technical.length + leadership.length >= 1
+    }
+
+    const validateStrictNumeric = (val) => {
+      if (!val) return true
+      return /^[0-9]+(-[0-9]+)?$/.test(val) || 'Enter a number or range (e.g., 10 or 10-20)'
+    }
+
+    const blockInvalidChars = (e) => {
+      const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', '-']
+      if (!/[0-9]/.test(e.key) && !allowed.includes(e.key)) e.preventDefault()
+    }
+
+    const sanitizeNumericInput = (row, field) => {
+      if (!row[field]) return
+      row[field] = row[field].replace(/[^0-9-]/g, '')
+      const hyphens = row[field].split('-').length - 1
+      if (hyphens > 1) row[field] = row[field].substring(0, row[field].lastIndexOf('-'))
+    }
+
+    const getQuantityHint = (standard) => {
+      const r = standard.quantityRestriction
+      return r != null && r.maxQuantity != null ? `Max: ${r.maxQuantity}` : ''
+    }
+
+    const isQuantityExceeded = (standard, row) => {
+      if (standard.quantityIndicatorType !== 'numeric') return false
+      const r = standard.quantityRestriction
+      if (!r || r.maxQuantity == null) return false
+      const val = parseInt(row.quantity)
+      return !isNaN(val) && val > r.maxQuantity
+    }
+
+    const getQuantityErrorMessage = (standard) => {
+      const r = standard.quantityRestriction
+      return r != null && r.maxQuantity != null ? `Cannot exceed ${r.maxQuantity}` : ''
+    }
+
+    // ===========================================================================
+    // 19. CASCADE DATA & RESTRICTION LOGIC
+    // ===========================================================================
+
+    /**
+     * Fetches cascade data for the given standard, resolves the supervisor,
+     * and applies quantity restriction to the standard.
+     *
+     * NOTE: Office Head employees are the CASCADE ROOT — they own the total targets
+     * and no restriction is applied to them. Skip entirely for Office Head tabs.
+     */
+    const checkAndShowCascadeModal = async (standardIndex) => {
+      // Office Head is the cascade root — no restriction applies to them.
+      if (isCurrentEmployeeOfficeHead.value) return
+
+      const standard = currentEmployee.value.performanceStandards[standardIndex]
+      if (!standard?.rows.mfo || !standard.indicatorName?.length) return
+
+      const mfoId = standard.rows.mfo
+      const outputId = standard.rows.output
+
+      const selectedMfo = officeLibraryStore.mfos.find((m) => m.id === mfoId)
+      const mfoValue = selectedMfo?.name || String(mfoId)
+
+      const selectedOutput = outputId
+        ? officeLibraryStore.outputs?.find((o) => o.id === outputId) ||
+          officeLibraryStore.category_outputs?.find((o) => o.id === outputId)
+        : null
+      const outputName = selectedOutput?.name || null
+
+      const semester = uwpData.value.targetPeriod?.semester
+      const year = uwpData.value.targetPeriod?.year
+      if (!semester || !year) return
+
+      const loadingNotif = $q.notify({
+        message: 'Loading cascade data…',
+        color: 'info',
+        position: 'top',
+        timeout: 0,
+        spinner: true,
+        group: false,
+      })
+
+      try {
+        const isHeadEmp = cascadeDomino.isHead(currentEmployee.value.id)
+        const hasHeadInTabs = !!cascadeDomino.headEmployee
+
+        let fetchedData = null
+        let resolvedSignatory = null
+
+        const fetchFromCascadeStore = async () => {
+          await cascadeStore.fetchCascade(semester, year, mfoValue)
+          const raw = cascadeStore.cascadeData
+          if (!raw) throw new Error('No cascade data found')
+
+          const signatoryResult = calculateSupervisorySignatory(
+            currentEmployee.value.employeeData || currentEmployee.value,
+            raw,
+            mfoValue,
+            outputName,
+          )
+
+          const isRootSupervisor = signatoryResult?.controlNo === raw.controlNo
+
+          let sourceMfo = null
+
+          if (isRootSupervisor) {
+            sourceMfo = (raw.mfos || []).find(
+              (m) => m.mfo === mfoValue || m.mfo === selectedMfo?.name,
+            )
+            console.log('[UWP] Signatory is root — using Office Head MFO data:', sourceMfo)
+          } else {
+            const matchedSup = (raw.supervisories || []).find(
+              (sup) => sup.controlNo === signatoryResult?.controlNo,
+            )
+            sourceMfo = (matchedSup?.mfos || []).find(
+              (m) => m.mfo === mfoValue || m.mfo === selectedMfo?.name,
+            )
+            console.log(
+              '[UWP] Signatory is supervisory — using their MFO data:',
+              signatoryResult?.name,
+              sourceMfo,
+            )
+
+            if (!sourceMfo) {
+              console.log('[UWP] Supervisory has no MFO entry — falling back to root MFO data')
+              sourceMfo = (raw.mfos || []).find(
+                (m) => m.mfo === mfoValue || m.mfo === selectedMfo?.name,
+              )
+              resolvedSignatory = {
+                controlNo: raw.controlNo,
+                name: raw.name,
+                rank: raw.rank,
+                job_title: raw.job_title,
+              }
+            }
+          }
+
+          resolvedSignatory = resolvedSignatory || signatoryResult
+
+          if (sourceMfo) {
+            const totalTarget = sourceMfo.total_target || 0
+            const signatoryControlNo = resolvedSignatory?.controlNo || 'root'
+
+            const getStandardClaim = (s) => {
+              const qty = s.standardOutcomeRows?.find((r) => r.rating === '5')?.quantity
+              return parseFloat(s.targetOutputValue) || parseFloat(qty) || 0
+            }
+
+            const matchesPool = (s) => {
+              if (!s._signatoryControlNo || s._signatoryControlNo !== signatoryControlNo)
+                return false
+              if (!s._mfoValue || s._mfoValue !== mfoValue) return false
+              if (!isRootSupervisor && s._outputName !== outputName) return false
+              return true
+            }
+
+            let claimedInSession = 0
+            employeeTabs.value.forEach((emp) => {
+              const isCurrentEmp = emp.id === currentEmployee.value.id
+              emp.performanceStandards.forEach((s, idx) => {
+                if (isCurrentEmp && idx === standardIndex) return
+                if (matchesPool(s)) claimedInSession += getStandardClaim(s)
+              })
+            })
+
+            standard._signatoryControlNo = signatoryControlNo
+            standard._mfoValue = mfoValue
+            standard._outputName = outputName || null
+            standard.rows.supervisory_control_no =
+              signatoryControlNo !== 'root'
+                ? signatoryControlNo
+                : resolvedSignatory?.controlNo || null
+
+            const apiAvailable =
+              sourceMfo.available ?? Math.max(0, totalTarget - (sourceMfo.claimed || 0))
+            const sessionAvailable = isRootSupervisor
+              ? Math.max(0, apiAvailable - claimedInSession)
+              : Math.max(0, totalTarget - claimedInSession)
+
+            return {
+              ...raw,
+              name: resolvedSignatory.name,
+              rank: resolvedSignatory.rank,
+              job_title: resolvedSignatory.job_title,
+              controlNo: resolvedSignatory.controlNo,
+              mfos: [
+                {
+                  ...sourceMfo,
+                  total_target: totalTarget,
+                  claimed: claimedInSession,
+                  available: sessionAvailable,
+                },
+              ],
+            }
+          }
+
+          return {
+            ...raw,
+            name: resolvedSignatory?.name,
+            rank: resolvedSignatory?.rank,
+            job_title: resolvedSignatory?.job_title,
+            controlNo: resolvedSignatory?.controlNo,
+          }
+        }
+
+        const headTarget =
+          hasHeadInTabs && !isHeadEmp
+            ? cascadeDomino.getHeadTarget(mfoId, standard.rows.output)
+            : null
+
+        if (!hasHeadInTabs || (hasHeadInTabs && !isHeadEmp && !headTarget)) {
+          fetchedData = await fetchFromCascadeStore()
+          resolvedSignatory = calculateSupervisorySignatory(
+            currentEmployee.value.employeeData || currentEmployee.value,
+            fetchedData,
+            mfoValue,
+            outputName,
+          )
+        } else if (hasHeadInTabs && !isHeadEmp && headTarget) {
+          const totalTarget = parseFloat(headTarget.targetOutputValue) || 0
+          let claimedByOthers = 0
+
+          employeeTabs.value.forEach((emp) => {
+            if (emp.id === currentEmployee.value.id || emp.id === cascadeDomino.headEmployee.id)
+              return
+            emp.performanceStandards.forEach((s) => {
+              if (s.rows.mfo === mfoId) {
+                claimedByOthers +=
+                  parseFloat(s.targetOutputValue) ||
+                  parseFloat(s.standardOutcomeRows?.find((r) => r.rating === '5')?.quantity) ||
+                  0
+              }
+            })
+          })
+          const available = Math.max(0, totalTarget - claimedByOthers)
+
+          resolvedSignatory = {
+            name: headTarget.headName,
+            id: headTarget.headId,
+            rank: headTarget.headRank,
+            job_title: headTarget.headPosition,
+          }
+
+          fetchedData = {
+            name: headTarget.headName,
+            rank: headTarget.headRank,
+            job_title: headTarget.headPosition,
+            office: uwpData.value.hierarchy.division?.label || '',
+            controlNo: null,
+            mfos: [
+              {
+                mfo: mfoValue,
+                total_target: totalTarget,
+                claimed: claimedByOthers,
+                available,
+                output_name: standard.outputName || '',
+                success_indicator: headTarget.successIndicator || '',
+                performance_indicator: headTarget.indicatorNames?.map((id) => {
+                  const verb = officeLibraryIndicatorStore.verbs.find((v) => v.id === Number(id))
+                  return { value: verb?.indicator_name || verb?.name || String(id) }
+                }),
+              },
+            ],
+          }
+        }
+
+        const tabIndex = employeeTabs.value.findIndex((e) => e.id === currentEmployee.value.id)
+        if (tabIndex !== -1 && resolvedSignatory) {
+          employeeTabs.value[tabIndex].supervisorySignatory = resolvedSignatory
+          // Also stamp each standard that doesn't yet have a supervisory_control_no
+          // (covers the headTarget path where fetchFromCascadeStore is not called)
+          if (standard.rows.supervisory_control_no == null && resolvedSignatory?.controlNo) {
+            standard.rows.supervisory_control_no = resolvedSignatory.controlNo
+          }
+          console.log('[UWP] Supervisory signatory resolved:', resolvedSignatory)
+        }
+
+        const restriction = quantityRestriction.determineRestriction({
+          selectedEmployee: {
+            ...currentEmployee.value,
+            supervisorySignatory: resolvedSignatory,
+          },
+          selectedIndicators: standard.indicatorName,
+          quantityType: standard.quantityIndicatorType,
+          verbs: officeLibraryIndicatorStore.verbs,
+          cascadeData: fetchedData,
+        })
+
+        standard.quantityRestriction = restriction
+
+        loadingNotif()
+        $q.notify({
+          message: 'Cascade data loaded',
+          color: 'positive',
+          position: 'top',
+          timeout: 2000,
+        })
+
+        if (headTarget) {
+          employeeTabs.value
+            .filter(
+              (e) => e.id !== currentEmployee.value.id && e.id !== cascadeDomino.headEmployee?.id,
+            )
+            .forEach((emp) => {
+              const needsUpdate = emp.performanceStandards.some((s) => s.rows.mfo === mfoId)
+              if (needsUpdate) {
+                cascadeDomino.clearRestrictions(emp.id)
+                if (activeEmployeeTab.value === emp.id) {
+                  setTimeout(() => cascadeDomino.applyToEmployee(emp.id, true), 100)
+                }
+              }
+            })
+        }
+
+        return restriction
+      } catch (error) {
+        loadingNotif()
+        console.error('[UWP] Cascade error:', error)
+        $q.notify({
+          message: error.message || 'Failed to load cascade data',
+          color: 'negative',
+          position: 'top',
+        })
+        return null
+      }
+    }
+
+    // ===========================================================================
+    // 20. QUANTITY COMPUTATION
+    // ===========================================================================
+
+    const onQuantityOptionSelect = (value, index) => {
+      const std = currentEmployee.value?.performanceStandards?.[index]
+      if (!std) return
+      std.quantityIndicatorType = value
+      currentStandardIndex.value = index
+
+      if (value === 'B') {
+        quantityValue.value = null
+        currentQuantityRestriction.value = std.quantityRestriction
+        showQuantityModal.value = true
+        std.standardOutcomeRows.forEach((r) => (r.quantity = ''))
+      } else if (value === 'C') {
+        computeQuantities('C', index)
+      } else {
+        std.targetOutputValue = null
+        generateSuccessIndicator(index)
+      }
+    }
+
+    const computeQuantities = (type = null, index = null) => {
+      const idx = index !== null ? index : currentStandardIndex.value
+      const std = currentEmployee.value?.performanceStandards?.[idx]
+      if (!std) return
+      const currentType = type || std.quantityIndicatorType
+
+      if (currentType === 'B') {
+        if (!quantityValue.value || isNaN(quantityValue.value)) {
+          $q.notify({ message: 'Please enter a valid number', color: 'negative', position: 'top' })
+          return
+        }
+        if (
+          std.quantityRestriction?.maxQuantity != null &&
+          quantityValue.value > std.quantityRestriction.maxQuantity
+        ) {
+          $q.notify({
+            message: `Target cannot exceed ${std.quantityRestriction.maxQuantity}`,
+            color: 'warning',
+            position: 'top',
+          })
+          return
+        }
+
+        const base = Number(quantityValue.value)
+        std.targetOutputValue = base.toString()
+
+        const max130 = Math.round(base * 1.3)
+        const max115 = Math.round(base * 1.15)
+        const max50 = Math.round(base * 0.5)
+        const cap =
+          std.quantityRestriction?.maxQuantity != null ? std.quantityRestriction.maxQuantity : null
+
+        if (cap != null) {
+          std.standardOutcomeRows[0].quantity = `${Math.min(max130, cap)} and above`
+          std.standardOutcomeRows[1].quantity = `${Math.min(max115, cap)}-${Math.min(max130 - 1, cap)}`
+          std.standardOutcomeRows[2].quantity = `${Math.min(base, cap)}-${Math.min(max115 - 1, cap)}`
+          std.standardOutcomeRows[3].quantity = `${Math.min(max50 + 1, cap)}-${Math.min(base - 1, cap)}`
+          std.standardOutcomeRows[4].quantity = `${Math.min(max50, cap)} and below`
+        } else {
+          std.standardOutcomeRows[0].quantity = `${max130} and above`
+          std.standardOutcomeRows[1].quantity = `${max115}-${max130 - 1}`
+          std.standardOutcomeRows[2].quantity = `${base}-${max115 - 1}`
+          std.standardOutcomeRows[3].quantity = `${max50 + 1}-${base - 1}`
+          std.standardOutcomeRows[4].quantity = `${max50} and below`
+        }
+
+        generateSuccessIndicator(idx)
+        $q.notify({ message: 'Quantities calculated (Type B)', color: 'positive', position: 'top' })
+        showQuantityModal.value = false
+        quantityValue.value = null
+        currentQuantityRestriction.value = null
+
+        if (cascadeDomino.isHead(currentEmployee.value.id)) cascadeDomino.applyToAllStaff()
+      } else if (currentType === 'C') {
+        std.targetOutputValue = '100%'
+        std.standardOutcomeRows[0].quantity = '100% and above'
+        std.standardOutcomeRows[1].quantity = '88%-99%'
+        std.standardOutcomeRows[2].quantity = '77%-87%'
+        std.standardOutcomeRows[3].quantity = '38%-76%'
+        std.standardOutcomeRows[4].quantity = '37% and below'
+
+        generateSuccessIndicator(idx)
+        $q.notify({ message: 'Quantities set (Type C)', color: 'positive', position: 'top' })
+        if (cascadeDomino.isHead(currentEmployee.value.id)) cascadeDomino.applyToAllStaff()
+      } else {
+        std.targetOutputValue = null
+        generateSuccessIndicator(idx)
+      }
+    }
+
+    const cancelQuantityInput = () => {
+      const std = currentEmployee.value.performanceStandards[currentStandardIndex.value]
+      if (std) std.quantityIndicatorType = 'numeric'
+      showQuantityModal.value = false
+      currentQuantityRestriction.value = null
+    }
+
+    // ===========================================================================
+    // 21. TIMELINESS METHODS
+    // ===========================================================================
+
+    const onTimelinessTypeSelect = (value, index) => {
+      const std = currentEmployee.value.performanceStandards[index]
+      if (!std) return
+      std.timelinessIndicatorType = value
+      Object.assign(std.timelinessInputs, { range: true, date: false, description: false })
+      generateSuccessIndicator(index)
+    }
+
+    const applyTimelinessInputs = (type, index) => {
+      const std = currentEmployee.value.performanceStandards[index]
+      if (!std) return
+
+      Object.assign(std.activeTimelinessInputs, std.timelinessInputs)
+
+      if (
+        !std.activeTimelinessInputs.range &&
+        !std.activeTimelinessInputs.date &&
+        !std.activeTimelinessInputs.description
+      ) {
+        std.activeTimelinessInputs.range = true
+        std.timelinessInputs.range = true
+      }
+
+      std.standardOutcomeRows.forEach((row) => {
+        if (!std.activeTimelinessInputs.range) row.timelinessRange = ''
+        if (!std.activeTimelinessInputs.date) row.timelinessDate = ''
+        if (!std.activeTimelinessInputs.description) row.timelinessText = ''
+
+        const parts = []
+        if (std.activeTimelinessInputs.range && row.timelinessRange) parts.push(row.timelinessRange)
+        if (std.activeTimelinessInputs.date && row.timelinessDate)
+          parts.push(`by ${row.timelinessDate}`)
+        if (std.activeTimelinessInputs.description && row.timelinessText)
+          parts.push(row.timelinessText)
+        row.timeliness = parts.join(' ')
+      })
+
+      $q.notify({
+        message: `Applied ${type === 'beforeDeadline' ? 'Before Deadline' : 'On Deadline'} input types`,
+        color: 'positive',
+        position: 'top',
+      })
+      generateSuccessIndicator(index)
+    }
+
+    const onTimelinessUpdate = (row, field, index) => {
+      sanitizeNumericInput(row, field)
+      const std = currentEmployee.value.performanceStandards[index]
+      if (!std) return
+
+      const parts = []
+      if (std.activeTimelinessInputs.range && row.timelinessRange) parts.push(row.timelinessRange)
+      if (std.activeTimelinessInputs.date && row.timelinessDate)
+        parts.push(`by ${row.timelinessDate}`)
+      if (std.activeTimelinessInputs.description && row.timelinessText)
+        parts.push(row.timelinessText)
+      row.timeliness = parts.join(' ')
+
+      generateSuccessIndicator(index)
+    }
+
+    const onTimelinessDateUpdate = (row, index) => onTimelinessUpdate(row, 'timelinessDate', index)
+
+    // ===========================================================================
+    // 22. EFFECTIVENESS METHODS
+    // ===========================================================================
+
+    const onEffectivenessUpdate = (row, index) => {
+      formInteracted.value = true
+      generateSuccessIndicator(index)
+    }
+
+    const onEffectivenessFieldFocus = () => {
+      formInteracted.value = true
+    }
+
+    // ===========================================================================
+    // 23. QUANTITY UPDATE METHOD
+    // ===========================================================================
+
+    const onQuantityUpdate = async (row, field, index) => {
+      sanitizeNumericInput(row, field)
+      const std = currentEmployee.value.performanceStandards[index]
+
+      if (row.rating === '5' && !isCurrentEmployeeOfficeHead.value) {
+        await checkAndShowCascadeModal(index)
+        employeeTabs.value.forEach((emp) => {
+          if (emp.id === currentEmployee.value.id) return
+          emp.performanceStandards.forEach((s) => {
+            if (
+              s._signatoryControlNo === std._signatoryControlNo &&
+              s._mfoValue === std._mfoValue
+            ) {
+              s.quantityRestriction = null
+            }
+          })
+        })
+      }
+
+      if (std.quantityRestriction?.maxQuantity != null) {
+        const val = parseInt(row.quantity)
+        if (!isNaN(val) && val > std.quantityRestriction.maxQuantity) {
+          $q.notify({
+            message: `Quantity cannot exceed ${std.quantityRestriction.maxQuantity}`,
+            color: 'warning',
+            position: 'top',
+            timeout: 3000,
+          })
+        }
+      }
+
+      generateSuccessIndicator(index)
+    }
+
+    // ===========================================================================
+    // 24. EMPLOYEE TAB MANAGEMENT
+    // ===========================================================================
 
     const addEmployeeTab = () => {
       if (allEmployeesSelected.value) {
@@ -2750,14 +3185,19 @@ export default {
         })
         return
       }
-      const newEmployee = createDefaultEmployeeData()
-      employeeTabs.value.push(newEmployee)
-      activeEmployeeTab.value = newEmployee.id
-      $q.notify({
-        message: 'Added new employee tab',
-        color: 'positive',
-        position: 'top',
-      })
+      if (isAddEmployeeDisabled.value) {
+        $q.notify({
+          message: 'The head employee must set their performance targets first',
+          color: 'warning',
+          position: 'top',
+        })
+        return
+      }
+      const newEmp = createDefaultEmployeeData()
+      employeeTabs.value.push(newEmp)
+      activeEmployeeTab.value = newEmp.id
+      nextTick(() => cascadeDomino.applyToEmployee(newEmp.id))
+      $q.notify({ message: 'Added new employee tab', color: 'positive', position: 'top' })
     }
 
     const removeEmployeeTab = (tabId) => {
@@ -2769,23 +3209,23 @@ export default {
         })
         return
       }
+      if (cascadeDomino.isHead(tabId)) {
+        $q.notify({ message: 'Cannot remove the head employee', color: 'warning', position: 'top' })
+        return
+      }
       $q.dialog({
         title: 'Confirm Removal',
         message: 'Remove this employee from the plan?',
         cancel: true,
         persistent: true,
       }).onOk(() => {
-        const index = employeeTabs.value.findIndex((emp) => emp.id === tabId)
-        if (index !== -1) {
-          employeeTabs.value.splice(index, 1)
+        const idx = employeeTabs.value.findIndex((e) => e.id === tabId)
+        if (idx !== -1) {
+          employeeTabs.value.splice(idx, 1)
           if (tabId === activeEmployeeTab.value) {
             activeEmployeeTab.value = employeeTabs.value[0]?.id
           }
-          $q.notify({
-            message: 'Employee removed',
-            color: 'positive',
-            position: 'top',
-          })
+          $q.notify({ message: 'Employee removed', color: 'positive', position: 'top' })
         }
       })
     }
@@ -2795,47 +3235,61 @@ export default {
     }
 
     const onEmployeeSelected = async (employeeId) => {
+      const tabIndex = employeeTabs.value.findIndex((e) => e.id === activeEmployeeTab.value)
+      if (tabIndex === -1) return
+
       if (employeeId === null || employeeId === undefined) {
-        const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
-        if (tabIndex !== -1) {
-          employeeTabs.value[tabIndex].name = ''
-          employeeTabs.value[tabIndex].employeeId = null
-          employeeTabs.value[tabIndex].employeeData = null
-          employeeTabs.value[tabIndex].rank = ''
-          employeeTabs.value[tabIndex].position = ''
-          employeeTabs.value[tabIndex].sg = ''
-          employeeTabs.value[tabIndex].level = ''
-        }
+        Object.assign(employeeTabs.value[tabIndex], {
+          name: '',
+          employeeId: null,
+          employeeData: null,
+          rank: '',
+          position: '',
+          sg: '',
+          level: '',
+          supervisorySignatory: null,
+        })
         return
       }
 
       const selectedEmp = uwpData.value.employeesWithoutTargetPeriod?.find(
-        (emp) => emp.id === employeeId,
+        (e) => e.id === employeeId,
+      )
+      if (!selectedEmp) return
+
+      const initialSignatory = calculateSupervisorySignatory(selectedEmp, cascadeStore.cascadeData)
+
+      Object.assign(employeeTabs.value[tabIndex], {
+        name: selectedEmp.label || selectedEmp.name || '',
+        employeeId: selectedEmp.id,
+        employeeData: selectedEmp,
+        rank: selectedEmp.rank || selectedEmp.employment_type || '',
+        position: selectedEmp.designation || selectedEmp.position || '',
+        sg: selectedEmp.salary_grade || selectedEmp.sg || selectedEmp.SG || '',
+        level: selectedEmp.employeeStatus || selectedEmp.level || '',
+        supervisorySignatory: initialSignatory,
+      })
+
+      employeeTabs.value[tabIndex].performanceStandards?.forEach((std) =>
+        autoPopulateCoreCompetencies(
+          std,
+          employeeTabs.value[tabIndex].sg,
+          employeeTabs.value[tabIndex].level,
+        ),
       )
 
-      if (selectedEmp && activeEmployeeTab.value) {
-        const tabIndex = employeeTabs.value.findIndex((emp) => emp.id === activeEmployeeTab.value)
-        if (tabIndex !== -1) {
-          employeeTabs.value[tabIndex].name = selectedEmp.label || selectedEmp.name || ''
-          employeeTabs.value[tabIndex].employeeId = selectedEmp.id
-          employeeTabs.value[tabIndex].employeeData = selectedEmp
-          employeeTabs.value[tabIndex].rank = selectedEmp.rank || selectedEmp.employment_type || ''
-          employeeTabs.value[tabIndex].position =
-            selectedEmp.designation || selectedEmp.position || '' // Use designation
-          employeeTabs.value[tabIndex].sg =
-            selectedEmp.salary_grade || selectedEmp.sg || selectedEmp.SG || ''
-          employeeTabs.value[tabIndex].level = selectedEmp.employeeStatus || selectedEmp.level || ''
-
-          if (employeeTabs.value[tabIndex].performanceStandards) {
-            employeeTabs.value[tabIndex].performanceStandards.forEach((standard) => {
-              autoPopulateCoreCompetencies(
-                standard,
-                employeeTabs.value[tabIndex].sg,
-                employeeTabs.value[tabIndex].level,
-              )
-            })
+      // Clear output on existing standards if newly selected employee is Office Head
+      // and their current standards have a non-support category selected
+      if (isCurrentEmployeeOfficeHead.value) {
+        employeeTabs.value[tabIndex].performanceStandards?.forEach((std) => {
+          if (!isSupportCategory(std.rows?.category) && std.rows?.output != null) {
+            std.rows.output = null
           }
-        }
+        })
+      }
+
+      if (!cascadeDomino.isHead(employeeTabs.value[tabIndex].id) && cascadeDomino.headEmployee) {
+        cascadeDomino.applyToEmployee(employeeTabs.value[tabIndex].id)
       }
     }
 
@@ -2854,452 +3308,19 @@ export default {
       }
     }
 
-    const getQuantityComponent = (index) => {
-      const standard = currentEmployee.value?.performanceStandards?.[index]
-      if (!standard) return ''
-
-      if (standard.quantityIndicatorType === 'numeric') {
-        const row5 = standard.standardOutcomeRows.find((row) => row.rating === '5')
-        return row5?.quantity || ''
-      }
-
-      if (standard.quantityIndicatorType === 'B') {
-        return standard.targetOutputValue?.toString() || ''
-      }
-
-      if (standard.quantityIndicatorType === 'C') {
-        return '100%'
-      }
-
-      return ''
-    }
-
-    const getTimelinessComponent = (index) => {
-      const standard = currentEmployee.value?.performanceStandards?.[index]
-      if (!standard) return ''
-      const highestRating = standard.standardOutcomeRows[0]
-      const midRating = standard.standardOutcomeRows[2]
-      const parts = []
-
-      if (standard.timelinessIndicatorType === 'beforeDeadline') {
-        if (standard.activeTimelinessInputs.range && midRating.timelinessRange)
-          parts.push(midRating.timelinessRange)
-        if (standard.activeTimelinessInputs.date && midRating.timelinessDate)
-          parts.push(`by ${midRating.timelinessDate}`)
-        if (standard.activeTimelinessInputs.description && midRating.timelinessText)
-          parts.push(midRating.timelinessText)
-      } else {
-        if (standard.activeTimelinessInputs.range && highestRating.timelinessRange)
-          parts.push(highestRating.timelinessRange)
-        if (standard.activeTimelinessInputs.date && highestRating.timelinessDate)
-          parts.push(`by ${highestRating.timelinessDate}`)
-        if (standard.activeTimelinessInputs.description && highestRating.timelinessText)
-          parts.push(highestRating.timelinessText)
-      }
-
-      const result = parts.join(' ')
-      return result ? `, ${result}` : ''
-    }
-
-    const getEffectivenessComponent = (index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard) return ''
-      const rating5Row = standard.standardOutcomeRows.find((row) => row.rating === '5')
-      return rating5Row?.effectiveness || ''
-    }
-
-    const generateSuccessIndicator = (index) => {
-      if (!currentEmployee.value?.performanceStandards) return
-
-      const applyIndex = Number.isInteger(index)
-        ? [index]
-        : currentEmployee.value.performanceStandards.map((_, i) => i)
-
-      applyIndex.forEach((i) => {
-        const standard = currentEmployee.value.performanceStandards[i]
-        if (!standard) return
-
-        const quantityPart = getQuantityComponent(i)
-        const outputNamePart = standard.outputName?.trim() || ''
-
-        let indicatorNamePart = ''
-        if (Array.isArray(standard.indicatorName) && standard.indicatorName.length > 0) {
-          const indicatorNames = standard.indicatorName
-            .map((idOrText) => {
-              if (typeof idOrText === 'number' || !isNaN(idOrText)) {
-                const verb = officeLibraryIndicatorStore.verbs.find(
-                  (v) => v.id === Number(idOrText),
-                )
-                return verb?.indicator_name || verb?.name || ''
-              }
-              return idOrText
-            })
-            .filter(Boolean)
-
-          if (indicatorNames.length === 1) {
-            indicatorNamePart = indicatorNames[0]
-          } else if (indicatorNames.length === 2) {
-            indicatorNamePart = indicatorNames.join(' and ')
-          } else if (indicatorNames.length > 2) {
-            const allButLast = indicatorNames.slice(0, -1).join(', ')
-            const last = indicatorNames[indicatorNames.length - 1]
-            indicatorNamePart = `${allButLast}, and ${last}`
-          }
-        }
-
-        const effectivenessPart = getEffectivenessComponent(i)
-        const timelinessPart = getTimelinessComponent(i)
-
-        const parts = []
-
-        if (quantityPart && quantityPart.trim()) {
-          parts.push(quantityPart)
-        }
-
-        if (outputNamePart) {
-          parts.push(outputNamePart)
-        }
-
-        if (indicatorNamePart) {
-          parts.push(indicatorNamePart)
-        }
-
-        if (effectivenessPart && effectivenessPart.trim()) {
-          parts.push(effectivenessPart)
-        }
-
-        if (timelinessPart && timelinessPart.trim()) {
-          parts.push(timelinessPart)
-        }
-
-        standard.successIndicator = parts.join(' ')
-      })
-    }
-
-    const sanitizeNumericInput = (row, field) => {
-      if (!row[field]) return
-      row[field] = row[field].replace(/[^0-9-]/g, '')
-      const hyphens = row[field].split('-').length - 1
-      if (hyphens > 1) {
-        row[field] = row[field].substring(0, row[field].lastIndexOf('-'))
-      }
-    }
-
-    const validateStrictNumeric = (val) => {
-      if (!val) return true
-      const regex = /^[0-9]+(-[0-9]+)?$/
-      return regex.test(val) || 'Enter a number or range (e.g., 10 or 10-20)'
-    }
-
-    const blockInvalidChars = (e) => {
-      const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', '-']
-      const isNumber = /[0-9]/.test(e.key)
-      if (!isNumber && !allowedKeys.includes(e.key)) {
-        e.preventDefault()
-      }
-    }
-
-    const onQuantityUpdate = (row, field, index) => {
-      sanitizeNumericInput(row, field)
-
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (standard.quantityRestriction?.maxQuantity) {
-        const value = parseInt(row.quantity)
-        if (!isNaN(value) && value > standard.quantityRestriction.maxQuantity) {
-          $q.notify({
-            message: `Quantity cannot exceed ${standard.quantityRestriction.maxQuantity}`,
-            color: 'warning',
-            position: 'top',
-            timeout: 3000,
-          })
-        }
-      }
-
-      generateSuccessIndicator(index)
-    }
-
-    const onTimelinessUpdate = (row, field, index) => {
-      sanitizeNumericInput(row, field)
-
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard) return
-
-      const timelinessParts = []
-      if (standard.activeTimelinessInputs.range && row.timelinessRange) {
-        timelinessParts.push(row.timelinessRange)
-      }
-      if (standard.activeTimelinessInputs.date && row.timelinessDate) {
-        timelinessParts.push(`by ${row.timelinessDate}`)
-      }
-      if (standard.activeTimelinessInputs.description && row.timelinessText) {
-        timelinessParts.push(row.timelinessText)
-      }
-      row.timeliness = timelinessParts.join(' ')
-
-      generateSuccessIndicator(index)
-    }
-
-    const onTimelinessDateUpdate = (row, index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard) return
-
-      const timelinessParts = []
-      if (standard.activeTimelinessInputs.range && row.timelinessRange) {
-        timelinessParts.push(row.timelinessRange)
-      }
-      if (standard.activeTimelinessInputs.date && row.timelinessDate) {
-        timelinessParts.push(`by ${row.timelinessDate}`)
-      }
-      if (standard.activeTimelinessInputs.description && row.timelinessText) {
-        timelinessParts.push(row.timelinessText)
-      }
-      row.timeliness = timelinessParts.join(' ')
-
-      generateSuccessIndicator(index)
-    }
-
-    const onEffectivenessUpdate = (row, index) => {
-      formInteracted.value = true
-      generateSuccessIndicator(index)
-    }
-
-    const onEffectivenessFieldFocus = () => {
-      formInteracted.value = true
-    }
-
-    const onDivisionChange = () => {
-      form.value.section = null
-      form.value.unit = null
-    }
-
-    const onSectionChange = () => {
-      form.value.unit = null
-    }
-
-    const onTimelinessTypeSelect = (value, index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard) return
-      standard.timelinessIndicatorType = value
-      Object.assign(standard.timelinessInputs, {
-        range: true,
-        date: false,
-        description: false,
-      })
-      generateSuccessIndicator(index)
-    }
-
-    const applyTimelinessInputs = (type, index) => {
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (!standard) return
-
-      Object.assign(standard.activeTimelinessInputs, standard.timelinessInputs)
-
-      if (
-        !standard.activeTimelinessInputs.range &&
-        !standard.activeTimelinessInputs.date &&
-        !standard.activeTimelinessInputs.description
-      ) {
-        standard.activeTimelinessInputs.range = true
-        standard.timelinessInputs.range = true
-      }
-
-      standard.standardOutcomeRows.forEach((row) => {
-        row.timelinessRange = ''
-        row.timelinessDate = ''
-        row.timelinessText = ''
-        row.timeliness = ''
-
-        if (!standard.activeTimelinessInputs.range) row.timelinessRange = ''
-        if (!standard.activeTimelinessInputs.date) row.timelinessDate = ''
-        if (!standard.activeTimelinessInputs.description) row.timelinessText = ''
-
-        const timelinessParts = []
-        if (standard.activeTimelinessInputs.range && row.timelinessRange) {
-          timelinessParts.push(row.timelinessRange)
-        }
-        if (standard.activeTimelinessInputs.date && row.timelinessDate) {
-          timelinessParts.push(`by ${row.timelinessDate}`)
-        }
-        if (standard.activeTimelinessInputs.description && row.timelinessText) {
-          timelinessParts.push(row.timelinessText)
-        }
-        row.timeliness = timelinessParts.join(' ')
-      })
-
-      $q.notify({
-        message: `Applied ${
-          type === 'beforeDeadline' ? 'Before Deadline' : 'On Deadline'
-        } input types`,
-        color: 'positive',
-        position: 'top',
-      })
-
-      generateSuccessIndicator(index)
-    }
-
-    const onQuantityOptionSelect = (value, index) => {
-      const standard = currentEmployee.value?.performanceStandards?.[index]
-      if (!standard) return
-
-      standard.quantityIndicatorType = value
-      currentStandardIndex.value = index
-
-      if (value === 'B') {
-        quantityValue.value = null
-        currentQuantityRestriction.value = standard.quantityRestriction
-        showQuantityModal.value = true
-        standard.standardOutcomeRows.forEach((row) => (row.quantity = ''))
-      } else if (value === 'C') {
-        computeQuantities('C', index)
-      } else {
-        standard.targetOutputValue = null
-        generateSuccessIndicator(index)
-      }
-    }
-
-    const computeQuantities = (type = null, index = null) => {
-      const idx = index !== null ? index : currentStandardIndex.value
-      const standard = currentEmployee.value?.performanceStandards?.[idx]
-      if (!standard) return
-
-      const currentType = type || standard.quantityIndicatorType
-
-      if (currentType === 'B') {
-        if (!quantityValue.value || isNaN(quantityValue.value)) {
-          $q.notify({
-            message: 'Please enter a valid number',
-            color: 'negative',
-            position: 'top',
-          })
-          return
-        }
-
-        // Check restriction for rating 5 field
-        if (
-          standard.quantityRestriction?.maxQuantity &&
-          quantityValue.value > standard.quantityRestriction.maxQuantity
-        ) {
-          $q.notify({
-            message: `Target output cannot exceed ${standard.quantityRestriction.maxQuantity}`,
-            color: 'warning',
-            position: 'top',
-          })
-          return
-        }
-
-        const base = Number(quantityValue.value)
-        standard.targetOutputValue = base.toString()
-
-        // Calculate the ranges based on the base value
-        const max130 = Math.round(base * 1.3)
-        const max115 = Math.round(base * 1.15)
-        const max50 = Math.round(base * 0.5)
-
-        // Check if any of the calculated values exceed the restriction
-        if (standard.quantityRestriction?.maxQuantity) {
-          const maxAllowed = standard.quantityRestriction.maxQuantity
-
-          // For rating 5, we want to show "X and above" where X is the maxAllowed if base exceeds it
-          if (max130 > maxAllowed) {
-            standard.standardOutcomeRows[0].quantity = `${maxAllowed} and above`
-          } else {
-            standard.standardOutcomeRows[0].quantity = `${max130} and above`
-          }
-
-          // For other ratings, ensure they don't exceed maxAllowed
-          const adjusted115to129Max = Math.min(max130 - 1, maxAllowed)
-          const adjusted115to129Min = Math.min(max115, maxAllowed)
-
-          const adjusted100to114Max = Math.min(max115 - 1, maxAllowed)
-          const adjusted100to114Min = Math.min(base, maxAllowed)
-
-          const adjusted51to99Max = Math.min(base - 1, maxAllowed)
-          const adjusted51to99Min = Math.min(max50 + 1, maxAllowed)
-
-          const adjusted50Max = Math.min(max50, maxAllowed)
-
-          standard.standardOutcomeRows[0].quantity = `${adjusted115to129Min} and above`
-          standard.standardOutcomeRows[1].quantity =
-            adjusted115to129Min < adjusted115to129Max
-              ? `${adjusted115to129Min}-${adjusted115to129Max}`
-              : `${adjusted115to129Min}`
-          standard.standardOutcomeRows[2].quantity =
-            adjusted100to114Min < adjusted100to114Max
-              ? `${adjusted100to114Min}-${adjusted100to114Max}`
-              : `${adjusted100to114Min}`
-          standard.standardOutcomeRows[3].quantity =
-            adjusted51to99Min < adjusted51to99Max
-              ? `${adjusted51to99Min}-${adjusted51to99Max}`
-              : `${adjusted51to99Min}`
-          standard.standardOutcomeRows[4].quantity = `${adjusted50Max} and below`
-        } else {
-          // No restriction - use original calculation
-          standard.standardOutcomeRows[0].quantity = `${max130} and above`
-          standard.standardOutcomeRows[1].quantity = `${max115}-${max130 - 1}`
-          standard.standardOutcomeRows[2].quantity = `${base}-${max115 - 1}`
-          standard.standardOutcomeRows[3].quantity = `${max50 + 1}-${base - 1}`
-          standard.standardOutcomeRows[4].quantity = `${max50} and below`
-        }
-
-        generateSuccessIndicator(idx)
-
-        $q.notify({
-          message: 'Quantities calculated successfully for Type B',
-          color: 'positive',
-          position: 'top',
-        })
-
-        showQuantityModal.value = false
-        quantityValue.value = null
-        currentQuantityRestriction.value = null
-      } else if (currentType === 'C') {
-        standard.targetOutputValue = '100%'
-
-        standard.standardOutcomeRows[0].quantity = '100% and above'
-        standard.standardOutcomeRows[1].quantity = '88%-99%'
-        standard.standardOutcomeRows[2].quantity = '77%-87%'
-        standard.standardOutcomeRows[3].quantity = '38%-76%'
-        standard.standardOutcomeRows[4].quantity = '37% and below'
-
-        generateSuccessIndicator(idx)
-
-        $q.notify({
-          message: 'Quantities set for Type C (cannot exceed 100%)',
-          color: 'positive',
-          position: 'top',
-        })
-      } else {
-        standard.targetOutputValue = null
-        generateSuccessIndicator(idx)
-      }
-    }
-
-    const cancelQuantityInput = () => {
-      const index = currentStandardIndex.value
-      const standard = currentEmployee.value.performanceStandards[index]
-      if (standard) {
-        standard.quantityIndicatorType = 'numeric'
-      }
-      showQuantityModal.value = false
-      currentQuantityRestriction.value = null
-    }
+    // ===========================================================================
+    // 25. PERFORMANCE STANDARD MANAGEMENT
+    // ===========================================================================
 
     const addPerformanceStandard = () => {
-      const newStandard = createDefaultPerformanceStandard()
-
+      const newStd = createDefaultPerformanceStandard()
       if (currentEmployee.value?.sg && currentEmployee.value?.level) {
-        autoPopulateCoreCompetencies(
-          newStandard,
-          currentEmployee.value.sg,
-          currentEmployee.value.level,
-        )
+        autoPopulateCoreCompetencies(newStd, currentEmployee.value.sg, currentEmployee.value.level)
       }
-
-      currentEmployee.value.performanceStandards.push(newStandard)
+      currentEmployee.value.performanceStandards.push(newStd)
       showCompetencyError.value[currentEmployee.value.performanceStandards.length - 1] = false
-
       $q.notify({
-        message: `Added new performance standard ${currentEmployee.value.performanceStandards.length}`,
+        message: `Added Performance Standard ${currentEmployee.value.performanceStandards.length}`,
         color: 'positive',
         position: 'top',
       })
@@ -3316,84 +3337,64 @@ export default {
       }
       $q.dialog({
         title: 'Confirm Deletion',
-        message: `Are you sure you want to remove Performance Standard ${index + 1}? `,
+        message: `Remove Performance Standard ${index + 1}?`,
         cancel: true,
         persistent: true,
       }).onOk(() => {
         currentEmployee.value.performanceStandards.splice(index, 1)
         showCompetencyError.value.splice(index, 1)
-        $q.notify({
-          message: 'Performance standard removed',
-          color: 'positive',
-          position: 'top',
-        })
+        $q.notify({ message: 'Performance standard removed', color: 'positive', position: 'top' })
       })
     }
+
+    // ===========================================================================
+    // 26. FORM SUBMISSION
+    // ===========================================================================
 
     const onSubmit = async () => {
       shouldValidate.value = true
       formInteracted.value = true
 
       const invalidEmployees = []
-
       employeeTabs.value.forEach((emp, empIndex) => {
         if (!emp.employeeId) {
           invalidEmployees.push(`Employee ${empIndex + 1}`)
           return
         }
-
-        const invalidStandards = emp.performanceStandards
-          .map((standard, standardIndex) => {
+        const badStandards = emp.performanceStandards
+          .map((std, stdIndex) => {
             const errors = []
+            const filled =
+              std.standardOutcomeRows?.filter((r) => r.effectiveness?.trim().length > 0).length || 0
+            if (filled < 2) errors.push('needs ≥2 effectiveness values')
 
-            if (!standard.standardOutcomeRows) {
-              errors.push('no standard rows')
-            } else {
-              const filledEffectivenessValues = standard.standardOutcomeRows.filter(
-                (row) => row.effectiveness && row.effectiveness.trim().length > 0,
-              ).length
-              if (filledEffectivenessValues < 2) {
-                errors.push('requires at least 2 effectiveness values')
+            const { core = [], technical = [], leadership = [] } = std.competencies
+            if (core.length + technical.length + leadership.length < 1)
+              errors.push('needs ≥1 competency')
+
+            if (std.quantityIndicatorType === 'B' && std.quantityRestriction?.maxQuantity != null) {
+              const tv = parseFloat(std.targetOutputValue)
+              if (!isNaN(tv) && tv > std.quantityRestriction.maxQuantity) {
+                errors.push(`quantity exceeds max (${std.quantityRestriction.maxQuantity})`)
               }
             }
-
-            const { core, technical, leadership } = standard.competencies
-            const totalCompetencies =
-              (core?.length || 0) + (technical?.length || 0) + (leadership?.length || 0)
-
-            if (totalCompetencies < 1) {
-              errors.push('requires at least 1 competency')
-            }
-
-            if (
-              standard.quantityIndicatorType === 'B' &&
-              standard.quantityRestriction?.maxQuantity
-            ) {
-              const targetValue = parseFloat(standard.targetOutputValue)
-              if (!isNaN(targetValue) && targetValue > standard.quantityRestriction.maxQuantity) {
-                errors.push(
-                  `quantity exceeds max allowed (${standard.quantityRestriction.maxQuantity})`,
-                )
-              }
-            }
-
-            return errors.length > 0 ? `${standardIndex + 1} (${errors.join(', ')})` : null
+            return errors.length ? `${stdIndex + 1} (${errors.join(', ')})` : null
           })
           .filter(Boolean)
 
-        if (invalidStandards.length > 0) {
+        if (badStandards.length) {
           invalidEmployees.push(
-            `${emp.name || 'Employee ' + (empIndex + 1)} (Standards ${invalidStandards.join('; ')})`,
+            `${emp.name || `Employee ${empIndex + 1}`} — Standards: ${badStandards.join('; ')}`,
           )
         }
       })
 
-      if (invalidEmployees.length > 0) {
+      if (invalidEmployees.length) {
         $q.notify({
-          message: `Please complete required fields for: ${invalidEmployees.join(', ')}`,
+          message: `Incomplete: ${invalidEmployees.join(' | ')}`,
           color: 'negative',
           position: 'top',
-          timeout: 5000,
+          timeout: 6000,
         })
         return
       }
@@ -3412,32 +3413,59 @@ export default {
           employees: employeeTabs.value
             .filter((emp) => emp.employeeId !== null)
             .map((emp) => {
-              const fullEmployeeData = uwpData.value.employeesWithoutTargetPeriod?.find(
+              const fullData = uwpData.value.employeesWithoutTargetPeriod?.find(
                 (e) => e.id === emp.employeeId,
+              )
+
+              const supervisoryControlNo =
+                emp.supervisorySignatory?.controlNo ||
+                fullData?.supervisorySignatory?.controlNo ||
+                fullData?.employeeData?.supervisorySignatory?.controlNo ||
+                null
+
+              console.log(
+                `[UWP] Submitting ${emp.name} | supervisory_control_no: ${supervisoryControlNo}`,
               )
 
               return {
                 ...emp,
                 employeeId: emp.employeeId,
-                employeeData: fullEmployeeData || emp.employeeData,
-                performanceStandards: emp.performanceStandards.map((standard) => ({
-                  ...standard,
-                  outputName: standard.outputName || '',
-                  requiredOutput: standard.requiredOutput || '',
-                  indicatorName: Array.isArray(standard.indicatorName)
-                    ? standard.indicatorName
-                    : standard.indicatorName
-                      ? [standard.indicatorName]
+                employeeData: fullData || emp.employeeData,
+                supervisory_control_no: supervisoryControlNo,
+                performanceStandards: emp.performanceStandards.map((std) => ({
+                  ...std,
+                  outputName: std.outputName || '',
+                  requiredOutput: std.requiredOutput || '',
+                  indicatorName: Array.isArray(std.indicatorName)
+                    ? std.indicatorName
+                    : std.indicatorName
+                      ? [std.indicatorName]
                       : [],
                   rows: {
-                    category: standard.rows.category,
-                    mfo: standard.rows.mfo,
-                    output: standard.rows.output,
+                    category: std.rows?.category || null,
+                    mfo: std.rows?.mfo || null,
+                    output: std.rows?.output || null,
+                    supervisory_control_no: std.rows?.supervisory_control_no || null,
                   },
-                  activeTimelinessInputs: standard.activeTimelinessInputs,
-                  timelinessInputs: standard.timelinessInputs,
-                  competencies: standard.competencies,
-                  quantityRestriction: standard.quantityRestriction,
+                  activeTimelinessInputs: std.activeTimelinessInputs || {
+                    range: true,
+                    date: false,
+                    description: false,
+                  },
+                  timelinessInputs: std.timelinessInputs || {
+                    range: true,
+                    date: false,
+                    description: false,
+                  },
+                  competencies: {
+                    core: std.competencies?.core || [],
+                    technical: std.competencies?.technical || [],
+                    leadership: std.competencies?.leadership || [],
+                  },
+                  quantityRestriction: std.quantityRestriction || null,
+                  targetOutputValue: std.targetOutputValue || null,
+                  quantityIndicatorType: std.quantityIndicatorType || 'numeric',
+                  timelinessIndicatorType: std.timelinessIndicatorType || 'beforeDeadline',
                 })),
               }
             }),
@@ -3453,139 +3481,211 @@ export default {
           position: 'top',
         })
 
+        sessionStorage.removeItem('uwpData')
         router.push('/office/spms')
       } catch (error) {
-        $q.notify({
-          message: error.message || 'Failed to save Unit Work Plan',
-          color: 'negative',
-          position: 'top',
-        })
-        console.error('❌ Submit error:', error)
+        console.error('[UWP] Submission error:', error)
+        if (error.response?.data?.errors?.['employees.0.supervisory_control_no']) {
+          $q.notify({
+            message:
+              'Missing supervisory signatory. Please ensure all employees have a supervisor.',
+            color: 'negative',
+            position: 'top',
+            timeout: 5000,
+          })
+        } else {
+          $q.notify({
+            message:
+              error.response?.data?.message || error.message || 'Failed to save Unit Work Plan',
+            color: 'negative',
+            position: 'top',
+          })
+        }
       }
     }
 
-    // Watchers
+    const onBack = () => router.back()
+    const onDivisionChange = () => {
+      form.value.section = null
+      form.value.unit = null
+    }
+    const onSectionChange = () => {
+      form.value.unit = null
+    }
+
+    // ===========================================================================
+    // 27. WATCHERS
+    // ===========================================================================
+
+    // Re-populate core competencies when SG / Level / Employee changes
     watch(
       () => ({
         sg: currentEmployee.value?.sg,
         level: currentEmployee.value?.level,
         employeeId: currentEmployee.value?.employeeId,
       }),
-      (newValues) => {
-        if (
-          newValues.sg &&
-          newValues.level &&
-          newValues.employeeId &&
-          currentEmployee.value?.performanceStandards
-        ) {
-          currentEmployee.value.performanceStandards.forEach((standard) => {
-            autoPopulateCoreCompetencies(standard, newValues.sg, newValues.level)
-          })
+      ({ sg, level, employeeId }) => {
+        if (sg && level && employeeId) {
+          currentEmployee.value.performanceStandards?.forEach((std) =>
+            autoPopulateCoreCompetencies(std, sg, level),
+          )
         }
       },
       { deep: true },
     )
 
+    // Apply cascade restrictions when switching to a non-head tab.
+    // Office Head tabs are exempt — they are the cascade root.
+    watch(activeEmployeeTab, (newTabId) => {
+      if (!newTabId || cascadeDomino.isHead(newTabId)) return
+      if (isCurrentEmployeeOfficeHead.value) return
+      nextTick(async () => {
+        const emp = employeeTabs.value.find((e) => e.id === newTabId)
+        if (!emp) return
+        for (let i = 0; i < emp.performanceStandards.length; i++) {
+          const s = emp.performanceStandards[i]
+          if (s.rows?.mfo && s.indicatorName?.length && s.quantityRestriction === null) {
+            await checkAndShowCascadeModal(i)
+          }
+        }
+      })
+    })
+
+    // Auto-set level in competency modal when competency is selected
     watch(
-      () => competencySelections.value.map((sel) => sel.selectedCompetency),
+      () => competencySelections.value.map((s) => s.selectedCompetency),
       () => {
-        competencySelections.value.forEach((selection) => {
-          if (selection.selectedCompetency && !selection.selectedLevel) {
-            const requiredLevel = selection.selectedCompetency.requiredLevel
-            const levelMap = {
-              Basic: { label: 'Basic', value: '1' },
-              Intermediate: { label: 'Intermediate', value: '2' },
-              Advanced: { label: 'Advanced', value: '3' },
-              Superior: { label: 'Superior', value: '4' },
-            }
-            selection.selectedLevel = levelMap[requiredLevel] || null
+        competencySelections.value.forEach((sel) => {
+          if (sel.selectedCompetency && !sel.selectedLevel) {
+            sel.selectedLevel = LEVEL_MAP[sel.selectedCompetency.requiredLevel] || null
           }
         })
       },
       { deep: true },
     )
 
+    // Regenerate success indicator when relevant standard fields change
     watch(
-      () => {
-        return currentEmployee.value.performanceStandards.map((s) => ({
+      () =>
+        currentEmployee.value.performanceStandards.map((s) => ({
           outputName: s.outputName,
           indicatorName: s.indicatorName,
           quantityType: s.quantityIndicatorType,
           timelinessType: s.timelinessIndicatorType,
           standardOutcomeRows: s.standardOutcomeRows,
           activeTimelinessInputs: s.activeTimelinessInputs,
-        }))
-      },
-      () => {
-        currentEmployee.value.performanceStandards.forEach((_, index) => {
-          generateSuccessIndicator(index)
-        })
-      },
+        })),
+      () =>
+        currentEmployee.value.performanceStandards.forEach((_, i) => generateSuccessIndicator(i)),
       { deep: true },
     )
 
-    watch([() => form.value.division, () => form.value.section, () => form.value.unit], () => {
-      filterEmployees()
-    })
+    // Re-filter employees when org selection changes
+    watch([() => form.value.division, () => form.value.section, () => form.value.unit], () =>
+      filterEmployees(),
+    )
 
+    // Validate competencies when standards change
     watch(
       () => currentEmployee.value?.performanceStandards,
-      (newStandards) => {
-        if (newStandards) {
-          newStandards.forEach((_, index) => {
-            validateCompetencies(index)
-          })
-        }
-      },
+      (stds) => stds?.forEach((_, i) => validateCompetencies(i)),
       { deep: true },
     )
 
-    // Watch for when employeesWithoutTargetPeriod is loaded to trigger auto-selection
+    // Trigger auto-selection when employee list is populated,
+    // then fetch the Office Head's existing MFOs to restrict other employees' dropdowns.
     watch(
       () => uwpData.value.employeesWithoutTargetPeriod,
-      (newEmployees) => {
-        console.log(
-          '👀 Watch triggered - employeesWithoutTargetPeriod changed:',
-          newEmployees ? newEmployees.length : 0,
-        )
-
-        if (newEmployees && newEmployees.length > 0 && !autoSelectionPerformed.value) {
-          console.log('📦 Employees data loaded, triggering auto-selection')
-          nextTick(() => {
+      (employees) => {
+        if (employees?.length && !autoSelectionPerformed.value) {
+          nextTick(async () => {
             autoSelectHeadEmployees()
-          })
-        }
-      },
-      {
-        deep: true,
-        immediate: true,
-      },
-    )
-
-    // Also watch for uwpData itself to be fully loaded
-    watch(
-      () => uwpData.value,
-      (newVal) => {
-        console.log('👀 UWP Data changed:', {
-          hasEmployees: !!newVal.employeesWithoutTargetPeriod,
-          employeeCount: newVal.employeesWithoutTargetPeriod?.length,
-        })
-
-        if (newVal.employeesWithoutTargetPeriod?.length > 0 && !autoSelectionPerformed.value) {
-          console.log('📦 UWP Data fully loaded, triggering auto-selection')
-          nextTick(() => {
-            autoSelectHeadEmployees()
+            await nextTick()
+            fetchHeadMfos()
           })
         }
       },
       { deep: true, immediate: true },
     )
 
-    // Lifecycle
+    // Also watch entire uwpData (covers initial load from sessionStorage)
+    watch(
+      () => uwpData.value,
+      (newVal) => {
+        if (newVal.employeesWithoutTargetPeriod?.length && !autoSelectionPerformed.value) {
+          nextTick(async () => {
+            autoSelectHeadEmployees()
+            await nextTick()
+            fetchHeadMfos()
+          })
+        }
+      },
+      { deep: true, immediate: true },
+    )
+
+    // Recalculate restriction when indicator or output selection changes
+    // Office Head is exempt — they are the cascade root and have no restrictions.
+    watch(
+      () =>
+        currentEmployee.value?.performanceStandards?.map((s) => ({
+          id: s.id,
+          indicatorName: JSON.stringify(s.indicatorName),
+          mfo: s.rows?.mfo,
+          output: s.rows?.output,
+        })),
+      async (newStds, oldStds) => {
+        if (isCurrentEmployeeOfficeHead.value) return
+        if (!newStds || !oldStds || newStds.length !== oldStds.length) return
+        for (let i = 0; i < newStds.length; i++) {
+          if (!newStds[i] || !oldStds[i]) continue
+          const indicatorChanged = newStds[i].indicatorName !== oldStds[i].indicatorName
+          const outputChanged = newStds[i].output !== oldStds[i].output
+
+          if (!indicatorChanged && !outputChanged) continue
+
+          const std = currentEmployee.value.performanceStandards[i]
+          if (!std) continue
+          std.quantityRestriction = null
+
+          if (std.rows?.mfo && std.indicatorName?.length) {
+            await checkAndShowCascadeModal(i)
+          }
+        }
+      },
+      { deep: true },
+    )
+
+    // ── NEW: Office Head output-clearing watcher ──────────────────────────────
+    // When the active employee is an Office Head and they change the category
+    // on a standard to a non-support type, automatically clear the output field.
+    // This keeps the data model consistent with what shouldShowOutput() hides in the UI.
+    watch(
+      () =>
+        currentEmployee.value?.performanceStandards?.map((s) => ({
+          id: s.id,
+          category: s.rows?.category,
+        })),
+      () => {
+        if (!isCurrentEmployeeOfficeHead.value) return
+        currentEmployee.value?.performanceStandards?.forEach((std) => {
+          if (!isSupportCategory(std.rows?.category) && std.rows?.output != null) {
+            std.rows.output = null
+          }
+        })
+      },
+      { deep: true },
+    )
+
+    // ===========================================================================
+    // 28. LIFECYCLE HOOKS
+    // ===========================================================================
+
     onMounted(async () => {
-      console.log('🚀 Component mounted')
       initializeUWPData()
       initializeEmployeeTabs()
+
+      console.log('[UWP] uwpData:', JSON.stringify(uwpData.value, null, 2))
+
       const officeId = uwpData.value.hierarchy.office?.id || 1
 
       try {
@@ -3594,143 +3694,183 @@ export default {
           officeLibraryIndicatorStore.fetchVerbs(),
         ])
 
-        console.log('✅ Data loaded successfully')
+        // KEY FIX: populate filteredVerbs immediately after verbs are fetched.
+        filterPerformanceIndicators('', null)
 
-        if (uwpData.value.employeesWithoutTargetPeriod?.length > 0) {
-          console.log('📦 Employee data already available')
+        if (uwpData.value.employeesWithoutTargetPeriod?.length) {
           autoSelectHeadEmployees()
         }
+
+        // Always fetch the Office Head's MFOs on mount, regardless of whether the
+        // Office Head appears in employeesWithoutTargetPeriod. When the head already
+        // has a target period they won't be in that list, but the API can still find
+        // their plan by office_id + semester + year.
+        fetchHeadMfos()
       } catch (error) {
-        console.error('❌ Error loading data:', error)
-        $q.notify({
-          message: 'Failed to load data',
-          color: 'negative',
-          position: 'top',
-        })
+        console.error('[UWP] Mount error:', error)
+        $q.notify({ message: 'Failed to load data', color: 'negative', position: 'top' })
       }
     })
+
+    // ===========================================================================
+    // 29. EXPOSE TO TEMPLATE
+    // ===========================================================================
 
     return {
       // Data
       uwpData,
-      breadcrumbDisplay,
-      selectedNodeLabel,
-      hierarchyLabels,
-      semesterOptions,
-      yearOptions,
       form,
-      filteredEmployees,
-      selectedEmployee,
       employeeTabs,
       activeEmployeeTab,
       currentEmployee,
       maxVisibleTabs,
-      visibleEmployeeTabs,
-      overflowEmployeeTabs,
-      hasOverflowTabs,
       formInteracted,
       shouldValidate,
-      isFormValid,
-      allEmployeesSelected,
-      availableEmployeesForTab,
-      skipMfo,
-      categoryOptions,
+      isLoadingFilteredEmployees,
+      filteredEmployees,
       filteredMfoOptions,
       filteredOutputOptions,
       filteredVerbs,
+
+      // Computed
+      semesterOptions,
+      yearOptions,
+      breadcrumbDisplay,
+      selectedNodeLabel,
+      hierarchyLabels,
+      selectedEmployee,
+      visibleEmployeeTabs,
+      overflowEmployeeTabs,
+      hasOverflowTabs,
+      allEmployeesSelected,
+      isAddEmployeeDisabled,
+      showHeadBanner,
+      availableEmployeesForTab,
+      categoryOptions,
       performanceIndicatorOptions,
-      standardOutcomeColumns,
+      competencyOptions,
+      levelOptions,
+      isAnyCompetencyValid,
+      isFormValid,
+      quantityExceedsMax,
+      hasOrganizationalSelection,
+      isCurrentEmployeeHead,
+
+      // Office Head field-visibility helpers (NEW)
+      isCurrentEmployeeOfficeHead,
+      shouldShowOutput,
+
+      // Table / Option constants
+      standardOutcomeColumns: STANDARD_OUTCOME_COLUMNS,
+      quantityIndicator: QUANTITY_INDICATOR_OPTIONS,
+
+      // Cascade
+      showCascadeModal,
+      cascadeData,
+      cascadeDomino,
+      uwpStore,
+
+      // Head MFO filter
+      mfoHeadStore,
+      headMfoNames,
+      isFetchingHeadMfos,
+      fetchHeadMfos,
+
+      // Quantity modal
       showQuantityModal,
       quantityValue,
       currentStandardIndex,
-      quantityIndicator,
-      uwpStore,
-      isLoadingFilteredEmployees,
       currentQuantityRestriction,
-      quantityExceedsMax,
 
-      // Cascade Modal Data - Keep refs but modal is commented out in template
-      showCascadeModal,
-      cascadeData,
-
-      // Competency Modal Data
+      // Competency modal
       showCompetencyModal,
       competencyType,
       selectedCompetency,
       selectedLevel,
-      competencyOptions,
-      levelOptions,
       filteredCompetencyOptions,
       showCompetencyError,
       competencySelections,
       filteredCompetencyOptionsByRow,
-      isAnyCompetencyValid,
 
-      // Helper functions
+      // Helper methods
       isHeadPosition,
       getEmployeeBadgeColor,
-
-      // Methods
-      addEmployeeTab,
-      removeEmployeeTab,
-      switchToEmployee,
-      onEmployeeSelected,
-      getEmployeeIndex,
-      getSelectedEmployeeIds,
-      hasMinimumEffectivenessValues,
-      hasMinimumCompetencies,
-      hasOrganizationalSelection: computed(
-        () =>
-          form.value.division !== null || form.value.section !== null || form.value.unit !== null,
-      ),
-      isSupportCategory,
-      getFilteredMfoOptions,
-      getFilteredOutputOptions,
-      filterMfos,
-      filterOutputs,
-      filterPerformanceIndicators,
-      addPerformanceStandard,
-      removePerformanceStandard,
-      generateSuccessIndicator,
-      filterEmployees,
-      onDivisionChange,
-      onSectionChange,
-      clearDependentFields,
-      sanitizeNumericInput,
-      computeQuantities,
-      cancelQuantityInput,
-      onEffectivenessFieldFocus,
-      onQuantityOptionSelect,
-      onTimelinessTypeSelect,
-      applyTimelinessInputs,
-      onSubmit,
-      onQuantityUpdate,
-      onTimelinessUpdate,
-      onTimelinessDateUpdate,
-      onEffectivenessUpdate,
-      onBack,
       getEmployeeName,
       getEmployeePosition,
       getEmployeeInitial,
+      getEmployeeIndex,
+      getSelectedEmployeeIds,
+      isSupportCategory,
+
+      // Output + MFO methods
+      getAvailableOutputOptions,
+      getOutputNoOptionMessage,
+      getMfoNoOptionMessage,
+
+      // Filter methods
+      filterEmployees,
+      filterMfos,
+      filterOutputs,
+      filterPerformanceIndicators,
+      getFilteredMfoOptions,
+      getFilteredOutputOptions,
+
+      // Validation methods
+      hasMinimumEffectivenessValues,
+      hasMinimumCompetencies,
       validateStrictNumeric,
       blockInvalidChars,
       getQuantityHint,
       isQuantityExceeded,
       getQuantityErrorMessage,
 
-      // Cascade Methods - Keep the function but modal is hidden
-      checkAndShowCascadeModal,
+      // Standard management
+      addPerformanceStandard,
+      removePerformanceStandard,
+      generateSuccessIndicator,
+      clearDependentFields,
 
-      // Competency Methods
+      // Employee tab management
+      addEmployeeTab,
+      removeEmployeeTab,
+      switchToEmployee,
+      onEmployeeSelected,
+
+      // Quantity methods
+      onQuantityOptionSelect,
+      onQuantityUpdate,
+      computeQuantities,
+      cancelQuantityInput,
+
+      // Timeliness methods
+      onTimelinessTypeSelect,
+      applyTimelinessInputs,
+      onTimelinessUpdate,
+      onTimelinessDateUpdate,
+
+      // Effectiveness methods
+      onEffectivenessUpdate,
+      onEffectivenessFieldFocus,
+
+      // Competency methods
       openCompetencyModal,
       filterCompetencies,
+      getAvailableCompetencies,
+      addCompetencyRow,
+      removeCompetencyRow,
       addAllSelectedCompetencies,
       removeCompetency,
       cancelCompetencySelection,
       validateCompetencies,
-      getAvailableCompetencies,
-      addCompetencyRow,
-      removeCompetencyRow,
+
+      // Cascade
+      checkAndShowCascadeModal,
+
+      // Form lifecycle
+      onDivisionChange,
+      onSectionChange,
+      onSubmit,
+      onBack,
     }
   },
 }
@@ -3744,12 +3884,10 @@ export default {
 .clean-table {
   border-radius: 8px;
 }
-
 .status-badge {
   border-radius: 4px;
   padding: 4px 8px;
 }
-
 .competency-card {
   height: 100%;
 }
@@ -3765,7 +3903,6 @@ export default {
   padding: 4px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
-
 .competency-item:last-child {
   border-bottom: none;
 }
@@ -3773,12 +3910,10 @@ export default {
 .autogrow-textarea {
   width: 100%;
 }
-
 .autogrow-textarea .q-field__native {
   resize: none;
   transition: min-height 0.2s ease;
 }
-
 .autogrow-textarea .q-field__control {
   height: auto !important;
   min-height: 56px;
@@ -3788,11 +3923,9 @@ export default {
   height: auto !important;
   min-height: 45px;
 }
-
 .effectiveness-textarea .q-field__native {
   resize: none;
 }
-
 .effectiveness-error {
   background-color: rgba(255, 0, 0, 0.05);
 }
@@ -3800,17 +3933,14 @@ export default {
 .q-field--dense .q-field__marginal {
   height: 40px;
 }
-
 .text-subtitle {
   font-weight: 500;
   font-size: 1rem;
 }
-
 .text-subtitle2 {
   font-weight: 500;
   font-size: 0.875rem;
 }
-
 .full-height {
   height: 100%;
 }
@@ -3819,7 +3949,6 @@ export default {
   width: 100%;
   table-layout: fixed !important;
 }
-
 .standard-outcome-table th,
 .standard-outcome-table td {
   overflow: hidden;
@@ -3833,11 +3962,9 @@ export default {
   z-index: 1;
   background-color: white;
 }
-
 .input-cell {
   padding: 8px;
 }
-
 .numeric-display {
   padding: 8px;
   text-align: center;
@@ -3847,11 +3974,9 @@ export default {
   background-color: #f5f5f5;
   border-bottom: 1px solid #e0e0e0;
 }
-
 .modal-body {
   padding: 20px;
 }
-
 .modal-actions {
   padding: 16px;
   border-top: 1px solid #e0e0e0;
@@ -3876,7 +4001,6 @@ export default {
 .q-slide-transition {
   transition: all 0.3s ease;
 }
-
 .bg-grey-2 {
   background-color: #f5f5f5;
 }
@@ -3884,7 +4008,6 @@ export default {
 .justify-center .q-btn {
   transition: transform 0.2s ease;
 }
-
 .justify-center .q-btn:hover {
   transform: scale(1.05);
 }
@@ -3892,7 +4015,6 @@ export default {
 .q-card {
   transition: box-shadow 0.2s ease;
 }
-
 .q-card:hover {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
 }
@@ -3903,7 +4025,6 @@ export default {
   flex-direction: column;
   justify-content: center;
 }
-
 .table-container {
   overflow-x: auto;
   max-width: 100%;
@@ -3912,7 +4033,9 @@ export default {
 .bg-info {
   background-color: #1976d2;
 }
-
+.bg-warning {
+  background-color: #f2c037;
+}
 .bg-negative {
   background-color: #c10015;
 }
@@ -3927,15 +4050,12 @@ export default {
     width: 100%;
     margin-bottom: 16px;
   }
-
   .competency-list > div {
     white-space: normal;
   }
-
   .employee-tabs-container {
     flex-direction: column;
   }
-
   .q-tabs {
     width: 100%;
     overflow-x: auto;

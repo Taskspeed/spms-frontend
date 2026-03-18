@@ -6,6 +6,7 @@
       style="background-color: #e98193; height: 50px"
     >
       <div class="text-h6 text-white">Office Performance Commitment Review (OPCR)</div>
+
       <q-btn flat round dense icon="close" @click="handleClose" color="white" />
     </q-card-section>
 
@@ -30,6 +31,9 @@
         <div class="text-body1">{{ opcrData.name }} - {{ employee?.position || 'N/A' }}</div>
         <div class="flex justify-end q-gutter-sm">
           <!-- <q-btn color="blue-9" icon="edit" label="Input" @click="openEditModal" /> -->
+          <q-btn color="orange-9" icon="edit" label="Update" @click="openStatusModal">
+            <q-tooltip>Change Status</q-tooltip>
+          </q-btn>
           <q-btn color="green-9" icon="print" label="Print" @click="handlePrint" />
         </div>
       </div>
@@ -379,6 +383,121 @@
       <div class="text-grey-7 q-mt-md">No OPCR data available</div>
     </q-card-section>
 
+    <q-dialog v-model="showStatusModal" persistent>
+      <q-card style="min-width: 450px; max-width: 550px; border-radius: 16px; overflow: hidden">
+        <!-- Modal Header -->
+        <div style="background: #f57c00; padding: 24px 28px 20px; position: relative">
+          <div class="row items-center no-wrap">
+            <q-icon name="assignment_turned_in" color="white" size="28px" class="q-mr-sm" />
+            <div>
+              <div class="text-white text-weight-bold" style="font-size: 18px">Update Status</div>
+              <div class="text-orange-2 text-caption">Change target period status</div>
+            </div>
+          </div>
+
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            class="absolute-top-right q-mt-sm q-mr-sm"
+            text-color="white"
+            @click="closeStatusModal"
+            :disable="statusLoading"
+          />
+        </div>
+
+        <!-- Modal Body -->
+        <q-card-section class="q-pt-lg q-pb-md q-px-xl">
+          <!-- Period Summary -->
+          <div
+            class="q-pa-md rounded-borders q-mb-lg"
+            style="background: #f8f9fa; border-left: 4px solid #f57c00; border-radius: 8px"
+          >
+            <div class="row items-center q-gutter-sm">
+              <q-icon name="calendar_month" size="20px" color="orange-8" />
+              <span class="text-subtitle2 text-weight-medium text-grey-8">
+                {{ targetPeriod?.semester || 'N/A' }} {{ targetPeriod?.year || '' }}
+              </span>
+            </div>
+
+            <div class="row items-center q-gutter-sm q-mt-sm">
+              <q-icon name="badge" size="20px" color="orange-8" />
+              <span class="text-body2 text-grey-7">
+                Current Status:
+                <q-badge
+                  :color="getStatusBadgeColor(currentPeriod?.status || targetPeriod?.status)"
+                  :label="currentPeriod?.status || targetPeriod?.status || 'N/A'"
+                  class="q-ml-sm q-pa-sm"
+                  style="font-size: 0.8rem"
+                />
+              </span>
+            </div>
+          </div>
+
+          <!-- Remarks -->
+          <div class="q-mb-md">
+            <div class="row items-center q-mb-xs">
+              <div class="text-subtitle2 text-weight-medium text-grey-8">Remarks</div>
+              <div class="text-caption text-grey-6 q-ml-sm">(Optional)</div>
+            </div>
+
+            <q-input
+              v-model="statusRemarks"
+              type="textarea"
+              outlined
+              dense
+              placeholder="Add any comments or notes about this status change..."
+              :maxlength="500"
+              :rows="3"
+              :disable="statusLoading"
+            >
+              <template v-slot:counter>
+                <span class="text-caption text-grey-6">{{ statusRemarks.length }}/500</span>
+              </template>
+            </q-input>
+          </div>
+
+          <!-- Error -->
+          <q-slide-transition>
+            <div v-if="updateStatusStore.error">
+              <q-banner dense rounded class="text-white q-mb-md" style="background: #c62828">
+                <template v-slot:avatar>
+                  <q-icon name="error" />
+                </template>
+                {{ updateStatusStore.error }}
+              </q-banner>
+            </div>
+          </q-slide-transition>
+        </q-card-section>
+
+        <!-- Actions -->
+        <q-card-actions align="right" class="q-px-xl q-pb-lg q-pt-md bg-grey-1">
+          <q-btn
+            flat
+            label="Returned"
+            text-color="grey-7"
+            icon="undo"
+            :disable="statusLoading"
+            @click="updateStatus('Returned')"
+            style="border-radius: 8px; padding: 8px 24px; border: 1px solid #e0e0e0"
+            class="q-mr-sm"
+          />
+          <q-btn
+            label="Reviewed"
+            icon="check_circle"
+            color="purple"
+            text-color="white"
+            unelevated
+            :loading="statusLoading"
+            :disable="statusLoading"
+            @click="updateStatus('Reviewed')"
+            style="border-radius: 8px; padding: 8px 24px; min-width: 120px"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <q-dialog v-model="editModalOpen" persistent>
       <OPCRInput :employee="employee" :targetPeriod="targetPeriod" @close="closeEditModal" />
     </q-dialog>
@@ -387,11 +506,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useOpcrStore } from 'src/stores/office/opcrStore'
 import { useQuasar } from 'quasar'
+import { useOpcrStore } from 'src/stores/office/opcrStore'
+import { useOpcrUpdateStatusStore } from 'src/stores/updateOPCRStatusStore'
 import OPCRInput from './OPCRInput.vue'
 
-// Add pdfMake import
+// =========================
+// pdfMake lazy loader
+// =========================
 let pdfMake = null
 
 const initPdfMake = async () => {
@@ -409,6 +531,9 @@ const initPdfMake = async () => {
   return pdfMake
 }
 
+// =========================
+// Props / emits
+// =========================
 const props = defineProps({
   employee: {
     type: Object,
@@ -422,17 +547,35 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'refresh'])
 
-const opcrStore = useOpcrStore()
+// =========================
+// Stores
+// =========================
 const $q = useQuasar()
+const opcrStore = useOpcrStore()
+const updateStatusStore = useOpcrUpdateStatusStore()
 
-// Modal state
+// =========================
+// UI state
+// =========================
 const editModalOpen = ref(false)
 const isPrinting = ref(false)
 
-// Use store state directly
+// Status modal state (for your dialog)
+const showStatusModal = ref(false)
+const statusRemarks = ref('')
+
+// =========================
+// Store state bindings
+// =========================
 const loading = computed(() => opcrStore.loading)
 const error = computed(() => opcrStore.error)
 const opcrData = computed(() => opcrStore.opcrData)
+
+const statusLoading = computed(() => updateStatusStore.loading)
+
+// =========================
+// Derived data
+// =========================
 
 // Get current period from opcrData
 const currentPeriod = computed(() => {
@@ -443,9 +586,7 @@ const currentPeriod = computed(() => {
 })
 
 // Get performance standards
-const performanceStandards = computed(() => {
-  return currentPeriod.value?.performance_standards || []
-})
+const performanceStandards = computed(() => currentPeriod.value?.performance_standards || [])
 
 // Get unique categories
 const categories = computed(() => {
@@ -459,20 +600,17 @@ const currentDate = computed(() => {
   return `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`
 })
 
-// Get standards by category
-const getStandardsByCategory = (category) => {
-  return performanceStandards.value.filter((s) => s.category === category)
-}
+// =========================
+// Helpers for table rendering
+// =========================
+const getStandardsByCategory = (category) =>
+  performanceStandards.value.filter((s) => s.category === category)
 
-// Check if category has data
-const hasCategoryData = (category) => {
-  return performanceStandards.value.some((s) => s.category === category)
-}
+const hasCategoryData = (category) =>
+  performanceStandards.value.some((s) => s.category === category)
 
-// Calculate rating for a specific category
 const calculateCategoryRating = (category) => {
   const categoryStandards = performanceStandards.value.filter((s) => s.category === category)
-
   if (!categoryStandards || categoryStandards.length === 0) return '0.00'
 
   let totalRating = 0
@@ -497,60 +635,41 @@ const calculateCategoryRating = (category) => {
   return count > 0 ? (totalRating / count).toFixed(2) : '0.00'
 }
 
-// Format proficiency level
 const getProficiencyLevel = (level) => {
   if (level === null || level === undefined) return 'Not Applicable'
-
-  const levels = {
-    1: 'Basic',
-    2: 'Intermediate',
-    3: 'Advanced',
-    4: 'Superior',
-  }
-
+  const levels = { 1: 'Basic', 2: 'Intermediate', 3: 'Advanced', 4: 'Superior' }
   return levels[level] || 'Not Applicable'
 }
 
-// Format competencies
 const formatCompetencies = (standard) => {
   const core = standard.core || []
   const technical = standard.technical || []
   const leadership = standard.leadership || []
-
   const combined = [...core, ...technical, ...leadership]
 
-  if (combined.length === 0) {
-    return 'Not Applicable'
-  }
+  if (combined.length === 0) return 'Not Applicable'
 
-  const formatted = combined.map((comp, index) => {
-    const proficiency = getProficiencyLevel(comp.level)
-    return `${index + 1}. ${comp.description} (${proficiency})`
-  })
-
-  return formatted.join('\n')
+  return combined
+    .map((comp, index) => `${index + 1}. ${comp.description} (${getProficiencyLevel(comp.level)})`)
+    .join('\n')
 }
 
-// Format proficiency result
 const formatProficiencyResult = (standard) => {
   const core = standard.core || []
   const technical = standard.technical || []
   const leadership = standard.leadership || []
-
   const combined = [...core, ...technical, ...leadership]
 
-  if (combined.length === 0) {
-    return 'Not Applicable'
-  }
+  if (combined.length === 0) return 'Not Applicable'
 
-  const proficiencyLevels = combined.map((comp, index) => {
-    const proficiency = getProficiencyLevel(comp.level)
-    return `${index + 1}. ${proficiency}`
-  })
-
-  return proficiencyLevels.join('\n')
+  return combined
+    .map((comp, index) => `${index + 1}. ${getProficiencyLevel(comp.level)}`)
+    .join('\n')
 }
 
+// =========================
+// Data loading
+// =========================
 const loadOpcrData = async () => {
   const controlNo =
     props.employee?.employeeData?.ControlNo ||
@@ -558,36 +677,29 @@ const loadOpcrData = async () => {
     props.employee?.control_no
 
   if (!controlNo) {
-    $q.notify({
-      message: 'Employee control number is missing',
-      color: 'negative',
-    })
+    $q.notify({ message: 'Employee control number is missing', color: 'negative' })
     return
   }
 
   if (!props.targetPeriod?.semester || !props.targetPeriod?.year) {
-    $q.notify({
-      message: 'Target period is missing',
-      color: 'negative',
-    })
+    $q.notify({ message: 'Target period is missing', color: 'negative' })
     return
   }
 
   try {
     await opcrStore.fetchOpcr(controlNo, props.targetPeriod.semester, props.targetPeriod.year)
-  } catch (error) {
-    console.error('Failed to load OPCR:', error)
+  } catch (e) {
+    console.error('Failed to load OPCR:', e)
   }
 }
 
+// =========================
+// Close handlers
+// =========================
 const handleClose = () => {
   opcrStore.clear()
   emit('close')
 }
-
-// const openEditModal = () => {
-//   editModalOpen.value = true
-// }
 
 const closeEditModal = async () => {
   editModalOpen.value = false
@@ -595,6 +707,9 @@ const closeEditModal = async () => {
   emit('refresh')
 }
 
+// =========================
+// Rating computation
+// =========================
 const calculateAverageRating = () => {
   const standards = performanceStandards.value
   if (!standards || standards.length === 0) return '0.00'
@@ -632,7 +747,79 @@ const getAdjectivalRating = (rating) => {
   return 'Poor'
 }
 
-// Helper to convert image URL to base64
+// =========================
+// Status dialog handlers
+// =========================
+const openStatusModal = () => {
+  statusRemarks.value = ''
+  updateStatusStore.clearError()
+  showStatusModal.value = true
+}
+
+const closeStatusModal = () => {
+  if (statusLoading.value) return
+  showStatusModal.value = false
+}
+
+const getStatusBadgeColor = (status) => {
+  const s = String(status || '').toLowerCase()
+  if (s === 'reviewed') return 'purple'
+  if (s === 'returned') return 'grey-7'
+  if (s === 'approved' || s === 'approve') return 'green-8'
+  return 'orange-8'
+}
+
+const updateStatus = async (status) => {
+  const officeId = opcrData.value?.office_id ?? opcrData.value?.opcr_status?.office_id
+  const officeOpcrId = opcrData.value?.opcr_status?.id
+
+  if (!officeId) {
+    $q.notify({
+      type: 'negative',
+      message: 'Missing office_id.',
+      position: 'top',
+    })
+    return
+  }
+
+  if (!officeOpcrId) {
+    $q.notify({
+      type: 'negative',
+      message: 'Missing office_opcr_id.',
+      position: 'top',
+    })
+    return
+  }
+
+  try {
+    await updateStatusStore.updateStatus({
+      office_id: Number(officeId),
+      office_opcr_id: Number(officeOpcrId),
+      status,
+      remarks: statusRemarks.value,
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: `Status updated to "${status}".`,
+      position: 'top',
+    })
+
+    closeStatusModal()
+    await loadOpcrData()
+    emit('refresh')
+  } catch (e) {
+    console.error('Failed to update status:', e)
+    $q.notify({
+      type: 'negative',
+      message: updateStatusStore.error || 'Failed to update status.',
+      position: 'top',
+    })
+  }
+}
+// =========================
+// PDF helpers
+// =========================
 const convertImageToBase64 = (url) => {
   return new Promise((resolve, reject) => {
     const img = new window.Image()
@@ -644,20 +831,16 @@ const convertImageToBase64 = (url) => {
         canvas.height = img.height
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0)
-        const dataURL = canvas.toDataURL('image/png')
-        resolve(dataURL)
+        resolve(canvas.toDataURL('image/png'))
       } catch (err) {
         reject(err)
       }
     }
-    img.onerror = function (err) {
-      reject(err)
-    }
+    img.onerror = reject
     img.src = url
   })
 }
 
-// Create SVG placeholder function
 const createSvgPlaceholder = (text, width = 80, height = 80) => {
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <rect width="100%" height="100%" fill="#f0f0f0" stroke="#666" stroke-width="1" stroke-dasharray="2" />
@@ -677,14 +860,12 @@ const formatDate = (date) => {
   return `${month}/${day}/${year}`
 }
 
-// PDF Generation Function
+// =========================
+// PDF generation
+// =========================
 const handlePrint = async () => {
   if (!opcrData.value) {
-    $q.notify({
-      type: 'warning',
-      message: 'No OPCR data available to print',
-      position: 'top',
-    })
+    $q.notify({ type: 'warning', message: 'No OPCR data available to print', position: 'top' })
     return
   }
 
@@ -692,39 +873,29 @@ const handlePrint = async () => {
 
   try {
     const pdfMakeInstance = await initPdfMake()
+    if (!pdfMakeInstance) throw new Error('Failed to load pdfMake')
 
-    if (!pdfMakeInstance) {
-      throw new Error('Failed to load pdfMake')
-    }
-
-    // Load images as base64 data URLs
     let tagumLogoBase64 = null
     let rotpLogoBase64 = null
 
     try {
       tagumLogoBase64 = await convertImageToBase64('/tagumlogo.png')
       rotpLogoBase64 = await convertImageToBase64('/rotp.png')
-    } catch (error) {
-      console.warn('Could not load images, using SVG placeholders:', error)
+    } catch (e) {
+      console.warn('Could not load images, using SVG placeholders:', e)
       tagumLogoBase64 = createSvgPlaceholder('TAGUM LOGO')
       rotpLogoBase64 = createSvgPlaceholder('ROTP LOGO')
     }
 
     const docDefinition = generateOpcrPdfContent(tagumLogoBase64, rotpLogoBase64)
-
-    // Open in new window
     pdfMakeInstance.createPdf(docDefinition).open()
 
-    $q.notify({
-      type: 'positive',
-      message: 'PDF generated successfully',
-      position: 'top',
-    })
-  } catch (error) {
-    console.error('Error generating PDF:', error)
+    $q.notify({ type: 'positive', message: 'PDF generated successfully', position: 'top' })
+  } catch (e) {
+    console.error('Error generating PDF:', e)
     $q.notify({
       type: 'negative',
-      message: `Failed to generate PDF: ${error.message}`,
+      message: `Failed to generate PDF: ${e.message}`,
       position: 'top',
     })
   } finally {
@@ -732,7 +903,10 @@ const handlePrint = async () => {
   }
 }
 
+// =========================
 // Generate OPCR PDF Content
+// (Your original function kept here, unchanged in behavior.)
+// =========================
 const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
   const employeeName = opcrData.value?.name || 'N/A'
   const position = props.employee?.position || 'N/A'
@@ -863,10 +1037,7 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
       widths: ['*', '*'],
       body: [
         [
-          {
-            text: '',
-            border: [true, false, false, false],
-          },
+          { text: '', border: [true, false, false, false] },
           {
             stack: [
               {
@@ -876,16 +1047,8 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
                 alignment: 'center',
                 margin: [0, 10, 0, 2],
               },
-              {
-                text: position,
-                fontSize: 8,
-                alignment: 'center',
-              },
-              {
-                text: `Date: ${formatDate(new Date())}`,
-                fontSize: 8,
-                alignment: 'center',
-              },
+              { text: position, fontSize: 8, alignment: 'center' },
+              { text: `Date: ${formatDate(new Date())}`, fontSize: 8, alignment: 'center' },
             ],
             border: [false, false, true, false],
           },
@@ -932,24 +1095,13 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
                 alignment: 'center',
                 margin: [0, 20, 0, 0],
               },
-              {
-                text: '________________________________',
-                alignment: 'center',
-                fontSize: 9,
-              },
-              {
-                text: 'City Mayor',
-                fontSize: 9,
-                alignment: 'center',
-              },
+              { text: '________________________________', alignment: 'center', fontSize: 9 },
+              { text: 'City Mayor', fontSize: 9, alignment: 'center' },
             ],
             border: [true, true, true, true],
             margin: [5, 5, 5, 5],
           },
-          {
-            text: '',
-            border: [true, true, true, true],
-          },
+          { text: '', border: [true, true, true, true] },
         ],
       ],
     },
@@ -1056,7 +1208,6 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
 
   // Main OPCR Table
   const tableBody = [
-    // Header rows
     [
       {
         text: 'MFO',
@@ -1187,9 +1338,8 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
     ],
   ]
 
-  // Add data rows for each category
+  // Add rows per category
   categories.value.forEach((category) => {
-    // Category header
     tableBody.push([
       {
         text: category,
@@ -1213,7 +1363,6 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
       {},
     ])
 
-    // Standards for this category
     const standards = getStandardsByCategory(category)
     standards.forEach((standard) => {
       tableBody.push([
@@ -1294,7 +1443,7 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
     })
   })
 
-  // Average Rating Section
+  // Footer rating section
   tableBody.push([
     {
       text: 'Category',
@@ -1325,14 +1474,12 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
     {},
   ])
 
-  // Calculate how many category rating rows we'll have
   let categoryRatingRowCount = 0
   if (hasCategoryData('A. STRATEGIC FUNCTION')) categoryRatingRowCount++
   if (hasCategoryData('B. CORE FUNCTION')) categoryRatingRowCount++
   if (hasCategoryData('C. SUPPORT FUNCTION')) categoryRatingRowCount++
-  categoryRatingRowCount += 2 // Final Rating + Adjectival Rating
+  categoryRatingRowCount += 2 // final + adjectival
 
-  // Category ratings
   if (hasCategoryData('A. STRATEGIC FUNCTION')) {
     tableBody.push([
       {
@@ -1349,12 +1496,7 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
         alignment: 'center',
         border: [true, true, true, true],
       },
-      {
-        text: '',
-        colSpan: 10,
-        rowSpan: categoryRatingRowCount,
-        border: [true, true, true, true],
-      },
+      { text: '', colSpan: 10, rowSpan: categoryRatingRowCount, border: [true, true, true, true] },
       {},
       {},
       {},
@@ -1425,7 +1567,6 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
     ])
   }
 
-  // Final Rating
   tableBody.push([
     {
       text: 'Final Rating:',
@@ -1453,7 +1594,6 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
     {},
   ])
 
-  // Adjectival Rating
   tableBody.push([
     {
       text: 'Adjectival Rating:',
@@ -1481,10 +1621,10 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
     {},
   ])
 
-  // Add the main table with NO header rows repeating
+  // Main table (no repeated headers)
   content.push({
     table: {
-      headerRows: 0, // Don't repeat any header rows
+      headerRows: 0,
       widths: ['10%', '12%', '10%', '8%', '8%', '10%', '5%', '5%', '5%', '5%', '10%', '12%'],
       body: tableBody,
     },
@@ -1497,7 +1637,7 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
     margin: [0, 0, 0, 10],
   })
 
-  // Signature Section - Make it unbreakable
+  // Signature Section
   content.push({
     table: {
       widths: ['50%', '50%'],
@@ -1528,16 +1668,8 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
                 alignment: 'center',
                 margin: [0, 40, 0, 2],
               },
-              {
-                text: '________________________________',
-                alignment: 'center',
-                fontSize: 9,
-              },
-              {
-                text: 'Immediate Supervisor',
-                fontSize: 8,
-                alignment: 'center',
-              },
+              { text: '________________________________', alignment: 'center', fontSize: 9 },
+              { text: 'Immediate Supervisor', fontSize: 8, alignment: 'center' },
             ],
             border: [true, true, true, true],
             margin: [5, 5, 5, 5],
@@ -1551,16 +1683,8 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
                 alignment: 'center',
                 margin: [0, 40, 0, 2],
               },
-              {
-                text: '________________________________',
-                alignment: 'center',
-                fontSize: 9,
-              },
-              {
-                text: 'City Mayor',
-                fontSize: 8,
-                alignment: 'center',
-              },
+              { text: '________________________________', alignment: 'center', fontSize: 9 },
+              { text: 'City Mayor', fontSize: 8, alignment: 'center' },
             ],
             border: [true, true, true, true],
             margin: [5, 5, 5, 5],
@@ -1575,20 +1699,21 @@ const generateOpcrPdfContent = (tagumLogoBase64, rotpLogoBase64) => {
       vLineColor: () => '#000000',
     },
     margin: [0, 0, 0, 0],
-    unbreakable: true, // Prevent signature section from breaking across pages
+    unbreakable: true,
   })
 
   return {
     pageSize: 'LEGAL',
     pageOrientation: 'landscape',
     pageMargins: [36, 36, 36, 36],
-    content: content,
-    defaultStyle: {
-      fontSize: 8,
-    },
+    content,
+    defaultStyle: { fontSize: 8 },
   }
 }
 
+// =========================
+// Lifecycle
+// =========================
 onMounted(() => {
   loadOpcrData()
 })

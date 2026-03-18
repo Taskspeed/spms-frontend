@@ -12,7 +12,7 @@ export const useMonitorStatusStore = defineStore('monitorStatus', () => {
     error.value = ''
 
     try {
-      const response = await api.post('/monitor/store', payload)
+      const response = await api.post('/hr/unit-work-plan/update-status', payload)
       return response.data
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to update status'

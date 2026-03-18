@@ -1,6 +1,5 @@
 // src/composables/useQuantityRestriction.js
 
-// Category mapping for indicators
 export const INDICATOR_CATEGORIES = {
   PRODUCTION: 'Production',
   QUALITY_CONTROL: 'Quality Control',
@@ -9,9 +8,7 @@ export const INDICATOR_CATEGORIES = {
 
 /**
  * Get category of a performance indicator
- * @param {string|number} indicatorId - The indicator ID
- * @param {Array} verbs - List of verbs/indicators from store
- * @returns {string} Category name
+ * Handles nested category object, flat string, indicator_category field, and category_id fallback
  */
 export const getIndicatorCategory = (indicatorId, verbs) => {
   if (!indicatorId || !verbs) return null
@@ -21,284 +18,59 @@ export const getIndicatorCategory = (indicatorId, verbs) => {
   const indicator = verbs.find((v) => v.id === Number(indicatorId))
   if (!indicator) {
     console.log('Indicator not found in verbs:', indicatorId)
-    // Try to find by name if ID doesn't match
-    const indicatorStr = indicatorId.toString().toLowerCase()
-    const verbByName = verbs.find(
-      (v) =>
-        v.name?.toLowerCase().includes(indicatorStr) ||
-        v.indicator_name?.toLowerCase().includes(indicatorStr),
-    )
-    if (verbByName) {
-      console.log('Found indicator by name:', verbByName)
-      return getIndicatorCategory(verbByName.id, verbs)
-    }
-    return null
-  }
-
-  const indicatorName = (indicator.name || indicator.indicator_name || '').toLowerCase()
-  console.log('Indicator name:', indicatorName)
-
-  // Map indicator to category based on your business logic
-  if (
-    indicatorName.includes('produce') ||
-    indicatorName.includes('create') ||
-    indicatorName.includes('develop') ||
-    indicatorName.includes('supervise') || // Add supervise for your case
-    indicatorName.includes('managed') ||
-    indicatorName.includes('implement') ||
-    indicatorName.includes('conduct') ||
-    indicatorName.includes('prepare')
-  ) {
     return INDICATOR_CATEGORIES.PRODUCTION
   }
 
-  if (
-    indicatorName.includes('check') ||
-    indicatorName.includes('review') ||
-    indicatorName.includes('inspect') ||
-    indicatorName.includes('validate') ||
-    indicatorName.includes('monitor') ||
-    indicatorName.includes('evaluate')
-  ) {
-    return INDICATOR_CATEGORIES.QUALITY_CONTROL
+  console.log('Indicator found:', indicator)
+
+  // Handle nested category object: { id, categories_name, ... }
+  if (indicator.category && typeof indicator.category === 'object') {
+    const categoryName = indicator.category.categories_name || ''
+    console.log('Category from nested object:', categoryName)
+
+    if (categoryName.toLowerCase().includes('production')) return INDICATOR_CATEGORIES.PRODUCTION
+    if (categoryName.toLowerCase().includes('quality')) return INDICATOR_CATEGORIES.QUALITY_CONTROL
+    if (categoryName.toLowerCase().includes('decision')) return INDICATOR_CATEGORIES.DECISION_MAKING
+
+    return INDICATOR_CATEGORIES.PRODUCTION
   }
 
-  if (
-    indicatorName.includes('decide') ||
-    indicatorName.includes('approve') ||
-    indicatorName.includes('recommend') ||
-    indicatorName.includes('resolve') ||
-    indicatorName.includes('coordinate') ||
-    indicatorName.includes('direct')
-  ) {
-    return INDICATOR_CATEGORIES.DECISION_MAKING
+  // Handle flat string category field
+  if (indicator.category && typeof indicator.category === 'string') {
+    console.log('Category from flat string:', indicator.category)
+    const cat = indicator.category.toLowerCase()
+    if (cat.includes('production')) return INDICATOR_CATEGORIES.PRODUCTION
+    if (cat.includes('quality')) return INDICATOR_CATEGORIES.QUALITY_CONTROL
+    if (cat.includes('decision')) return INDICATOR_CATEGORIES.DECISION_MAKING
+    return INDICATOR_CATEGORIES.PRODUCTION
   }
 
-  // Default to Production if we can't determine
-  console.log('Could not determine category, defaulting to Production')
+  // Handle flat indicator_category field
+  if (indicator.indicator_category) {
+    console.log('Category from indicator_category:', indicator.indicator_category)
+    const cat = indicator.indicator_category.toLowerCase()
+    if (cat.includes('production')) return INDICATOR_CATEGORIES.PRODUCTION
+    if (cat.includes('quality')) return INDICATOR_CATEGORIES.QUALITY_CONTROL
+    if (cat.includes('decision')) return INDICATOR_CATEGORIES.DECISION_MAKING
+    return INDICATOR_CATEGORIES.PRODUCTION
+  }
+
+  // Handle category_id as fallback (1=Production, 2=Quality Control, 3=Decision Making)
+  if (indicator.category_id) {
+    const id = Number(indicator.category_id)
+    console.log('Category from category_id:', id)
+    if (id === 1) return INDICATOR_CATEGORIES.PRODUCTION
+    if (id === 2) return INDICATOR_CATEGORIES.QUALITY_CONTROL
+    if (id === 3) return INDICATOR_CATEGORIES.DECISION_MAKING
+  }
+
+  console.log('No category resolved, defaulting to Production')
   return INDICATOR_CATEGORIES.PRODUCTION
 }
 
 /**
- * Find supervisor in cascade data - also consider Office Head
- * @param {Object} supervisor - Supervisor from employee.supervisorySignatory
- * @param {Object} cascadeData - Data from cascade store
- * @returns {Object} Supervisor data from cascade
- */
-export const findSupervisorInCascade = (supervisor, cascadeData) => {
-  if (!supervisor?.name || !cascadeData) return null
-
-  console.log('Finding supervisor in cascade:', {
-    supervisorName: supervisor.name,
-    cascadeName: cascadeData.name,
-    hasSupervisories: !!(cascadeData.supervisories && cascadeData.supervisories.length),
-    hasMfos: !!(cascadeData.mfos && cascadeData.mfos.length),
-  })
-
-  // First check in supervisories array
-  if (cascadeData.supervisories && cascadeData.supervisories.length > 0) {
-    const found = cascadeData.supervisories.find(
-      (sup) =>
-        sup.name?.toLowerCase().includes(supervisor.name.toLowerCase()) ||
-        supervisor.name.toLowerCase().includes(sup.name?.toLowerCase() || ''),
-    )
-    if (found) {
-      console.log('Found supervisor in supervisories:', found.name)
-      return found
-    }
-  }
-
-  // If no supervisories, check if this is the Office Head
-  if (cascadeData.name) {
-    const nameMatch =
-      cascadeData.name.toLowerCase().includes(supervisor.name.toLowerCase()) ||
-      supervisor.name.toLowerCase().includes(cascadeData.name.toLowerCase())
-
-    console.log('Checking Office Head match:', {
-      officeHeadName: cascadeData.name,
-      supervisorName: supervisor.name,
-      match: nameMatch,
-    })
-
-    if (nameMatch) {
-      // Create a supervisor-like object from Office Head data
-      const officeHeadAsSupervisor = {
-        name: cascadeData.name,
-        rank: cascadeData.rank,
-        job_title: cascadeData.job_title,
-        office: cascadeData.office,
-        controlNo: cascadeData.controlNo,
-        mfos: cascadeData.mfos || [], // Include MFOs for category checking
-        // Calculate available from all MFOs or use first one
-        available: cascadeData.mfos?.reduce((total, mfo) => total + (mfo.available || 0), 0) || 0,
-      }
-      console.log('Using Office Head as supervisor:', officeHeadAsSupervisor)
-      return officeHeadAsSupervisor
-    }
-  }
-
-  console.log('No matching supervisor found')
-  return null
-}
-
-/**
- * Get supervisor's indicator category based on their MFOs
- * @param {Object} supervisorCascadeData - Supervisor data from cascade
- * @param {Array} verbs - List of verbs/indicators
- * @returns {string} Primary category of supervisor
- */
-export const getSupervisorCategory = (supervisorCascadeData, verbs) => {
-  if (!supervisorCascadeData?.mfos || !verbs) return null
-
-  console.log('Getting supervisor category from MFOs:', supervisorCascadeData.mfos.length)
-
-  // Collect all indicator categories from supervisor's MFOs
-  const categories = new Set()
-
-  supervisorCascadeData.mfos.forEach((mfo, index) => {
-    console.log(`Processing MFO ${index + 1}:`, mfo.mfo)
-
-    if (mfo.performance_indicator) {
-      // Handle both array of strings and array of objects
-      const indicators = Array.isArray(mfo.performance_indicator)
-        ? mfo.performance_indicator
-        : [mfo.performance_indicator]
-
-      indicators.forEach((indicator) => {
-        if (typeof indicator === 'object' && indicator.value) {
-          console.log(
-            'Found object indicator with value:',
-            indicator.value,
-            'category:',
-            indicator.category,
-          )
-          // If the indicator already has a category in the data, use that
-          if (indicator.category) {
-            categories.add(indicator.category)
-          } else {
-            // Otherwise try to determine from the value
-            const verb = verbs.find(
-              (v) =>
-                v.name?.toLowerCase().includes(indicator.value.toLowerCase()) ||
-                v.indicator_name?.toLowerCase().includes(indicator.value.toLowerCase()),
-            )
-            if (verb) {
-              const category = getIndicatorCategory(verb.id, verbs)
-              if (category) categories.add(category)
-            }
-          }
-        } else if (typeof indicator === 'string') {
-          console.log('Found string indicator:', indicator)
-          // Try to find verb by name
-          const verb = verbs.find(
-            (v) =>
-              v.name?.toLowerCase().includes(indicator.toLowerCase()) ||
-              v.indicator_name?.toLowerCase().includes(indicator.toLowerCase()),
-          )
-          if (verb) {
-            const category = getIndicatorCategory(verb.id, verbs)
-            if (category) categories.add(category)
-          }
-        }
-      })
-    }
-  })
-
-  console.log('Supervisor categories found:', Array.from(categories))
-
-  // Determine primary category
-  if (categories.has(INDICATOR_CATEGORIES.QUALITY_CONTROL)) {
-    return INDICATOR_CATEGORIES.QUALITY_CONTROL
-  }
-  if (categories.has(INDICATOR_CATEGORIES.DECISION_MAKING)) {
-    return INDICATOR_CATEGORIES.DECISION_MAKING
-  }
-  if (categories.has(INDICATOR_CATEGORIES.PRODUCTION)) {
-    return INDICATOR_CATEGORIES.PRODUCTION
-  }
-
-  return null
-}
-
-/**
- * Check if indicator belongs to supervisor
- * @param {Array|string|number} selectedIndicators - Selected indicator IDs
- * @param {Object} supervisorCascadeData - Supervisor data from cascade
- * @returns {boolean} Whether indicator belongs to supervisor
- */
-export const indicatorBelongsToSupervisor = (selectedIndicators, supervisorCascadeData) => {
-  if (!selectedIndicators || !supervisorCascadeData?.mfos) return false
-
-  const indicatorIds = Array.isArray(selectedIndicators)
-    ? selectedIndicators.map((id) => Number(id))
-    : [Number(selectedIndicators)]
-
-  console.log('Checking if indicators belong to supervisor:', {
-    indicatorIds,
-    supervisorMfosCount: supervisorCascadeData.mfos.length,
-  })
-
-  // Check if any selected indicator matches supervisor's indicators
-  for (const mfo of supervisorCascadeData.mfos) {
-    if (mfo.performance_indicator) {
-      const indicators = Array.isArray(mfo.performance_indicator)
-        ? mfo.performance_indicator
-        : [mfo.performance_indicator]
-
-      console.log('Checking MFO:', mfo.mfo, 'indicators:', indicators)
-
-      for (const indicator of indicators) {
-        // Handle both object and string formats
-        let indicatorValue
-        let indicatorCategory
-
-        if (typeof indicator === 'object') {
-          indicatorValue = indicator.value
-          indicatorCategory = indicator.category
-          console.log('Object indicator - value:', indicatorValue, 'category:', indicatorCategory)
-        } else {
-          indicatorValue = indicator
-          console.log('String indicator:', indicatorValue)
-        }
-
-        if (!indicatorValue) continue
-
-        // Check for match
-        const match = indicatorIds.some((id) => {
-          // Find the verb by ID
-          const verb = supervisorCascadeData.verbs?.find((v) => v.id === id) || {
-            name: id.toString(),
-          }
-
-          const verbName = (verb.name || verb.indicator_name || '').toLowerCase()
-          const indicatorStr = indicatorValue.toString().toLowerCase()
-
-          // Check if indicator value matches verb name
-          const matches = indicatorStr.includes(verbName) || verbName.includes(indicatorStr)
-
-          if (matches) {
-            console.log('Match found:', {
-              indicatorValue: indicatorStr,
-              verbName: verbName,
-              id: id,
-            })
-          }
-
-          return matches
-        })
-
-        if (match) return true
-      }
-    }
-  }
-
-  return false
-}
-
-/**
- * Determine primary category from multiple indicators
- * @param {Array} categories - List of indicator categories
- * @returns {string} Primary category
+ * Determine primary category from employee's selected indicators
+ * Uses majority rule — most common category wins, ties go to Production
  */
 export const determinePrimaryCategory = (categories) => {
   if (!categories || categories.length === 0) {
@@ -306,42 +78,58 @@ export const determinePrimaryCategory = (categories) => {
     return INDICATOR_CATEGORIES.PRODUCTION
   }
 
-  // Priority: Quality Control > Decision Making > Production
-  if (categories.includes(INDICATOR_CATEGORIES.QUALITY_CONTROL)) {
-    return INDICATOR_CATEGORIES.QUALITY_CONTROL
-  }
-  if (categories.includes(INDICATOR_CATEGORIES.DECISION_MAKING)) {
-    return INDICATOR_CATEGORIES.DECISION_MAKING
-  }
-  if (categories.includes(INDICATOR_CATEGORIES.PRODUCTION)) {
-    return INDICATOR_CATEGORIES.PRODUCTION
+  const counts = {
+    [INDICATOR_CATEGORIES.PRODUCTION]: 0,
+    [INDICATOR_CATEGORIES.QUALITY_CONTROL]: 0,
+    [INDICATOR_CATEGORIES.DECISION_MAKING]: 0,
   }
 
-  return categories[0]
+  categories.forEach((cat) => {
+    if (cat && counts[cat] !== undefined) counts[cat]++
+  })
+
+  console.log('Category counts:', counts)
+
+  const maxCount = Math.max(...Object.values(counts))
+
+  if (counts[INDICATOR_CATEGORIES.PRODUCTION] === maxCount) return INDICATOR_CATEGORIES.PRODUCTION
+  if (counts[INDICATOR_CATEGORIES.QUALITY_CONTROL] === maxCount)
+    return INDICATOR_CATEGORIES.QUALITY_CONTROL
+  if (counts[INDICATOR_CATEGORIES.DECISION_MAKING] === maxCount)
+    return INDICATOR_CATEGORIES.DECISION_MAKING
+
+  return INDICATOR_CATEGORIES.PRODUCTION
 }
 
 /**
- * Calculate maximum allowed quantity based on restriction rules
- * @param {Object} params - Parameters for calculation
- * @returns {Object} Max quantity and restriction info
+ * Calculate maximum allowed quantity based on indicator category rules
+ *
+ * Rules:
+ *  - Same indicator as supervisor (any category) → always `available`
+ *  - Production only                             → `available`
+ *  - Quality Control only                        → `total_target`
+ *  - Decision Making only                        → `total_target`
+ *  - Mixed (any combination)                     → `total_target`
+ *  - Type C                                      → no restriction
  */
 export const calculateMaxQuantity = ({
+  primaryCategory,
   indicatorCategories,
-  supervisorCascadeData,
-  supervisorCategory,
-  indicatorBelongsToSupervisor,
-  cascadeData,
+  supervisorAvailable,
+  supervisorTotalTarget,
   quantityType,
+  isSameIndicatorAsSupervisor,
 }) => {
-  console.log('Calculating max quantity with:', {
+  console.log('calculateMaxQuantity:', {
+    primaryCategory,
     indicatorCategories,
-    supervisorCategory,
-    indicatorBelongsToSupervisor,
-    supervisorAvailable: supervisorCascadeData?.available,
-    totalTarget: cascadeData?.total_target,
+    supervisorAvailable,
+    supervisorTotalTarget,
+    quantityType,
+    isSameIndicatorAsSupervisor,
   })
 
-  // Type C quantity - no restriction
+  // Type C - percentage based, no numeric restriction
   if (quantityType === 'C') {
     return {
       maxQuantity: null,
@@ -350,117 +138,62 @@ export const calculateMaxQuantity = ({
     }
   }
 
-  // No supervisor or cascade data
-  if (!supervisorCascadeData || !cascadeData) {
+  // Override rule: if selected indicator matches supervisor's indicator → always use available
+  if (isSameIndicatorAsSupervisor) {
     return {
-      maxQuantity: null,
-      restrictionType: 'unknown',
-      message: 'Unable to determine restriction',
-    }
-  }
-
-  // Get primary category of selected indicators (default to Production if none)
-  const primaryCategory = determinePrimaryCategory(indicatorCategories)
-  console.log('Primary category:', primaryCategory)
-
-  // Rule 1: Same indicator - use available
-  if (indicatorBelongsToSupervisor) {
-    const maxQty = supervisorCascadeData.available || 0
-    console.log('Rule 1 applied - Same indicator, using available:', maxQty)
-    return {
-      maxQuantity: maxQty,
+      maxQuantity: supervisorAvailable,
       restrictionType: 'available',
-      message: `Maximum allowed: ${maxQty} (based on available quantity)`,
+      message: `Maximum allowed: ${supervisorAvailable} (same indicator as supervisor — capped to available)`,
     }
   }
 
-  // Rule 2: Both Production - use available
-  if (
-    primaryCategory === INDICATOR_CATEGORIES.PRODUCTION &&
-    supervisorCategory === INDICATOR_CATEGORIES.PRODUCTION
-  ) {
-    const maxQty = supervisorCascadeData.available || 0
-    console.log('Rule 2 applied - Both Production, using available:', maxQty)
+  // Check if mixed categories
+  const uniqueCategories = [...new Set(indicatorCategories.filter(Boolean))]
+  const isMixed = uniqueCategories.length > 1
+
+  if (isMixed) {
     return {
-      maxQuantity: maxQty,
-      restrictionType: 'available',
-      message: `Maximum allowed: ${maxQty} (Production to Production)`,
-    }
-  }
-
-  // Rule 3: Both Quality Control - use total_target if same indicator, else available
-  if (
-    primaryCategory === INDICATOR_CATEGORIES.QUALITY_CONTROL &&
-    supervisorCategory === INDICATOR_CATEGORIES.QUALITY_CONTROL
-  ) {
-    const maxValue = indicatorBelongsToSupervisor
-      ? cascadeData.total_target || 0
-      : supervisorCascadeData.available || 0
-
-    console.log('Rule 3 applied - Both Quality Control:', {
-      maxValue,
-      sameIndicator: indicatorBelongsToSupervisor,
-    })
-
-    return {
-      maxQuantity: maxValue,
-      restrictionType: indicatorBelongsToSupervisor ? 'total_target' : 'available',
-      message: `Maximum allowed: ${maxValue} (Quality Control ${indicatorBelongsToSupervisor ? 'same indicator' : 'different indicator'})`,
-    }
-  }
-
-  // Rule 4: Both Decision Making - use total_target if same indicator, else available
-  if (
-    primaryCategory === INDICATOR_CATEGORIES.DECISION_MAKING &&
-    supervisorCategory === INDICATOR_CATEGORIES.DECISION_MAKING
-  ) {
-    const maxValue = indicatorBelongsToSupervisor
-      ? cascadeData.total_target || 0
-      : supervisorCascadeData.available || 0
-
-    console.log('Rule 4 applied - Both Decision Making:', {
-      maxValue,
-      sameIndicator: indicatorBelongsToSupervisor,
-    })
-
-    return {
-      maxQuantity: maxValue,
-      restrictionType: indicatorBelongsToSupervisor ? 'total_target' : 'available',
-      message: `Maximum allowed: ${maxValue} (Decision Making ${indicatorBelongsToSupervisor ? 'same indicator' : 'different indicator'})`,
-    }
-  }
-
-  // Rule 5: Production and Quality Control/Decision Making - use total_target
-  if (
-    (primaryCategory === INDICATOR_CATEGORIES.PRODUCTION &&
-      (supervisorCategory === INDICATOR_CATEGORIES.QUALITY_CONTROL ||
-        supervisorCategory === INDICATOR_CATEGORIES.DECISION_MAKING)) ||
-    ((primaryCategory === INDICATOR_CATEGORIES.QUALITY_CONTROL ||
-      primaryCategory === INDICATOR_CATEGORIES.DECISION_MAKING) &&
-      supervisorCategory === INDICATOR_CATEGORIES.PRODUCTION)
-  ) {
-    const maxQty = cascadeData.total_target || 0
-    console.log('Rule 5 applied - Mixed categories, using total target:', maxQty)
-    return {
-      maxQuantity: maxQty,
+      maxQuantity: supervisorTotalTarget,
       restrictionType: 'total_target',
-      message: `Maximum allowed: ${maxQty} (Mixed categories - using total target)`,
+      message: `Maximum allowed: ${supervisorTotalTarget} (mixed indicators — capped to total target)`,
     }
   }
 
-  // Default fallback - use available
-  console.log('No specific rule matched, using available as default')
-  return {
-    maxQuantity: supervisorCascadeData.available || 0,
-    restrictionType: 'available',
-    message: `Maximum allowed: ${supervisorCascadeData.available || 0} (based on available quantity)`,
+  // Single category rules
+  switch (primaryCategory) {
+    case INDICATOR_CATEGORIES.PRODUCTION:
+      return {
+        maxQuantity: supervisorAvailable,
+        restrictionType: 'available',
+        message: `Maximum allowed: ${supervisorAvailable} (Production — capped to available)`,
+      }
+
+    case INDICATOR_CATEGORIES.QUALITY_CONTROL:
+      return {
+        maxQuantity: supervisorTotalTarget,
+        restrictionType: 'total_target',
+        message: `Maximum allowed: ${supervisorTotalTarget} (Quality Control — capped to total target)`,
+      }
+
+    case INDICATOR_CATEGORIES.DECISION_MAKING:
+      return {
+        maxQuantity: supervisorTotalTarget,
+        restrictionType: 'total_target',
+        message: `Maximum allowed: ${supervisorTotalTarget} (Decision Making — capped to total target)`,
+      }
+
+    default:
+      return {
+        maxQuantity: supervisorAvailable,
+        restrictionType: 'available',
+        message: `Maximum allowed: ${supervisorAvailable} (default — capped to available)`,
+      }
   }
 }
 
 /**
  * Main function to determine quantity restriction
- * @param {Object} params - All parameters needed for restriction
- * @returns {Object} Restriction result
+ * Based on employee's selected indicator category + same-indicator override
  */
 export const determineRestriction = ({
   selectedEmployee,
@@ -469,7 +202,6 @@ export const determineRestriction = ({
   verbs,
   cascadeData,
 }) => {
-  // Validate required params
   if (!selectedEmployee || !selectedIndicators || !verbs || !cascadeData) {
     console.warn('Missing required parameters for quantity restriction', {
       hasEmployee: !!selectedEmployee,
@@ -492,14 +224,19 @@ export const determineRestriction = ({
     cascadeData: {
       name: cascadeData.name,
       mfosCount: cascadeData.mfos?.length,
-      supervisoriesCount: cascadeData.supervisories?.length,
     },
   })
 
-  // Get supervisor from employee
-  const supervisor = selectedEmployee.supervisorySignatory
-  console.log('Supervisor from employee:', supervisor)
+  // Type C short-circuit
+  if (quantityType === 'C') {
+    return {
+      maxQuantity: null,
+      restrictionType: 'none',
+      message: 'No quantity restriction for Type C',
+    }
+  }
 
+  const supervisor = selectedEmployee.supervisorySignatory
   if (!supervisor) {
     return {
       maxQuantity: null,
@@ -508,54 +245,61 @@ export const determineRestriction = ({
     }
   }
 
-  // Find supervisor in cascade data (including Office Head)
-  const supervisorCascadeData = findSupervisorInCascade(supervisor, cascadeData)
+  // Get MFO data from cascade
+  const mfoData = cascadeData?.mfos?.[0] || null
+  const supervisorAvailable = mfoData?.available ?? supervisor?.available ?? 0
+  const supervisorTotalTarget = mfoData?.total_target ?? supervisor?.total_target ?? 0
 
-  if (!supervisorCascadeData) {
-    return {
-      maxQuantity: null,
-      restrictionType: 'supervisor_not_found',
-      message: 'Supervisor not found in cascade data',
-    }
-  }
+  console.log('Supervisor MFO data:', { supervisorAvailable, supervisorTotalTarget })
 
-  // Add verbs to supervisor data for later use
-  supervisorCascadeData.verbs = verbs
-
-  // Get categories for selected indicators
+  // Resolve selected indicator IDs
   const indicatorIds = Array.isArray(selectedIndicators) ? selectedIndicators : [selectedIndicators]
 
-  console.log('Indicator IDs:', indicatorIds)
-
+  // Get categories for each selected indicator
   const indicatorCategories = indicatorIds
-    .map((id) => {
-      const category = getIndicatorCategory(id, verbs)
-      console.log(`Indicator ${id} category:`, category)
-      return category
-    })
+    .map((id) => getIndicatorCategory(id, verbs))
     .filter(Boolean)
 
-  console.log('Indicator categories:', indicatorCategories)
+  console.log('Employee indicator categories:', indicatorCategories)
 
-  // Check if indicator belongs to supervisor
-  const belongsToSupervisor = indicatorBelongsToSupervisor(
-    selectedIndicators,
-    supervisorCascadeData,
-  )
-  console.log('Indicator belongs to supervisor:', belongsToSupervisor)
+  const primaryCategory = determinePrimaryCategory(indicatorCategories)
+  console.log('Primary category resolved to:', primaryCategory)
 
-  // Get supervisor's primary category
-  const supervisorCategory = getSupervisorCategory(supervisorCascadeData, verbs)
-  console.log('Supervisor category:', supervisorCategory)
+  // Check if ANY selected indicator matches supervisor's indicators
+  const supervisorIndicators = mfoData?.performance_indicator || []
+  const supervisorIndicatorNames = supervisorIndicators.map((ind) => {
+    if (ind === null || ind === undefined) return ''
+    if (typeof ind === 'object') {
+      const val = ind.value || ind.indicator_name || ind.name || ''
+      return typeof val === 'string' ? val.toLowerCase() : String(val).toLowerCase()
+    }
+    return typeof ind === 'string' ? ind.toLowerCase() : String(ind).toLowerCase()
+  })
 
-  // Calculate max quantity
+  console.log('Supervisor indicator names:', supervisorIndicatorNames)
+
+  const isSameIndicatorAsSupervisor = indicatorIds.some((id) => {
+    const verb = verbs.find((v) => v.id === Number(id))
+    if (!verb) return false
+    const verbName = (verb.name || verb.indicator_name || '').toLowerCase()
+    const matched = supervisorIndicatorNames.some(
+      (supName) => supName === verbName || supName.includes(verbName) || verbName.includes(supName),
+    )
+    if (matched) {
+      console.log(`Indicator match found — employee: "${verbName}" matches supervisor indicator`)
+    }
+    return matched
+  })
+
+  console.log('Is same indicator as supervisor:', isSameIndicatorAsSupervisor)
+
   const result = calculateMaxQuantity({
+    primaryCategory,
     indicatorCategories,
-    supervisorCascadeData,
-    supervisorCategory,
-    indicatorBelongsToSupervisor: belongsToSupervisor,
-    cascadeData,
+    supervisorAvailable,
+    supervisorTotalTarget,
     quantityType,
+    isSameIndicatorAsSupervisor,
   })
 
   console.log('Final restriction result:', result)
@@ -568,10 +312,8 @@ export const useQuantityRestriction = () => {
   return {
     determineRestriction,
     getIndicatorCategory,
-    findSupervisorInCascade,
-    getSupervisorCategory,
-    indicatorBelongsToSupervisor,
     calculateMaxQuantity,
+    determinePrimaryCategory,
     INDICATOR_CATEGORIES,
   }
 }

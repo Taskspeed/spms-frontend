@@ -1,7 +1,7 @@
 // src/stores/office/unitWorkPlanStore.js
-import { defineStore } from 'pinia'
-import { api } from 'src/boot/axios'
-import { v4 as uuidv4 } from 'uuid'
+import { defineStore } from '/node_modules/.q-cache/dev-spa/vite-spa/deps/pinia.js?v=59aa931b'
+import { api } from '/src/boot/axios.js'
+import { v4 as uuidv4 } from '/node_modules/.q-cache/dev-spa/vite-spa/deps/uuid.js?v=59aa931b'
 
 /* -------------------------------------------------------------------------- */
 /* Helpers & constants                                                        */
@@ -66,7 +66,6 @@ const currentSemester = () => {
 }
 
 const nextSemester = () => (currentSemester() === 'January-June' ? 'July-December' : 'January-June')
-
 const currentYear = () => new Date().getFullYear()
 
 /* -------------------------------------------------------------------------- */
@@ -97,89 +96,53 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
   actions: {
     /* ----------------------------- label resolvers ----------------------------- */
 
-    /**
-     * Resolve category label from ID or object
-     */
     resolveCategoryLabel(category, officeLibraryStore) {
       if (!category) return ''
-
-      if (typeof category === 'string' && isNaN(Number(category))) {
-        return category
-      }
-
+      if (typeof category === 'string' && isNaN(Number(category))) return category
       if (typeof category === 'object' && category !== null) {
         if (category.name || category.label || category.categories_name) {
           return category.categories_name || category.name || category.label
         }
       }
-
       const id = typeof category === 'object' ? category?.id : category
       if (!id) return ''
-
       const store = officeLibraryStore || this.officeLibraryStore
       const found = store?.categories?.find((c) => c.id === id)
       return found?.categories_name || found?.name || found?.label || ''
     },
 
-    /**
-     * Resolve MFO label from ID or object
-     */
     resolveMfoLabel(mfo, officeLibraryStore) {
       if (!mfo) return ''
-
-      if (typeof mfo === 'string' && isNaN(Number(mfo))) {
-        return mfo
-      }
-
+      if (typeof mfo === 'string' && isNaN(Number(mfo))) return mfo
       if (typeof mfo === 'object' && mfo !== null) {
-        if (mfo.name || mfo.label) {
-          return mfo.name || mfo.label
-        }
+        if (mfo.name || mfo.label) return mfo.name || mfo.label
       }
-
       const id = typeof mfo === 'object' ? mfo?.id : mfo
       if (!id) return ''
-
       const store = officeLibraryStore || this.officeLibraryStore
       const found = store?.mfos?.find((m) => m.id === id)
       return found?.name || found?.label || ''
     },
 
-    /**
-     * Resolve output label from ID or object
-     * Handles both regular outputs and category_outputs (for Support category)
-     */
     resolveOutputLabel(output, categoryId, mfoId, officeLibraryStore) {
       if (!output) return ''
-
-      if (typeof output === 'string' && isNaN(Number(output))) {
-        return output
-      }
-
+      if (typeof output === 'string' && isNaN(Number(output))) return output
       if (typeof output === 'object' && output !== null) {
-        if (output.name || output.label) {
-          return output.name || output.label
-        }
+        if (output.name || output.label) return output.name || output.label
       }
-
       const id = typeof output === 'object' ? output?.id : output
       if (!id) return ''
-
       const store = officeLibraryStore || this.officeLibraryStore
       if (!store) return ''
-
       const resolvedCategoryId = typeof categoryId === 'object' ? categoryId?.id : categoryId
-
       const category = store.categories?.find((c) => c.id === resolvedCategoryId)
       const isSupport =
         category?.name?.toLowerCase().includes('support') ||
         category?.name?.trim().toUpperCase().startsWith('C')
-
       if (isSupport) {
         const found = store.category_outputs?.find((o) => o.id === id)
         return found?.name || found?.label || ''
       }
-
       const resolvedMfoId = typeof mfoId === 'object' ? mfoId?.id : mfoId
       const found = store.outputs?.find(
         (o) =>
@@ -190,32 +153,20 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
       return found?.name || found?.label || ''
     },
 
-    /**
-     * Resolve performance indicator (verb) label from ID or text
-     */
     resolveVerbLabel(idOrText) {
       if (!idOrText) return ''
-
-      // Handle array of indicators
       if (Array.isArray(idOrText)) {
         return idOrText
           .map((item) => this.resolveVerbLabel(item))
           .filter(Boolean)
           .join(', ')
       }
-
-      if (typeof idOrText === 'string' && isNaN(Number(idOrText))) {
-        return idOrText
-      }
-
+      if (typeof idOrText === 'string' && isNaN(Number(idOrText))) return idOrText
       const verbId = Number(idOrText)
       const verb = this.officeLibraryIndicatorStore?.verbs?.find((v) => v.id === verbId)
       return verb?.indicator_name || verb?.name || ''
     },
 
-    /**
-     * Extract ID from value (handles both object and primitive)
-     */
     extractId(value) {
       if (value === null || value === undefined) return null
       if (typeof value === 'number') return value
@@ -233,76 +184,49 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
       return null
     },
 
-    /**
-     * Build timeliness value string from row data based on active inputs
-     */
     buildTimelinessValue(row, activeTimelinessInputs) {
       if (!row) return ''
-
-      // Don't use fallback logic - only build from active inputs
-      // This ensures when fields are cleared, they stay cleared
       let timelinessValue = ''
-
-      // Build timeliness ONLY from fields that should be active
       if (activeTimelinessInputs?.range && row.timelinessRange) {
         timelinessValue = timelinessValue
           ? `${timelinessValue} ${row.timelinessRange}`
           : row.timelinessRange
       }
-
       if (activeTimelinessInputs?.date && row.timelinessDate) {
         timelinessValue = timelinessValue
           ? `${timelinessValue} by ${row.timelinessDate}`
           : `by ${row.timelinessDate}`
       }
-
       if (activeTimelinessInputs?.description && row.timelinessText) {
         timelinessValue = timelinessValue
           ? `${timelinessValue} ${row.timelinessText}`
           : row.timelinessText
       }
-
-      // Return empty string if no active inputs have values
       return timelinessValue
     },
 
-    /**
-     * Parse timeliness string from API into components
-     * Enhanced version to handle various formats
-     */
     parseTimelinessFromApi(timelinessString) {
       if (!timelinessString) return { range: '', date: '', text: '' }
-
-      // Handle "lapses" case specifically
       if (timelinessString.toLowerCase().includes('lapses')) {
-        return {
-          range: '',
-          date: '',
-          text: 'lapses',
-        }
+        return { range: '', date: '', text: timelinessString }
       }
-
       const result = { range: '', date: '', text: '' }
       let remainingText = timelinessString.trim()
 
-      // Extract date (format: YYYY-MM-DD or YYYY/MM/DD)
       const dateMatch = remainingText.match(/\d{4}[-/]\d{2}[-/]\d{2}/)
       if (dateMatch) {
-        result.date = dateMatch[0].replace(/\//g, '-') // Normalize to YYYY-MM-DD
+        result.date = dateMatch[0].replace(/\//g, '-')
         remainingText = remainingText.replace(dateMatch[0], '').trim()
       }
 
-      // Extract range (format: number-number or "number - number")
       const rangeMatch = remainingText.match(/(\d+)\s*-\s*(\d+)/)
       if (rangeMatch) {
         result.range = `${rangeMatch[1]}-${rangeMatch[2]}`
         remainingText = remainingText.replace(rangeMatch[0], '').trim()
       }
 
-      // Remove "by" prefix if present
       remainingText = remainingText.replace(/^by\s+/i, '').trim()
 
-      // Check for known description patterns
       const knownPatterns = [
         'before schedule',
         'after schedule',
@@ -311,30 +235,89 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         'ahead of schedule',
         'behind schedule',
       ]
-
-      const foundPattern = knownPatterns.find((pattern) =>
-        remainingText.toLowerCase().includes(pattern),
-      )
-
+      const foundPattern = knownPatterns.find((p) => remainingText.toLowerCase().includes(p))
       if (foundPattern) {
         result.text = foundPattern
         remainingText = remainingText.replace(new RegExp(foundPattern, 'i'), '').trim()
       }
 
-      // If there's still text remaining and no pattern was found, use it as description
-      if (!result.text && remainingText) {
-        result.text = remainingText
-      }
+      if (!result.text && remainingText) result.text = remainingText
 
-      console.log('📊 Parsed timeliness:', {
-        input: timelinessString,
-        output: result,
-      })
-
+      console.log('📊 Parsed timeliness:', { input: timelinessString, output: result })
       return result
     },
 
+    /* ----------------------------- NEW: performance indicator resolver ----------------------------- */
+
+    /**
+     * Resolve performance_indicator from API into an array of verb IDs (numbers).
+     */
+    resolvePerformanceIndicators(rawIndicators, verbs) {
+      if (!rawIndicators) return []
+
+      const indicatorArray = Array.isArray(rawIndicators) ? rawIndicators : [rawIndicators]
+
+      return indicatorArray
+        .map((item) => {
+          if (typeof item === 'number') return item
+          if (typeof item === 'string' && !isNaN(Number(item)) && item.trim() !== '') {
+            return Number(item)
+          }
+
+          if (typeof item === 'object' && item !== null) {
+            if (item.id && !isNaN(Number(item.id))) return Number(item.id)
+
+            const verbName = (item.value || item.name || item.indicator_name || '')
+              .toLowerCase()
+              .trim()
+
+            if (verbName && verbs?.length) {
+              const matched = verbs.find(
+                (v) => (v.indicator_name || v.name || '').toLowerCase().trim() === verbName,
+              )
+              if (matched) {
+                console.log(`[UWP Store] Matched indicator "${verbName}" → id ${matched.id}`)
+                return matched.id
+              }
+
+              const fuzzy = verbs.find(
+                (v) =>
+                  (v.indicator_name || v.name || '').toLowerCase().trim().includes(verbName) ||
+                  verbName.includes((v.indicator_name || v.name || '').toLowerCase().trim()),
+              )
+              if (fuzzy) {
+                console.log(`[UWP Store] Fuzzy matched indicator "${verbName}" → id ${fuzzy.id}`)
+                return fuzzy.id
+              }
+
+              console.warn(`[UWP Store] Could not match indicator "${verbName}" to a verb id`)
+            }
+
+            return null
+          }
+
+          if (typeof item === 'string' && verbs?.length) {
+            const needle = item.toLowerCase().trim()
+            const matched = verbs.find(
+              (v) => (v.indicator_name || v.name || '').toLowerCase().trim() === needle,
+            )
+            if (matched) return matched.id
+
+            const fuzzy = verbs.find(
+              (v) =>
+                (v.indicator_name || v.name || '').toLowerCase().trim().includes(needle) ||
+                needle.includes((v.indicator_name || v.name || '').toLowerCase().trim()),
+            )
+            if (fuzzy) return fuzzy.id
+          }
+
+          return null
+        })
+        .filter((id) => id !== null && id !== undefined)
+    },
+
     /* ----------------------------- session helpers ----------------------------- */
+
     initializeUWPData() {
       try {
         const stored = sessionStorage.getItem('uwpData')
@@ -371,6 +354,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     },
 
     /* ----------------------------- transformations ----------------------------- */
+
     createDefaultPerformanceStandard(standard = {}) {
       return {
         id: uuidv4(),
@@ -390,6 +374,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           category: standard.category_id || standard.category || null,
           mfo: standard.mfo_id || standard.mfo || null,
           output: standard.output || null,
+          supervisory_control_no: standard.supervisory_control_no || null,
         },
         quantityIndicatorType: standard.quantity_indicator_type || 'numeric',
         timelinessIndicatorType: standard.timeliness_indicator_type || 'beforeDeadline',
@@ -422,8 +407,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             timelinessDate: '',
             timelinessText: '',
           }
-
-          // Parse timeliness if available
           if (outcome.timeliness) {
             const parsed = this.parseTimelinessFromApi(outcome.timeliness)
             outcomesByRating[ratingKey].timelinessRange = parsed.range
@@ -472,12 +455,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                 }
               : null,
             mfo: standard.mfo
-              ? {
-                  id: standard.mfo,
-                  name: standard.mfo,
-                  label: standard.mfo,
-                  value: standard.mfo,
-                }
+              ? { id: standard.mfo, name: standard.mfo, label: standard.mfo, value: standard.mfo }
               : null,
             output: standard.output
               ? {
@@ -487,6 +465,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   value: standard.output,
                 }
               : null,
+            supervisory_control_no: standard.supervisory_control_no || null,
           }
 
           perfStandard.outputName = standard.output_name || ''
@@ -532,7 +511,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         this.uwpData.availableEmployees ||
         this.uwpData.employeesWithoutTargetPeriod ||
         []
-
       return employees
         .map(
           (emp) =>
@@ -542,7 +520,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             emp.control_no ||
             emp.id,
         )
-        .filter((controlNo) => controlNo !== null && controlNo !== undefined && controlNo !== '')
+        .filter((v) => v !== null && v !== undefined && v !== '')
     },
 
     buildFilteredEmployeeEndpoint() {
@@ -553,9 +531,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
     /* ----------------------------- payload builders ----------------------------- */
 
-    /**
-     * Transform payload for CREATE operation (new UWP)
-     */
     transformCreatePayload(submissionData, officeLibraryStore) {
       const semester =
         submissionData.form?.semester || submissionData.uwpData?.targetPeriod?.semester || ''
@@ -568,7 +543,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         employees: submissionData.employees.map((emp) => {
           const officeData = submissionData.uwpData?.hierarchy || {}
 
-          // Extract control number
           const controlNo =
             emp.employeeData?.employeeData?.ControlNo ||
             emp.employeeData?.ControlNo ||
@@ -577,7 +551,11 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             emp.controlNo ||
             ''
 
-          // Extract employee name
+          const supervisoryControlNo =
+            emp.supervisorySignatory?.controlNo ||
+            emp.employeeData?.supervisorySignatory?.controlNo ||
+            null
+
           const employeeName =
             emp.name ||
             emp.employeeData?.name ||
@@ -585,24 +563,28 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             emp.employeeData?.employeeData?.name ||
             'Unknown Employee'
 
-          // Extract employee ID
           const employeeId =
             emp.employeeId || emp.employeeData?.id || emp.employeeData?.employeeId || null
 
-          // Build performance standards for this employee
           const performanceStandards = Array.isArray(emp.performanceStandards)
             ? emp.performanceStandards.map((standard) => {
-                // Extract competencies from the structure
                 const coreCompetencies = standard.competencies?.core || []
                 const technicalCompetencies = standard.competencies?.technical || []
                 const leadershipCompetencies = standard.competencies?.leadership || []
 
-                // Extract IDs properly - handle both objects and IDs
                 const categoryId = this.extractId(standard.rows?.category)
                 const mfoId = this.extractId(standard.rows?.mfo)
                 const outputId = this.extractId(standard.rows?.output)
 
-                // Resolve names using the store or existing data
+                // ── supervisory_control_no per standard ──────────────────────
+                // Priority:
+                //   1. standard.rows.supervisory_control_no — set by the cascade
+                //      resolver when the user selects an MFO/indicator (most specific)
+                //   2. emp-level supervisoryControlNo — resolved at the employee level
+                //      (covers standards that were never opened / cascade not triggered)
+                const standardSupervisoryControlNo =
+                  standard.rows?.supervisory_control_no || supervisoryControlNo || null
+
                 const categoryValue = categoryId
                   ? this.resolveCategoryLabel(categoryId, officeLibraryStore)
                   : standard.rows?.category?.name ||
@@ -624,117 +606,49 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                     standard.rows?.output ||
                     ''
 
-                // Process performance indicators - SIMPLIFIED: use nested category data
+                // Build performance indicators
                 let performanceIndicators = []
                 if (standard.indicatorName) {
-                  if (Array.isArray(standard.indicatorName)) {
-                    // It's an array of IDs or strings
-                    performanceIndicators = standard.indicatorName
-                      .map((item) => {
-                        if (
-                          typeof item === 'number' ||
-                          (typeof item === 'string' && !isNaN(item))
-                        ) {
-                          // Find the verb in the store - it already has the nested category!
-                          const verb = this.officeLibraryIndicatorStore?.verbs?.find(
-                            (v) => v.id === Number(item),
-                          )
+                  const items = Array.isArray(standard.indicatorName)
+                    ? standard.indicatorName
+                    : [standard.indicatorName]
 
-                          // The category is nested inside the verb object
-                          // Based on your data structure, it's verb.category.categories_name
-                          const categoryName = verb?.category?.categories_name || ''
-
-                          console.log(`📊 Found verb for CREATE:`, {
-                            id: verb?.id,
-                            name: verb?.indicator_name,
-                            category_id: verb?.category_id,
-                            categoryName: categoryName,
-                          })
-
-                          return {
-                            id: Number(item),
-                            name: verb?.indicator_name || verb?.name || '',
-                            category_id: verb?.category_id || null,
-                            category: categoryName, // This will have "Production", "Quality Control", etc.
-                            value: verb?.indicator_name || verb?.name || '',
-                          }
-                        }
-                        // If it's already a string name, return as is
+                  performanceIndicators = items
+                    .map((item) => {
+                      if (typeof item === 'number' || (typeof item === 'string' && !isNaN(item))) {
+                        const verb = this.officeLibraryIndicatorStore?.verbs?.find(
+                          (v) => v.id === Number(item),
+                        )
+                        const categoryName = verb?.category?.categories_name || ''
                         return {
-                          name: item,
-                          id: null,
-                          category_id: null,
-                          category: '',
-                          value: item,
+                          id: Number(item),
+                          name: verb?.indicator_name || verb?.name || '',
+                          category_id: verb?.category_id || null,
+                          category: categoryName,
+                          value: verb?.indicator_name || verb?.name || '',
                         }
-                      })
-                      .filter(Boolean)
-                  } else if (
-                    typeof standard.indicatorName === 'number' ||
-                    (typeof standard.indicatorName === 'string' && !isNaN(standard.indicatorName))
-                  ) {
-                    // Single ID
-                    const verb = this.officeLibraryIndicatorStore?.verbs?.find(
-                      (v) => v.id === Number(standard.indicatorName),
-                    )
-
-                    // The category is nested inside the verb object
-                    const categoryName = verb?.category?.categories_name || ''
-
-                    console.log(`📊 Found verb for CREATE (single):`, {
-                      id: verb?.id,
-                      name: verb?.indicator_name,
-                      category_id: verb?.category_id,
-                      categoryName: categoryName,
-                    })
-
-                    performanceIndicators = [
-                      {
-                        id: Number(standard.indicatorName),
-                        name: verb?.indicator_name || verb?.name || '',
-                        category_id: verb?.category_id || null,
-                        category: categoryName, // This will have "Production", "Quality Control", etc.
-                        value: verb?.indicator_name || verb?.name || '',
-                      },
-                    ]
-                  } else {
-                    // Single string name
-                    performanceIndicators = [
-                      {
-                        name: standard.indicatorName,
+                      }
+                      return {
+                        name: item,
                         id: null,
                         category_id: null,
                         category: '',
-                        value: standard.indicatorName,
-                      },
-                    ]
-                  }
+                        value: item,
+                      }
+                    })
+                    .filter(Boolean)
                 }
 
-                console.log(
-                  '📊 Final performance indicators for CREATE:',
-                  performanceIndicators.map((pi) => ({
-                    id: pi.id,
-                    name: pi.name,
-                    category_id: pi.category_id,
-                    category: pi.category,
-                  })),
-                )
+                console.log('📊 Final performance indicators for CREATE:', performanceIndicators)
 
                 const requiredOutput = standard.requiredOutput || ''
-
-                const ratings = []
                 const activeInputs = standard.activeTimelinessInputs || standard.timelinessInputs
+                const ratings = []
 
-                // Build ratings for all rows
                 if (Array.isArray(standard.standardOutcomeRows)) {
                   standard.standardOutcomeRows.forEach((row) => {
                     if (!row.rating) return
-
-                    // Build timeliness value for EACH row independently
                     const timelinessValue = this.buildTimelinessValue(row, activeInputs)
-
-                    // Push ALL ratings with their own timeliness values
                     ratings.push({
                       rating: Number(row.rating) || 0,
                       quantity: String(row.quantity || ''),
@@ -747,7 +661,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   })
                 }
 
-                // Determine which rating is the reference for timeliness
                 const referenceRating =
                   standard.timelinessIndicatorType === 'onDeadline' ? '5' : '3'
                 const referenceRow =
@@ -757,31 +670,24 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   activeInputs,
                 )
 
-                // Get quantity based on the quantity indicator type
                 let targetOutput = ''
                 if (standard.quantityIndicatorType === 'numeric') {
-                  // Type A: Get from rating 5 quantity field
                   const quantityRow =
                     standard.standardOutcomeRows?.find((row) => row.rating === '5') || {}
                   targetOutput = String(quantityRow.quantity || '')
                 } else if (standard.quantityIndicatorType === 'B') {
-                  // Type B: Get from targetOutputValue (modal input)
                   targetOutput = String(standard.targetOutputValue || '')
                 } else if (standard.quantityIndicatorType === 'C') {
-                  // Type C: Fixed at 100%
                   targetOutput = '100%'
                 }
 
                 const config = {
-                  // String fields - use snake_case
                   target_output: targetOutput,
                   quantity_indicator: String(standard.quantityIndicatorType || 'numeric'),
                   timeliness_indicator: String(
                     standard.timelinessIndicatorType || 'beforeDeadline',
                   ),
                   timeliness_value: String(referenceTimelinessValue || ''),
-
-                  // Object field - keep as is
                   timelinessType: {
                     type: String(standard.timelinessIndicatorType || 'beforeDeadline'),
                     range: Boolean(activeInputs.range),
@@ -791,6 +697,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                 }
 
                 return {
+                  supervisory_control_no: standardSupervisoryControlNo,
                   category_id: categoryId,
                   mfo_id: mfoId,
                   output_id: outputId,
@@ -801,7 +708,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   success_indicator: String(standard.successIndicator || ''),
                   performance_indicator: performanceIndicators,
                   required_output: String(requiredOutput),
-                  // COMPETENCIES AT PERFORMANCE STANDARD LEVEL
                   core_competency: coreCompetencies.map((comp) => ({
                     code: comp.code || '',
                     level: comp.value || '',
@@ -825,6 +731,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
 
           return {
             control_no: String(controlNo),
+            supervisory_control_no: supervisoryControlNo,
             employee_id: employeeId ? Number(employeeId) : null,
             employee_name: String(employeeName),
             semester: String(semester),
@@ -843,26 +750,18 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
               ? String(officeData.section.label || officeData.section.name)
               : null,
             unit: officeData.unit ? String(officeData.unit.label || officeData.unit.name) : null,
-
             performance_standards: performanceStandards,
           }
         }),
       }
     },
 
-    /**
-     * Transform payload for UPDATE operation (existing UWP)
-     */
     transformUpdatePayload(updateData, officeLibraryStore) {
       console.log('📝 Starting transformUpdatePayload with:', updateData)
 
       const employee = updateData.employee
+      if (!employee) throw new Error('Employee data is required for update')
 
-      if (!employee) {
-        throw new Error('Employee data is required for update')
-      }
-
-      // Get hierarchy data - handle both string and object formats
       const uwpHierarchy = updateData.uwpData?.hierarchy || {}
       const getHierarchyValue = (field) => {
         const value = uwpHierarchy[field]
@@ -871,45 +770,41 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         return ''
       }
 
-      // Build the payload structure expected by the new endpoint
+      const supervisoryControlNo =
+        employee.supervisorySignatory?.controlNo ||
+        employee.employeeData?.supervisorySignatory?.controlNo ||
+        null
+
       const base = {
-        // Employee information
         employee_id: employee.employeeId ? Number(employee.employeeId) : null,
         employee_name: employee.name || '',
-
-        // Hierarchy information
+        supervisory_control_no: supervisoryControlNo,
         office: getHierarchyValue('office'),
         office2: getHierarchyValue('office2'),
         group: getHierarchyValue('group'),
         division: getHierarchyValue('division'),
         section: getHierarchyValue('section'),
         unit: getHierarchyValue('unit'),
-
-        // Performance standards
         performance_standards: [],
       }
 
-      console.log('📝 Base payload:', base)
-
       if (Array.isArray(employee.performanceStandards)) {
-        console.log(`📝 Processing ${employee.performanceStandards.length} performance standards`)
-
-        base.performance_standards = employee.performanceStandards.map((standard, index) => {
-          console.log(`📝 Processing standard ${index + 1}:`, standard)
-
-          // Extract competencies from the structure
+        base.performance_standards = employee.performanceStandards.map((standard) => {
           const coreCompetencies = standard.competencies?.core || []
           const technicalCompetencies = standard.competencies?.technical || []
           const leadershipCompetencies = standard.competencies?.leadership || []
 
-          // Extract IDs properly - handle both objects and IDs
           const categoryId = this.extractId(standard.rows?.category)
           const mfoId = this.extractId(standard.rows?.mfo)
           const outputId = this.extractId(standard.rows?.output)
 
-          console.log('📝 Extracted IDs:', { categoryId, mfoId, outputId })
+          // ── supervisory_control_no per standard ──────────────────────────
+          // Priority:
+          //   1. standard.rows.supervisory_control_no — set by the cascade resolver
+          //   2. emp-level supervisoryControlNo — fallback for uncascaded standards
+          const standardSupervisoryControlNo =
+            standard.rows?.supervisory_control_no || supervisoryControlNo || null
 
-          // Resolve names using the store or existing data
           const categoryName = categoryId
             ? this.resolveCategoryLabel(categoryId, officeLibraryStore)
             : standard.rows?.category?.name ||
@@ -928,118 +823,46 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
               standard.rows?.output ||
               ''
 
-          console.log('📝 Resolved names:', { categoryName, mfoName, outputName })
-
-          // Process performance indicators - SIMPLIFIED: use nested category data
+          // Build performance indicators
           let performanceIndicators = []
           if (standard.indicatorName) {
-            if (Array.isArray(standard.indicatorName)) {
-              performanceIndicators = standard.indicatorName
-                .map((item) => {
-                  if (typeof item === 'number' || (typeof item === 'string' && !isNaN(item))) {
-                    const verb = this.officeLibraryIndicatorStore?.verbs?.find(
-                      (v) => v.id === Number(item),
-                    )
+            const items = Array.isArray(standard.indicatorName)
+              ? standard.indicatorName
+              : [standard.indicatorName]
 
-                    // The category is nested inside the verb object
-                    const categoryName = verb?.category?.categories_name || ''
-
-                    console.log(`📊 Found verb for UPDATE:`, {
-                      id: verb?.id,
-                      name: verb?.indicator_name,
-                      category_id: verb?.category_id,
-                      categoryName: categoryName,
-                    })
-
-                    return {
-                      id: Number(item),
-                      name: verb?.indicator_name || verb?.name || '',
-                      category_id: verb?.category_id || null,
-                      category: categoryName, // This will have "Production", "Quality Control", etc.
-                      value: verb?.indicator_name || verb?.name || '',
-                    }
-                  }
+            performanceIndicators = items
+              .map((item) => {
+                if (typeof item === 'number' || (typeof item === 'string' && !isNaN(item))) {
+                  const verb = this.officeLibraryIndicatorStore?.verbs?.find(
+                    (v) => v.id === Number(item),
+                  )
+                  const verbCategoryName = verb?.category?.categories_name || ''
                   return {
-                    name: item,
-                    id: null,
-                    category_id: null,
-                    category: '',
-                    value: item,
+                    id: Number(item),
+                    name: verb?.indicator_name || verb?.name || '',
+                    category_id: verb?.category_id || null,
+                    category: verbCategoryName,
+                    value: verb?.indicator_name || verb?.name || '',
                   }
-                })
-                .filter(Boolean)
-            } else if (
-              typeof standard.indicatorName === 'number' ||
-              (typeof standard.indicatorName === 'string' && !isNaN(standard.indicatorName))
-            ) {
-              const verb = this.officeLibraryIndicatorStore?.verbs?.find(
-                (v) => v.id === Number(standard.indicatorName),
-              )
-
-              // The category is nested inside the verb object
-              const categoryName = verb?.category?.categories_name || ''
-
-              console.log(`📊 Found verb for UPDATE (single):`, {
-                id: verb?.id,
-                name: verb?.indicator_name,
-                category_id: verb?.category_id,
-                categoryName: categoryName,
-              })
-
-              performanceIndicators = [
-                {
-                  id: Number(standard.indicatorName),
-                  name: verb?.indicator_name || verb?.name || '',
-                  category_id: verb?.category_id || null,
-                  category: categoryName, // This will have "Production", "Quality Control", etc.
-                  value: verb?.indicator_name || verb?.name || '',
-                },
-              ]
-            } else {
-              performanceIndicators = [
-                {
-                  name: standard.indicatorName,
+                }
+                return {
+                  name: item,
                   id: null,
                   category_id: null,
                   category: '',
-                  value: standard.indicatorName,
-                },
-              ]
-            }
+                  value: item,
+                }
+              })
+              .filter(Boolean)
           }
 
-          console.log(
-            '📝 Final performance indicators for UPDATE:',
-            performanceIndicators.map((pi) => ({
-              id: pi.id,
-              name: pi.name,
-              category_id: pi.category_id,
-              category: pi.category,
-            })),
-          )
-
-          const ratings = []
           const activeInputs = standard.activeTimelinessInputs || standard.timelinessInputs
-
-          console.log('📝 Active timeliness inputs:', activeInputs)
-          console.log('📝 Standard outcome rows:', standard.standardOutcomeRows)
+          const ratings = []
 
           if (Array.isArray(standard.standardOutcomeRows)) {
-            standard.standardOutcomeRows.forEach((row, rowIndex) => {
+            standard.standardOutcomeRows.forEach((row) => {
               if (!row.rating) return
-
-              // Build timeliness value
               const timelinessValue = this.buildTimelinessValue(row, activeInputs)
-
-              console.log(`📝 Row ${rowIndex} (rating ${row.rating}):`, {
-                quantity: row.quantity,
-                effectiveness: row.effectiveness,
-                timelinessValue,
-                timelinessRange: row.timelinessRange,
-                timelinessDate: row.timelinessDate,
-                timelinessText: row.timelinessText,
-              })
-
               ratings.push({
                 rating: Number(row.rating) || 0,
                 quantity: String(row.quantity || ''),
@@ -1052,59 +875,36 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             })
           }
 
-          console.log('📝 Built ratings:', ratings)
-
-          // Get reference row for timeliness based on type
           const referenceRating = standard.timelinessIndicatorType === 'onDeadline' ? '5' : '3'
           const referenceRow =
-            standard.standardOutcomeRows?.find((row) => row.rating === referenceRating) || {}
+            standard.standardOutcomeRows?.find((r) => r.rating === referenceRating) || {}
           const referenceTimelinessValue = this.buildTimelinessValue(referenceRow, activeInputs)
 
-          console.log('📝 Reference rating:', referenceRating)
-          console.log('📝 Reference timeliness value:', referenceTimelinessValue)
-
-          // Get quantity based on the quantity indicator type
           let targetOutput = ''
           if (standard.quantityIndicatorType === 'numeric') {
-            // Type A: Get from rating 5 quantity field
             const quantityRow = standard.standardOutcomeRows?.find((r) => r.rating === '5') || {}
             targetOutput = String(quantityRow.quantity || '')
           } else if (standard.quantityIndicatorType === 'B') {
-            // Type B: Get from targetOutputValue (modal input)
             targetOutput = String(standard.targetOutputValue || '')
           } else if (standard.quantityIndicatorType === 'C') {
-            // Type C: Fixed at 100%
             targetOutput = '100%'
           }
 
-          console.log('📝 Target output:', targetOutput)
-          console.log('📝 Quantity indicator type:', standard.quantityIndicatorType)
-          console.log('📝 Target output value:', standard.targetOutputValue)
-
-          // Determine quantity indicator type
-          let quantityIndicator = standard.quantityIndicatorType || 'numeric'
-
-          // Determine timeliness indicator type
-          let timelinessIndicator = standard.timelinessIndicatorType || 'beforeDeadline'
-
-          // Build config object with EXACT field names the backend expects
           const config = {
-            // Use snake_case field names as shown in the error
             target_output: targetOutput,
-            quantity_indicator: String(quantityIndicator || 'numeric'),
-            timeliness_indicator: String(timelinessIndicator || 'beforeDeadline'),
+            quantity_indicator: String(standard.quantityIndicatorType || 'numeric'),
+            timeliness_indicator: String(standard.timelinessIndicatorType || 'beforeDeadline'),
             timeliness_value: String(referenceTimelinessValue || ''),
             timelinessType: {
-              type: String(timelinessIndicator || 'beforeDeadline'),
+              type: String(standard.timelinessIndicatorType || 'beforeDeadline'),
               range: Boolean(activeInputs?.range),
               date: Boolean(activeInputs?.date),
               description: Boolean(activeInputs?.description),
             },
           }
 
-          console.log('📝 Built config:', config)
-
-          const standardPayload = {
+          return {
+            supervisory_control_no: standardSupervisoryControlNo,
             category_id: categoryId,
             mfo_id: mfoId,
             output_id: outputId,
@@ -1112,7 +912,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             mfo: mfoName,
             output: outputName,
             output_name: standard.outputName || '',
-            // COMPETENCIES AT PERFORMANCE STANDARD LEVEL
             core_competency: coreCompetencies.map((comp) => ({
               code: comp.code || '',
               level: comp.value || '',
@@ -1134,9 +933,6 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             ratings: ratings.length > 0 ? ratings : [],
             config,
           }
-
-          console.log('📝 Standard payload:', standardPayload)
-          return standardPayload
         })
       }
 
@@ -1145,6 +941,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     },
 
     /* ----------------------------- API actions ----------------------------- */
+
     async fetchFilteredEmployeesData() {
       this.loading = true
       this.error = null
@@ -1154,18 +951,13 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           this.filteredEmployeesData = []
           return []
         }
-
         const token = localStorage.getItem('token')
-        const response = await api.get(endpoint, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
+        const response = await api.get(endpoint, { headers: { Authorization: `Bearer ${token}` } })
         if (Array.isArray(response.data)) {
           const transformed = this.transformApiResponseToForm(response.data)
           this.filteredEmployeesData = transformed
           return transformed
         }
-
         this.filteredEmployeesData = []
         return []
       } catch (error) {
@@ -1180,15 +972,11 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     async saveUWP(submissionData, officeLibraryIndicatorStore, officeLibraryStore) {
       this.loading = true
       this.error = null
-
       try {
-        // Store references to both stores
         this.officeLibraryIndicatorStore = officeLibraryIndicatorStore
         this.officeLibraryStore = officeLibraryStore
 
         const payload = this.transformCreatePayload(submissionData, officeLibraryStore)
-
-        // Debug: Log the final payload
         console.log('📤 CREATE Payload:', JSON.stringify(payload, null, 2))
 
         const token = localStorage.getItem('token')
@@ -1212,12 +1000,9 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
       } catch (error) {
         this.error = error.message || 'Failed to save UWP'
         console.error('❌ Save UWP error:', error.response?.data || error)
-
-        // Log validation errors if available
         if (error.response?.data?.errors) {
           console.error('Validation errors:', error.response.data.errors)
         }
-
         throw error
       } finally {
         this.loading = false
@@ -1227,17 +1012,13 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     async updateUWP(updateData, officeLibraryIndicatorStore, officeLibraryStore) {
       this.loading = true
       this.error = null
-
       try {
         this.officeLibraryIndicatorStore = officeLibraryIndicatorStore
         this.officeLibraryStore = officeLibraryStore
 
         const payload = this.transformUpdatePayload(updateData, officeLibraryStore)
+        console.log('📤 UPDATE Payload:', JSON.stringify(payload, null, 2))
 
-        // Debug: Log the final payload
-        console.log('📤 UPDATE Payload being sent:', JSON.stringify(payload, null, 2))
-
-        // Extract controlNo, semester, and year from updateData
         const controlNo =
           updateData.employee?.controlNo || updateData.employee?.employeeData?.ControlNo
         const semester = updateData.form?.semester || ''
@@ -1247,33 +1028,29 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           throw new Error('Missing required parameters: controlNo, semester, or year')
         }
 
-        console.log('📤 Using endpoint with:', { controlNo, semester, year })
-
         const token = localStorage.getItem('token')
         const response = await api.put(
           `/unit_work_plan/update/${controlNo}/${semester}/${year}`,
           payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+          { headers: { Authorization: `Bearer ${token}` } },
         )
 
         console.log('✅ Update response:', response.data)
       } catch (error) {
         this.error = error.message || 'Failed to update UWP'
         console.error('❌ Update UWP error:', error.response?.data || error)
-
-        // Log validation errors if available
         if (error.response?.data?.errors) {
           console.error('Validation errors:', error.response.data.errors)
         }
-
         throw error
       } finally {
         this.loading = false
       }
     },
 
+    /**
+     * Fetch a single employee's work plan data and transform it for the Edit form.
+     */
     async fetchEmployeeByControlNo(controlNo, semester, year) {
       this.loading = true
       this.error = null
@@ -1286,20 +1063,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
         const employeeData = response.data
         if (!employeeData) return []
 
-        console.log('📊 Raw API response for employee:', employeeData)
-        console.log('📊 Target periods data:', employeeData.target_periods)
-        console.log('📊 First target period:', employeeData.target_periods?.[0])
-
-        if (employeeData.target_periods?.[0]) {
-          const targetPeriod = employeeData.target_periods[0]
-          console.log('📊 Performance standards:', targetPeriod.performance_standards)
-          console.log('📊 Config:', targetPeriod.config)
-
-          if (targetPeriod.performance_standards?.[0]) {
-            const ps = targetPeriod.performance_standards[0]
-            console.log('📊 First performance standard ratings:', ps.ratings)
-          }
-        }
+        console.log('[Store] Raw API response:', employeeData)
 
         const transformedEmployee = {
           id: `emp_${employeeData.id}`,
@@ -1310,15 +1074,14 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
           level: employeeData.level || '',
           rank: employeeData.rank || 'Employee',
           position: employeeData.position || '',
+          supervisorySignatory: employeeData.supervisorySignatory || null,
           performanceStandards: [],
           employeeData,
         }
 
         if (employeeData.target_periods?.length) {
           const targetPeriod = employeeData.target_periods[0]
-          console.log('📊 Target period data:', targetPeriod)
 
-          // Store hierarchy for later use
           transformedEmployee.hierarchy = {
             office: targetPeriod.office,
             office2: targetPeriod.office2,
@@ -1334,34 +1097,21 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
             status: targetPeriod.status,
           }
 
-          // Transform performance standards if they exist
           if (
             Array.isArray(targetPeriod.performance_standards) &&
             targetPeriod.performance_standards.length
           ) {
-            console.log(
-              `📊 Found ${targetPeriod.performance_standards.length} performance standards`,
-            )
-
             transformedEmployee.performanceStandards = targetPeriod.performance_standards.map(
               (ps, index) => {
-                console.log('📊 Processing performance standard:', ps)
-                console.log('📊 PS ratings:', ps.ratings)
+                console.log(`[Store] Processing PS ${index + 1}:`, ps)
 
-                // Extract config from target period
-                const config = targetPeriod.config || {}
-                console.log('📊 Config from API:', config)
-
+                const config = targetPeriod.config || ps.config || {}
                 const timelinessType = config.timelinessType || {}
-
-                // Get ratings from the performance standard itself (not target period)
                 const ratings = ps.ratings || []
-                console.log('📊 Ratings from API (from PS):', ratings)
 
-                // Helper function to clean strings for comparison
                 const cleanString = (str) => str?.toString().trim().toLowerCase() || ''
 
-                // Find category
+                // Resolve category
                 const categoryName = ps.category || ''
                 const categoryObj = this.officeLibraryStore?.categories?.find(
                   (cat) => cleanString(cat.name) === cleanString(categoryName),
@@ -1372,9 +1122,7 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   categories_name: categoryName,
                 }
 
-                console.log('📊 Found category:', categoryObj)
-
-                // Find MFO
+                // Resolve MFO
                 const mfoName = ps.mfo || ''
                 let mfoObj = null
                 if (categoryObj && mfoName) {
@@ -1384,46 +1132,48 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                       mfo.f_category_id === categoryObj.id,
                   ) || { id: ps.mfo_id, name: mfoName, label: mfoName }
                 }
-                console.log('📊 Found MFO:', mfoObj)
 
-                // Find output
+                // Resolve output
                 const outputName = ps.output || ''
                 let outputObj = null
                 if (outputName) {
                   const isSupport =
                     categoryName.toLowerCase().includes('support') ||
                     categoryName.trim().toUpperCase().startsWith('C')
-
                   if (isSupport) {
                     outputObj = this.officeLibraryStore?.category_outputs?.find(
-                      (output) =>
-                        cleanString(output.name) === cleanString(outputName) &&
-                        output.f_category_id === categoryObj.id,
+                      (o) =>
+                        cleanString(o.name) === cleanString(outputName) &&
+                        o.f_category_id === categoryObj.id,
                     ) || { id: ps.output_id, name: outputName, label: outputName }
                   } else {
                     outputObj = this.officeLibraryStore?.outputs?.find(
-                      (output) =>
-                        cleanString(output.name) === cleanString(outputName) &&
-                        output.f_category_id === categoryObj.id &&
-                        (!mfoObj || output.mfo_id === mfoObj.id),
+                      (o) =>
+                        cleanString(o.name) === cleanString(outputName) &&
+                        o.f_category_id === categoryObj.id &&
+                        (!mfoObj || o.mfo_id === mfoObj.id),
                     ) || { id: ps.output_id, name: outputName, label: outputName }
                   }
                 }
-                console.log('📊 Found output:', outputObj)
 
-                // Create standard outcome rows from ratings
+                const resolvedIndicatorIds = this.resolvePerformanceIndicators(
+                  ps.performance_indicator,
+                  this.officeLibraryIndicatorStore?.verbs || [],
+                )
+
+                console.log(`[Store] PS ${index + 1} indicator resolution:`, {
+                  raw: ps.performance_indicator,
+                  resolved: resolvedIndicatorIds,
+                })
+
                 const standardOutcomeRows = this.mapStandardOutcomesToRows(ratings)
-                console.log('📊 Standard outcome rows:', standardOutcomeRows)
 
-                // Determine quantity indicator type
                 let quantityIndicatorType = 'numeric'
-                if (config.quantityIndicator === 'C' || config.quantity_indicator === 'C') {
+                if (config.quantityIndicator === 'C' || config.quantity_indicator === 'C')
                   quantityIndicatorType = 'C'
-                } else if (config.quantityIndicator === 'B' || config.quantity_indicator === 'B') {
+                else if (config.quantityIndicator === 'B' || config.quantity_indicator === 'B')
                   quantityIndicatorType = 'B'
-                }
 
-                // Determine timeliness indicator type
                 let timelinessIndicatorType = 'beforeDeadline'
                 if (
                   config.timelinessIndicator === 'onDeadline' ||
@@ -1432,25 +1182,17 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   timelinessIndicatorType = 'onDeadline'
                 }
 
-                // Extract timeliness inputs from config
                 const timelinessInputs = {
-                  range: timelinessType.range || false,
-                  date: timelinessType.date || false,
-                  description: timelinessType.description || true,
+                  range: timelinessType.range === true,
+                  date: timelinessType.date === true,
+                  description: timelinessType.description === true,
                 }
 
-                console.log('📊 Parsed settings:', {
-                  quantityIndicatorType,
-                  timelinessIndicatorType,
-                  timelinessInputs,
-                  timelinessType,
-                })
-
-                return {
+                const standard = {
                   id: `ps_${ps.id || index}`,
                   expanded: true,
                   outputName: ps.output_name || '',
-                  indicatorName: ps.performance_indicator || '',
+                  indicatorName: resolvedIndicatorIds,
                   successIndicator: ps.success_indicator || '',
                   requiredOutput: ps.required_output || '',
                   modeOfVerification: '',
@@ -1458,6 +1200,9 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                     category: categoryObj,
                     mfo: mfoObj,
                     output: outputObj,
+                    // Preserve supervisory_control_no from the API so edits
+                    // don't lose it if the cascade is not re-triggered.
+                    supervisory_control_no: ps.supervisory_control_no || null,
                   },
                   quantityIndicatorType,
                   timelinessIndicatorType,
@@ -1465,29 +1210,35 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
                   activeTimelinessInputs: { ...timelinessInputs },
                   apiData: ps,
                   standardOutcomeRows,
-                  // COMPETENCIES AT PERFORMANCE STANDARD LEVEL
                   competencies: {
                     core: ps.core_competency || ps.core || [],
                     technical: ps.technical_competency || ps.technical || [],
                     leadership: ps.leadership_competency || ps.leadership || [],
                   },
+                  quantityRestriction: null,
+                  targetOutputValue: null,
                 }
+
+                if (quantityIndicatorType === 'B') {
+                  const existing = config.targetOutput || config.target_output
+                  if (existing) standard.targetOutputValue = String(existing)
+                }
+
+                return standard
               },
             )
           } else {
-            console.log('📊 No performance standards found, creating default')
             transformedEmployee.performanceStandards = [this.createDefaultPerformanceStandard()]
           }
         } else {
-          console.log('📊 No target period found, creating default')
           transformedEmployee.performanceStandards = [this.createDefaultPerformanceStandard()]
         }
 
-        console.log('✅ Transformed employee data:', transformedEmployee)
+        console.log('[Store] ✅ Transformed employee:', transformedEmployee)
         return [transformedEmployee]
       } catch (error) {
         this.error = error.message || 'Failed to fetch employee data'
-        console.error('❌ Error fetching employee:', error)
+        console.error('[Store] ❌ Error:', error)
         throw new Error(`Failed to fetch employee data: ${error.message || 'Unknown error'}`)
       } finally {
         this.loading = false
@@ -1497,18 +1248,15 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     async fetchSavedUWPs() {
       this.loading = true
       this.error = null
-
       try {
         const token = localStorage.getItem('token')
         const response = await api.get('/unit_work_plan', {
           headers: { Authorization: `Bearer ${token}` },
         })
-
         if (response.data.success) {
           this.savedUWPs = response.data.data || []
           return this.savedUWPs
         }
-
         throw new Error(response.data.message || 'Failed to fetch UWPs')
       } catch (error) {
         this.error = error.message || 'Failed to fetch UWPs'
@@ -1521,13 +1269,11 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     async getUWPById(id) {
       this.loading = true
       this.error = null
-
       try {
         const token = localStorage.getItem('token')
         const response = await api.get(`/unit_work_plan/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-
         if (response.data.success) return response.data.data
         throw new Error(response.data.message || 'Failed to fetch UWP')
       } catch (error) {
@@ -1541,18 +1287,15 @@ export const useUnitWorkPlanStore = defineStore('unitWorkPlan', {
     async deleteUWP(id) {
       this.loading = true
       this.error = null
-
       try {
         const token = localStorage.getItem('token')
         const response = await api.delete(`/unit_work_plan/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-
         if (response.data.success) {
           this.savedUWPs = this.savedUWPs.filter((uwp) => uwp.id !== id)
           return response.data
         }
-
         throw new Error(response.data.message || 'Failed to delete UWP')
       } catch (error) {
         this.error = error.message || 'Failed to delete UWP'
