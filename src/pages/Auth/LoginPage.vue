@@ -90,6 +90,7 @@ import { useRouter } from 'vue-router'
 import { api } from '../../boot/axios'
 import { useQuasar, QImg, QIcon, QInput, QSlideTransition, QCheckbox, QBtn, QForm } from 'quasar'
 import { useUserStore } from '../../stores/userStore'
+import { extractErrorMessage } from 'src/utils/errorHelper'
 
 export default {
   name: 'LoginPage',
@@ -154,7 +155,7 @@ export default {
 
       try {
         const response = await api.post('/login', {
-          name: username.value,
+          username: username.value,
           password: password.value,
         })
 
@@ -185,7 +186,10 @@ export default {
       } catch (error) {
         $q.notify({
           color: 'negative',
-          message: error.response?.data?.errors?.name?.[0] || 'Login failed',
+          // message: error.response?.data?.errors?.name?.[0] || 'Login failed',
+          message: extractErrorMessage(error, 'Login failed'),
+
+
         })
       } finally {
         isLoading.value = false

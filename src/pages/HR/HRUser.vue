@@ -21,11 +21,20 @@
       <template v-slot:body-cell-action="props">
         <q-td :props="props" class="text-center">
           <q-btn-group spread flat>
-            <q-btn flat round color="info" icon="visibility" @click="viewUser(props.row)">
+            <q-btn flat round color="info" icon="visibility" @click="viewUserDetails(props.row)">
               <q-tooltip>View User</q-tooltip>
             </q-btn>
             <q-btn flat round color="primary" icon="edit" @click="editUser(props.row)">
               <q-tooltip>Edit User</q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              round
+              color="warning"
+              icon="lock_reset"
+              @click="confirmResetPassword(props.row)"
+            >
+              <q-tooltip>Reset Password</q-tooltip>
             </q-btn>
             <q-btn flat round color="negative" icon="delete" @click="confirmDelete(props.row)">
               <q-tooltip>Delete User</q-tooltip>
@@ -83,9 +92,9 @@
         <q-card-actions align="right">
           <q-btn flat label="Cancel" color="grey-7" v-close-popup />
           <q-btn
-            unelevated
+            flat
             label="Next"
-            color="primary"
+            class="text-blue"
             @click="openEmployeeModal"
             :disabled="!selectedOffice"
             :loading="loading"
@@ -151,9 +160,9 @@
         <q-card-actions align="right">
           <q-btn flat label="Back" color="grey-7" @click="goBackToOfficeModal" />
           <q-btn
-            unelevated
+            flat
             label="Next"
-            color="primary"
+            class="text-blue"
             @click="openRoleModal"
             :disabled="!selectedEmployee"
             :loading="loading"
@@ -172,7 +181,23 @@
           <div class="text-caption text-grey-7">Step 3 of 3</div>
         </q-card-section>
         <q-card-section>
+          <!-- <p class="text-grey-8 q-mb-md">Select the appropriate role for this user.</p> -->
+
+          <q-input
+            v-model="username"
+            label="Username *"
+            :rules="[(val) => !!val || 'Username is required']"
+            :loading="loading"
+          >
+            <template v-slot:prepend>
+              <q-icon name="security" />
+            </template>
+          </q-input>
+        </q-card-section>
+
+        <q-card-section>
           <p class="text-grey-8 q-mb-md">Select the appropriate role for this user.</p>
+
           <q-select
             v-model="selectedRole"
             :options="roles"
@@ -189,47 +214,85 @@
         <q-card-actions align="right">
           <q-btn flat label="Back" color="grey-7" @click="goBackToEmployeeModal" />
           <q-btn
-            unelevated
+            flat
             label="Save"
-            color="primary"
+            class="text-blue"
             @click="saveUser"
             :disabled="!selectedRole"
             :loading="saving"
           >
-            <q-tooltip v-if="!selectedRole">Please select a role to continue</q-tooltip>
+            <q-tooltip v-if="!selectedRole || !username">
+              {{
+                !username
+                  ? 'Please enter a username to continue'
+                  : 'Please select a role to continue'
+              }}
+            </q-tooltip>
           </q-btn>
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Confirmation Dialog -->
+    <!-- Confirmation Dialog -->
     <q-dialog v-model="showConfirmation" persistent transition-show="scale" transition-hide="scale">
       <q-card style="width: 100%; max-width: 50vw">
-        <q-card-section>
-          <div class="text-h6">Confirm User Creation</div>
-        </q-card-section>
-        <q-card-section>
-          <p class="text-grey-8 q-mb-md">Please review the details before creating the user.</p>
-          <div>
-            <div class="q-mb-md">
-              <div class="text-weight-medium">Office:</div>
-              <div>{{ selectedOffice?.name }}</div>
-            </div>
-            <div class="q-mb-md">
-              <div class="text-weight-medium">Employee:</div>
-              <div>{{ selectedEmployee?.name4 }}</div>
-              <div class="text-caption">{{ selectedEmployee?.Designation }}</div>
-            </div>
+        <!-- Header -->
+        <q-card-section class="bg-primary text-white">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="person_add" size="sm" />
             <div>
-              <div class="text-weight-medium">Role:</div>
-              <div>{{ selectedRole?.label }}</div>
-              <div class="text-caption">{{ selectedRole?.description }}</div>
+              <div class="text-h6">Confirm User Creation</div>
+              <div class="text-caption opacity-80">Please review the details before confirming</div>
             </div>
           </div>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Back" color="grey-7" @click="showConfirmation = false" />
-          <q-btn unelevated label="Confirm" color="primary" @click="confirmSave" :loading="saving">
+
+        <q-card-section class="q-pt-md">
+          <!-- Office -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="business" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Office</div>
+              <div class="text-body2 text-weight-medium">{{ selectedOffice?.name }}</div>
+            </div>
+          </div>
+
+          <!-- Employee -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="badge" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Employee</div>
+              <div class="text-body2 text-weight-medium">{{ selectedEmployee?.name4 }}</div>
+              <div class="text-caption text-grey-6">{{ selectedEmployee?.Designation }}</div>
+            </div>
+          </div>
+
+          <!-- Username -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="account_circle" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Username</div>
+              <div class="text-body2 text-weight-medium">{{ username }}</div>
+            </div>
+          </div>
+
+          <!-- Role -->
+          <div class="row items-center q-pa-sm rounded-borders bg-grey-1">
+            <q-icon name="security" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Role</div>
+              <div class="text-body2 text-weight-medium">{{ selectedRole?.label }}</div>
+              <div class="text-caption text-grey-6">{{ selectedRole?.description }}</div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Back" color="grey-7" @click="goBackToRoleModal" icon="arrow_back" />
+          <q-btn flat label="Create" class="text-blue" @click="confirmSave" :loading="saving">
             <q-tooltip>Create user with selected details</q-tooltip>
           </q-btn>
         </q-card-actions>
@@ -239,27 +302,173 @@
     <!-- View User Modal -->
     <q-dialog v-model="showViewModal">
       <q-card style="width: 100%; max-width: 50vw">
-        <q-card-section>
-          <div class="text-h6">User Details</div>
-        </q-card-section>
-        <q-card-section>
-          <div class="row q-col-gutter-md">
-            <div class="col-12">
-              <div class="text-weight-medium">Name:</div>
-              <div>{{ selectedUser?.name }}</div>
-            </div>
-            <div class="col-12">
-              <div class="text-weight-medium">Office:</div>
-              <div>{{ selectedUser?.office_name }}</div>
-            </div>
-            <div class="col-12">
-              <div class="text-weight-medium">Role:</div>
-              <div>{{ getRoleName(selectedUser?.role_id) }}</div>
+        <!-- Header -->
+        <q-card-section class="bg-primary text-white">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="account_circle" size="sm" />
+            <div>
+              <div class="text-h6">User Details</div>
+              <div class="text-caption opacity-80">Account information</div>
             </div>
           </div>
         </q-card-section>
+
+        <q-card-section class="q-pt-md">
+          <!-- Name -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="person" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Name</div>
+              <div class="text-body2 text-weight-medium">{{ selectedUser?.name }}</div>
+            </div>
+          </div>
+
+          <!-- Username -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="account_circle" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Username</div>
+              <div class="text-body2 text-weight-medium">{{ selectedUser?.username }}</div>
+            </div>
+          </div>
+
+          <!-- Designation -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="badge" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Designation</div>
+              <div class="text-body2 text-weight-medium">
+                {{ selectedUser?.designation ?? 'N/A' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Office -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="business" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Office</div>
+              <div class="text-body2 text-weight-medium">
+                {{ selectedUser?.office?.name ?? 'N/A' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Role -->
+          <div class="row items-center q-pa-sm rounded-borders bg-grey-1">
+            <q-icon name="security" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Role</div>
+              <div class="text-body2 text-weight-medium">
+                {{ getRoleName(selectedUser?.role_id) }}
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Close" class="text-blue" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- edit modal -->
+    <q-dialog v-model="showEditModal">
+      <q-card style="width: 100%; max-width: 50vw">
+        <q-card-section class="bg-primary text-white">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="edit" size="sm" />
+            <div>
+              <div class="text-h6">Edit User</div>
+              <div class="text-caption opacity-80">Update user role</div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-md">
+          <!-- Name (read-only) -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="person" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Name</div>
+              <div class="text-body2 text-weight-medium">{{ selectedUser?.name }}</div>
+            </div>
+          </div>
+
+          <!-- Username (read-only) -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="account_circle" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Username</div>
+              <div class="text-body2 text-weight-medium">{{ selectedUser?.username }}</div>
+            </div>
+          </div>
+
+          <!-- Office (read-only) -->
+          <div class="row items-center q-pa-sm q-mb-sm rounded-borders bg-grey-1">
+            <q-icon name="business" color="primary" size="sm" class="q-mr-md" />
+            <div>
+              <div class="text-caption text-grey-6">Office</div>
+              <div class="text-body2 text-weight-medium">
+                {{ selectedUser?.office?.name ?? 'N/A' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Role (editable) -->
+          <q-select
+            v-model="selectedRole"
+            :options="roles"
+            label="Role *"
+            option-label="label"
+            outlined
+            :rules="[(val) => !!val || 'Role is required']"
+            :loading="loading"
+            class="q-mt-sm"
+          >
+            <template v-slot:prepend>
+              <q-icon name="security" />
+            </template>
+          </q-select>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+          <q-btn
+            flat
+            label="Save"
+            class="text-blue"
+            @click="updateUserAccount"
+            :loading="saving"
+            :disabled="!selectedRole"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <!-- reset password dialog -->
+    <q-dialog v-model="showResetPassword" persistent>
+      <q-card style="min-width: 500px">
+        <q-card-section class="row items-center">
+          <span class="q-ml-sm"
+            >Are you sure you want to reset the password for
+            <strong>{{ selectedUser?.name }}</strong
+            >?</span
+          >
+        </q-card-section>
+
         <q-card-actions align="right">
-          <q-btn flat label="Close" color="primary" v-close-popup />
+          <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+          <q-btn
+            flat
+            label="Reset Password"
+            class="text-blue"
+            @click="resetPassword"
+            :loading="saving"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -294,14 +503,17 @@ export default {
     const showRoleModal = ref(false)
     const showConfirmation = ref(false)
     const showViewModal = ref(false)
+    const showEditModal = ref(false)
     const showDeleteDialog = ref(false)
     const selectedUser = ref(null)
+    const showResetPassword = ref(false) // ✅ this is the dialog toggle
 
     const loading = ref(false)
     const saving = ref(false)
     const selectedOffice = ref(null)
     const selectedEmployee = ref(null)
     const selectedRole = ref(null)
+    const username = ref('')
     const selectedPermissions = ref([])
     const search = ref('')
     const officeSearch = ref('')
@@ -355,17 +567,17 @@ export default {
 
     const roles = [
       {
-        label: 'Office-Admin',
+        label: 'Office Admin',
         value: 1,
         description: 'Can manage office-specific settings and users',
       },
       {
-        label: 'Planning-Admin',
+        label: 'Planning Admin',
         value: 2,
         description: 'Can manage planning-related functions and users',
       },
       {
-        label: 'Hr-Admin',
+        label: 'Hr Admin',
         value: 3,
         description: 'Create Account and can manage the system',
       },
@@ -457,6 +669,8 @@ export default {
     const goBackToEmployeeModal = () => {
       showRoleModal.value = false
       showEmployeeModal.value = true
+      username.value = '' // ✅ clear username when going back
+      selectedRole.value = null // ✅ clear role when going back
     }
 
     const openRoleModal = () => {
@@ -464,11 +678,20 @@ export default {
       showRoleModal.value = true
     }
 
+    // const saveUser = () => {
+    //   showRoleModal.value = false
+    //   showConfirmation.value = true
+    // }
     const saveUser = () => {
+      if (!username.value || !selectedRole.value) return // guard
       showRoleModal.value = false
       showConfirmation.value = true
     }
 
+    const goBackToRoleModal = () => {
+      showConfirmation.value = false
+      showRoleModal.value = true
+    }
     const confirmSave = async () => {
       saving.value = true
       try {
@@ -480,6 +703,7 @@ export default {
           office_id: selectedOffice.value.id,
           office_name: selectedOffice.value.name, // ✅ FIXED
           role_id: selectedRole.value.value,
+          username: username.value, // ✅ Fixed - was username.value.value
           permissions: selectedPermissions.value,
           control_no: selectedEmployee.value.ControlNo,
         }
@@ -494,11 +718,31 @@ export default {
       }
     }
 
+    //edit payload
+    const updateUserAccount = async () => {
+      saving.value = true
+      try {
+        const userData = {
+          userId: selectedUser.value.id, // ✅ matches backend 'userId'
+          roleId: selectedRole.value.value, // ✅ matches backend 'roleId'
+        }
+
+        const success = await store.updateUserAccount(userData)
+        if (success) {
+          showEditModal.value = false // ✅ close edit modal, not confirmation
+          resetForm()
+        }
+      } finally {
+        saving.value = false
+      }
+    }
+
     const resetForm = () => {
       selectedOffice.value = null
       selectedEmployee.value = null
       selectedRole.value = null
       selectedPermissions.value = []
+      username.value = ''
       search.value = ''
       officeSearch.value = ''
       filteredOffices.value = store.offices || []
@@ -509,17 +753,28 @@ export default {
       showConfirmation.value = false
     }
 
-    const viewUser = (user) => {
-      selectedUser.value = user
-      showViewModal.value = true
-    }
+    // const viewUser = (user) => {
+    //   selectedUser.value = user
+    //   showViewModal.value = true
+    // }
 
-    const editUser = (user) => {
-      selectedUser.value = user
-      selectedOffice.value = { id: user.office_id, Office: user.office_name }
-      selectedRole.value = roles.find((role) => role.value === user.role_id)
-      selectedPermissions.value = user.permissions || []
-      showRoleModal.value = true
+    // const editUser = (user) => {
+    //   selectedUser.value = user
+    //   selectedOffice.value = { id: user.office_id, Office: user.office_name }
+    //   selectedRole.value = roles.find((role) => role.value === user.role_id)
+    //   selectedPermissions.value = user.permissions || []
+    //   showRoleModal.value = true
+    // }
+
+    // edit account details
+    const editUser = async (user) => {
+      const success = await store.viewUserDetails(user.user_id)
+      if (success) {
+        selectedUser.value = store.selectedUser
+        // ✅ Pre-select the current role
+        selectedRole.value = roles.find((r) => r.value === store.selectedUser.role_id) || null
+        showEditModal.value = true
+      }
     }
 
     const confirmDelete = (user) => {
@@ -536,6 +791,36 @@ export default {
     const getRoleName = (roleId) => {
       const role = roles.find((r) => r.value === roleId)
       return role ? role.label : 'Unknown'
+    }
+
+    //view account details
+    const viewUserDetails = async (user) => {
+      const success = await store.viewUserDetails(user.user_id)
+      if (success) {
+        selectedUser.value = store.selectedUser
+        showViewModal.value = true
+      }
+    }
+    // reset confirmation
+    const confirmResetPassword = (user) => {
+      selectedUser.value = user
+      showResetPassword.value = true
+    }
+
+    // Executes the reset password
+    const resetPassword = async () => {
+      saving.value = true
+      try {
+        const userData = {
+          userId: selectedUser.value.user_id, //  use user_id to match your other actions
+        }
+        const success = await store.resetPassword(userData)
+        if (success) {
+          showResetPassword.value = false
+        }
+      } finally {
+        saving.value = false
+      }
     }
 
     onMounted(async () => {
@@ -559,22 +844,6 @@ export default {
       }
     })
 
-    // watch(selectedOffice, async (newOffice) => {
-    //   if (newOffice) {
-    //     loading.value = true
-    //     selectedEmployee.value = null
-    //     try {
-    //       await store.fetchEmployees(newOffice.Office)
-    //       filteredEmployees.value = store.employees || []
-    //     } catch (error) {
-    //       console.error('Error fetching employees:', error)
-    //     } finally {
-    //       loading.value = false
-    //     }
-    //   } else {
-    //     filteredEmployees.value = []
-    //   }
-    // })
     watch(selectedOffice, async (newOffice) => {
       if (newOffice) {
         loading.value = true
@@ -612,7 +881,7 @@ export default {
       officeColumns,
       roles,
       permissions,
-      viewUser,
+      viewUserDetails,
       editUser,
       confirmDelete,
       deleteUser,
@@ -629,6 +898,13 @@ export default {
       isOfficeSelected,
       selectEmployee,
       isEmployeeSelected,
+      username, // ✅ Add this
+      goBackToRoleModal,
+      updateUserAccount,
+      showEditModal,
+      showResetPassword, // ✅
+      confirmResetPassword, // ✅
+      resetPassword,
     }
   },
 }

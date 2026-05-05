@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { api } from 'boot/axios'
 import { Notify } from 'quasar'
-
+import { viewUserDetails, updateUserAccount, resetPassword } from 'src/service/userService'
+import { extractErrorMessage } from 'src/utils/errorHelper'
 export const useUserManageStore = defineStore('userManage', {
   state: () => ({
     users: [],
@@ -16,19 +17,21 @@ export const useUserManageStore = defineStore('userManage', {
     saving: false,
     search: '',
     officeSearch: '',
+    selectedUser: null,
+
     roles: [
       {
-        label: 'Office-Admin',
+        label: 'Office Admin',
         value: 1,
         description: 'Can manage office-specific settings and users',
       },
       {
-        label: 'Planning-Admin',
+        label: 'Planning Admin',
         value: 2,
         description: 'Can manage planning-related functions and users',
       },
       {
-        label: 'Hr-Admin',
+        label: 'Hr Admin',
         value: 3,
         description: 'Create Account and can manage the system',
       },
@@ -80,27 +83,26 @@ export const useUserManageStore = defineStore('userManage', {
       }
     },
 
-async fetchEmployees(officeName) {
-  this.loading = true
-  try {
-    const response = await api.get('/employee/office-employee', {
-      params: {
-        office_name: officeName
+    async fetchEmployees(officeName) {
+      this.loading = true
+      try {
+        const response = await api.get('/employee/office-employee', {
+          params: {
+            office_name: officeName,
+          },
+        })
+
+        this.employees = response.data
+      } catch (error) {
+        console.error('Error fetching employees:', error)
+        Notify.create({
+          message: 'Failed to fetch employees. Please try again.',
+          color: 'negative',
+        })
+      } finally {
+        this.loading = false
       }
-    })
-
-    this.employees = response.data
-  } catch (error) {
-    console.error('Error fetching employees:', error)
-    Notify.create({
-      message: 'Failed to fetch employees. Please try again.',
-      color: 'negative',
-    })
-  } finally {
-    this.loading = false
-  }
-},
-
+    },
 
     async createUser(userData) {
       this.saving = true
@@ -120,7 +122,7 @@ async fetchEmployees(officeName) {
       } catch (error) {
         console.error('Error in user creation:', error)
         Notify.create({
-          message: 'Error creating user. Please try again.',
+          message: extractErrorMessage(error, 'Error creating user. Please try again.'),
           color: 'negative',
           position: 'top',
           timeout: 2500,
@@ -185,6 +187,95 @@ async fetchEmployees(officeName) {
           emp.name4.toLowerCase().includes(searchTerm) ||
           emp.Designation.toLowerCase().includes(searchTerm),
       )
+    },
+
+    // view user details
+    async viewUserDetails(userId) {
+      this.loading = true
+
+      try {
+        const response = await viewUserDetails(userId)
+        this.selectedUser = response.data.data
+        return true
+      } catch (error) {
+        console.error('Error fetching user details', error)
+        Notify.create({
+          message: extractErrorMessage(error, 'Failed to load user details.'),
+          color: 'negative',
+          position: 'top',
+          timeout: 2500,
+        })
+
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // updating user
+    async updateUserAccount(userData) {
+      this.saving = true
+      try {
+        const response = await updateUserAccount(userData) // ✅ was using userId instead of userData
+        if (response.data) {
+          Notify.create({
+            message: 'User role updated successfully!',
+            color: 'positive',
+            position: 'top',
+            timeout: 2500,
+          })
+          await this.fetchUserAccounts()
+          return true
+        }
+        return false
+      } catch (error) {
+        console.error('Error updating user:', error)
+        // const responseData = error.response?.data
+        // let errorMessage = 'Error updating user. Please try again.'
+        // if (responseData?.errors) {
+        //   errorMessage = Object.values(responseData.errors).flat().join(' ')
+        // } else if (responseData?.message) {
+        //   errorMessage = responseData.message
+        // }
+        Notify.create({
+          message: extractErrorMessage(error, 'Error updating user. Please try again.'),
+          color: 'negative',
+          position: 'top',
+          timeout: 2500,
+        })
+        return false
+      } finally {
+        this.saving = false
+      }
+    },
+
+    // reset password user
+    async resetPassword(userData) {
+      this.loading = true
+      try {
+        const response = await resetPassword(userData.userId) // ✅ pass userId, not whole object
+        if (response.data) {
+          Notify.create({
+            message: 'Password reset successfully.',
+            color: 'positive', // ✅ was 'success', correct value is 'positive'
+            position: 'top',
+            timeout: 2500,
+          })
+          return true
+        }
+        return false
+      } catch (error) {
+        Notify.create({
+          message: extractErrorMessage(error, 'Error resetting password. Please try again.'),
+
+          color: 'negative',
+          position: 'top',
+          timeout: 2500,
+        })
+        return false
+      } finally {
+        this.loading = false
+      }
     },
 
     resetForm() {
